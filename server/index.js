@@ -4,7 +4,7 @@ import path from 'node:path';
 import { DIRS, APP_TITLE } from './paths.js';
 import { loadConfig, saveConfig, maskConfig } from './config.js';
 import { lanAddresses } from './lan.js';
-import { bus, createJob, getJob, removeJob, listJobs, summarize, loadPastJobs, log } from './jobs.js';
+import { bus, createJob, getJob, removeJob, listJobs, summarize, loadPastJobs, log, hideFinishedJobs, unhideJobs } from './jobs.js';
 import { runJob, loadPresets, planTracks } from './pipeline.js';
 import { shutdownSequence } from './shutdown.js';
 import { checkUpdate, applyUpdate } from './update.js';
@@ -109,7 +109,9 @@ app.post('/api/plan', (req, res) => {
 });
 
 // ── 작업
-app.get('/api/jobs', (req, res) => res.json(listJobs()));
+app.get('/api/jobs', (req, res) => res.json(listJobs({ includeHidden: req.query.all === '1' })));
+app.post('/api/jobs/reset', (req, res) => res.json({ ok: true, hidden: hideFinishedJobs() }));
+app.post('/api/jobs/unhide', (req, res) => res.json({ ok: true, unhidden: unhideJobs() }));
 app.get('/api/jobs/:id', (req, res) => {
   const j = getJob(req.params.id); if (!j) return res.sendStatus(404);
   let logs = j.logs.slice(-500);

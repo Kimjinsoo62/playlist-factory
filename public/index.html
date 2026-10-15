@@ -91,7 +91,10 @@
 
   <!-- 중: 작업 -->
   <section class="col mid">
-    <h2>작업 <span id="jobCount" class="dim"></span></h2>
+    <h2>작업 <span id="jobCount" class="dim"></span><span class="grow"></span>
+      <label class="inline dim" title="초기화로 숨긴 작업을 다시 표시"><input type="checkbox" id="showHidden"> 숨긴 작업 보기</label>
+      <button id="btnReset" class="btn small" title="끝난 작업을 목록에서 지웁니다. output 폴더의 파일은 그대로 남습니다.">초기화</button>
+    </h2>
     <div id="jobs" class="jobs"></div>
     <div id="detail" class="detail" hidden>
       <div class="dhead">

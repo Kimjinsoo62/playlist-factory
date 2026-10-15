@@ -147,9 +147,10 @@ function connectSSE() {
   es.addEventListener('hello', (e) => { jobs = JSON.parse(e.data).jobs; renderJobs(); if (selected) loadDetail(selected); else if (jobs.length) select(jobs[0].id); });
   es.addEventListener('job', (e) => {
     const ev = JSON.parse(e.data); const j = ev.data;
-    const i = jobs.findIndex(x => x.id === j.id); if (i >= 0) jobs[i] = j; else jobs.unshift(j);
+    const i = jobs.findIndex(x => x.id === j.id); if (i >= 0) jobs[i] = j; else if (!j.hidden || $('#showHidden').checked) jobs.unshift(j);
     renderJobs(); if (selected === j.id) renderDetail(j);
   });
+  es.addEventListener('reset', () => reloadJobs());
   es.addEventListener('log', (e) => { const ev = JSON.parse(e.data); if (!selected || ev.jobId === selected) logLine(ev.data.t, ev.data.level, ev.data.msg); });
   es.onopen = () => setOffline(false);
   es.onerror = () => { es.close(); setOffline(true); setTimeout(connectSSE, 3000); };
@@ -159,8 +160,8 @@ function connectSSE() {
 function renderJobs() {
   $('#jobCount').textContent = jobs.length ? `(${jobs.length})` : '';
   $('#jobs').innerHTML = jobs.map(j => `
-    <div class="job ${j.id === selected ? 'sel' : ''}" data-id="${j.id}">
-      <span class="dim">${j.id.slice(0, 8)} ${j.id.slice(8, 12)}</span>
+    <div class="job ${j.id === selected ? 'sel' : ''}" data-id="${j.id}" style="${j.hidden ? 'opacity:.55' : ''}">
+      <span class="dim">${j.id.slice(0, 8)} ${j.id.slice(8, 12)}${j.hidden ? ' 숨김' : ''}</span>
       <span>${presetName(j.request?.preset)} · ${j.request?.count || j.tracks?.length || ''}곡 <div class="mini"><i style="width:${j.progress || 0}%"></i></div></span>
       <span class="chip ${chipClass(j.status)}">${statusText(j.status)}</span>
       <span class="dim">${j.progress || 0}%</span>
@@ -198,6 +199,17 @@ function renderDetail(j) {
   } else { $('#result').hidden = true; }
   if (j.error && j.status !== 'running') $('#ytText').textContent = '';
 }
+// ── 초기화(목록만 비움, 데이터 유지) / 숨긴 작업 보기
+const jobsUrl = () => '/api/jobs' + ($('#showHidden').checked ? '?all=1' : '');
+async function reloadJobs() { jobs = await api(jobsUrl()); if (selected && !jobs.some(j => j.id === selected)) { selected = null; $('#detail').hidden = true; logEl.textContent = ''; } renderJobs(); }
+$('#btnReset').onclick = async () => {
+  const finished = jobs.filter(j => !['running', 'queued'].includes(j.status)).length;
+  if (!finished) return alert('숨길 끝난 작업이 없습니다.');
+  if (!confirm(`끝난 작업 ${finished}개를 목록에서 지울까요?\n결과 파일은 output 폴더에 그대로 남고, "숨긴 작업 보기"로 다시 볼 수 있습니다.`)) return;
+  try { const r = await api('/api/jobs/reset', { method: 'POST' }); logLine('--', 'info', `초기화: 작업 ${r.hidden}개를 목록에서 숨김 (데이터 유지)`); await reloadJobs(); }
+  catch (e) { alert(e.message); }
+};
+$('#showHidden').onchange = reloadJobs;
 $('#btnCancel').onclick = () => selected && api(`/api/jobs/${selected}/cancel`, { method: 'POST' });
 $('#btnOpenJob').onclick = () => selected && api('/api/open', { method: 'POST', body: { id: selected } });
 $('#btnDelete').onclick = async () => {

@@ -38,8 +38,25 @@ export function createJob(request) {
 
 export function getJob(id) { return jobs.get(id); }
 export function removeJob(id) { return jobs.delete(id); }
-export function listJobs() {
-  return [...jobs.values()].sort((a, b) => b.createdAt - a.createdAt).map(summarize);
+export function listJobs({ includeHidden = false } = {}) {
+  return [...jobs.values()].filter(j => includeHidden || !j.hidden).sort((a, b) => b.createdAt - a.createdAt).map(summarize);
+}
+
+/** 화면 초기화: 끝난 작업을 목록에서 숨긴다(출력 데이터는 유지, 재시작 후에도 숨김 유지) */
+export function hideFinishedJobs() {
+  let n = 0;
+  for (const j of jobs.values()) {
+    if (j.status === 'running' || j.status === 'queued' || j.hidden) continue;
+    j.hidden = true; j.hiddenAt = Date.now(); persist(j); n++;
+  }
+  bus.emit('event', { type: 'reset', jobId: null, data: { hidden: n } });
+  return n;
+}
+export function unhideJobs() {
+  let n = 0;
+  for (const j of jobs.values()) if (j.hidden) { j.hidden = false; persist(j); n++; }
+  bus.emit('event', { type: 'reset', jobId: null, data: { unhidden: n } });
+  return n;
 }
 
 export function summarize(job) {
