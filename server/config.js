@@ -29,6 +29,11 @@ const DEFAULTS = {
     showTitleOverlay: true,
     titleOverlaySeconds: 6,
   },
+  images: {
+    defaultMode: 'photo',          // 'photo' | 'gradient'
+    provider: 'commons',           // 'commons' (Wikimedia, 키 불필요, 빠름) | 'openverse' (키 불필요, CC0만, 느림) | 'pexels' (키 필요)
+    pexelsKey: '',
+  },
   youtube: {
     channelName: '',
     hashtags: '#playlist #aimusic',
@@ -65,5 +70,6 @@ export function maskConfig(cfg) {
   const c = JSON.parse(JSON.stringify(cfg));
   if (c.treblo?.apiKey) c.treblo.apiKey = c.treblo.apiKey.slice(0, 4) + '****' + c.treblo.apiKey.slice(-4);
   c.hasApiKey = Boolean(cfg.treblo?.apiKey);
+  if (c.images?.pexelsKey) c.images.pexelsKey = '****';
   return c;
 }

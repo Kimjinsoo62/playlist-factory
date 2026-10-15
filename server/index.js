@@ -40,6 +40,23 @@ app.post('/api/config', (req, res) => {
   }
   res.json(maskConfig(saveConfig(patch)));
 });
+app.get('/api/backgrounds/:preset', async (req, res) => {
+  const { listPool } = await import('./images.js');
+  res.json(listPool(req.params.preset).map(p => ({ file: path.basename(p.file), url: `/assets/backgrounds/${req.params.preset}/${path.basename(p.file)}`, credit: p.credit })));
+});
+app.delete('/api/backgrounds/:preset/:file', async (req, res) => {
+  // 마음에 안 드는 배경 사진 제외(풀에서 삭제 + 다시 받지 않도록 기록)
+  const { rejectBackground } = await import('./images.js');
+  res.json({ ok: true, id: rejectBackground(req.params.preset, req.params.file) });
+});
+app.post('/api/backgrounds/:preset/fetch', async (req, res) => {
+  const { findBackground } = await import('./images.js');
+  const preset = loadPresets().find(p => p.id === req.params.preset);
+  if (!preset) return res.status(404).json({ error: '프리셋 없음' });
+  const r = await findBackground({ presetId: preset.id, queries: preset.imageQueries, cfg: loadConfig(), log: () => {} });
+  res.json(r ? { ok: true, file: path.basename(r.file), credit: r.credit } : { ok: false, error: '사진을 구하지 못했습니다' });
+});
+app.use('/assets', express.static(DIRS.assets));
 app.get('/api/treblo/balance', async (req, res) => {
   try { const tp = new TrebloProvider(loadConfig().treblo); res.json(await tp.balance()); }
   catch (e) { res.status(400).json({ error: e.message }); }

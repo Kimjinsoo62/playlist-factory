@@ -7,6 +7,7 @@
 - 설명서: `사용설명서.html` (앱 상단 [설명서] 버튼)
 - 음악 생성: [Treblo](https://treblo.com) (구 Sonauto) 공개 API. 곡당 100크레딧. *Powered by Treblo*
 - 음원 소스 3종: Treblo API 자동 생성 / `input/` 로컬 파일 / 테스트 합성음(크레딧 0)
+- 배경 사진 자동 수집: Wikimedia Commons(Unsplash 출처 CC0 우선, 키 불필요) / Openverse / Pexels(키). `assets/backgrounds/`에 풀로 저장, `_rejected.txt`로 제외 관리
 
 ## 구조
 

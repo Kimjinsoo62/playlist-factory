@@ -8,6 +8,7 @@ import { LocalProvider } from './providers/local.js';
 import * as ff from './media/ffmpeg.js';
 import { buildAss, lyricLines, alignLinesToWords, distributeLines } from './media/subtitles.js';
 import { buildYoutubeMeta } from './youtube.js';
+import { findBackground } from './images.js';
 
 const LANG = {
   ko: { name: '한국어', instr: 'Sung in Korean. All lyrics must be in natural Korean (한국어 가사).' },
@@ -198,13 +199,24 @@ export async function runJob(job, cfg) {
     setStepProgress(job, 100);
 
     // 6. 배경/썸네일
-    setStep(job, 6, '배경 이미지·썸네일 생성');
-    const meta = buildYoutubeMeta({ preset, tracks: collected, total, request: req, cfg });
+    setStep(job, 6, '배경 사진·썸네일 생성');
+    let bgImage = req.backgroundImage || preset.backgroundImage || '';
+    let photoCredit = null;
+    const bgMode = bgImage ? 'custom' : (req.background || cfg.images?.defaultMode || 'photo');
+    if (bgMode === 'photo') {
+      const found = await findBackground({ presetId: preset.id, queries: preset.imageQueries, cfg, log: (m, lv) => log(job, m, lv), preferPool: providerName === 'mock' });
+      if (found) { bgImage = found.file; photoCredit = found.credit; }
+      else log(job, '사진을 구하지 못해 자동 생성 그라데이션 배경을 씁니다', 'warn');
+    } else if (bgMode === 'custom') {
+      if (!fs.existsSync(bgImage)) { log(job, `배경 이미지 파일 없음: ${bgImage} → 그라데이션 사용`, 'warn'); bgImage = ''; }
+    }
+    setStepProgress(job, 50);
+    const meta = buildYoutubeMeta({ preset, tracks: collected, total, request: req, cfg, photoCredit });
     const spec = {
       style: req.thumbnailStyle || preset.thumbnailStyle || 'night',
       title: req.thumbnailText || meta.title.replace(/^\[[^\]]*\]\s*/, ''),
       subtitle: req.thumbnailSub ?? `${collected.length} tracks · ${fmt(total)}`,
-      background_image: req.backgroundImage || preset.backgroundImage || '',
+      background_image: bgImage,
       out_background: path.join(job.dir, 'background.png'),
       out_thumbnail: path.join(job.dir, 'thumbnail.jpg'),
       seed: Date.now() % 100000,
@@ -241,7 +253,7 @@ export async function runJob(job, cfg) {
 
     finish(job, {
       video: rel(job, outMp4), audio: 'playlist.mp3', thumbnail: 'thumbnail.jpg', background: 'background.png',
-      subtitles: 'subs.ass', youtube: 'youtube.txt', lyrics: lyricsAll ? 'lyrics.txt' : null,
+      subtitles: 'subs.ass', youtube: 'youtube.txt', lyrics: lyricsAll ? 'lyrics.txt' : null, photoCredit,
       total, title: meta.title, chapters: meta.chapters, trackCount: collected.length,
       tracks: collected.map(c => ({ index: c.index, title: c.title, offset: c.offset, duration: c.duration, file: rel(job, c.file) })),
     });

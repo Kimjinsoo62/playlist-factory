@@ -144,7 +144,12 @@ def main():
     bg = spec.get('background_image')
     if bg and os.path.exists(bg):
         base = fit_cover(Image.open(bg).convert('RGB'), W, H)
-        base = Image.blend(base, Image.new('RGB', (W, H), (0, 0, 0)), 0.25)
+        base = Image.blend(base, Image.new('RGB', (W, H), (0, 0, 0)), 0.32)   # 자막 가독성을 위해 어둡게
+        # 하단 자막 영역 그라데이션
+        grad = Image.new('L', (1, H), 0)
+        for yy in range(H):
+            grad.putpixel((0, yy), int(max(0, (yy - H * 0.72) / (H * 0.28)) * 140))
+        base = Image.composite(Image.new('RGB', (W, H), (0, 0, 0)), base, grad.resize((W, H)))
     else:
         base = gradient(W, H, st['colors'], seed)
     base.save(spec['out_background'], quality=95)

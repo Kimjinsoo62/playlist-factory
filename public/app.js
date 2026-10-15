@@ -109,6 +109,7 @@ function fillForm(form, cfg) {
     const v = el.name.split('.').reduce((o, k) => o?.[k], cfg);
     if (v === undefined || v === null) continue;
     if (el.name === 'treblo.apiKey') { el.placeholder = cfg.hasApiKey ? `저장됨 (${v})` : el.placeholder; continue; }
+    if (el.name === 'images.pexelsKey') { if (v) el.placeholder = '저장됨'; continue; }
     el.value = String(v);
   }
 }
@@ -118,7 +119,7 @@ $('#cfgForm').onsubmit = async (e) => {
   for (const el of $('#cfgForm').elements) {
     if (!el.name) continue;
     let v = el.value;
-    if (el.name === 'treblo.apiKey' && !v) continue;
+    if ((el.name === 'treblo.apiKey' || el.name === 'images.pexelsKey') && !v) continue;
     if (el.type === 'number') v = Number(v);
     if (v === 'true') v = true; if (v === 'false') v = false;
     const keys = el.name.split('.'); let o = patch;

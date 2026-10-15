@@ -6,7 +6,9 @@ export function fmtTime(sec) {
   return h ? `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}` : `${m}:${String(s).padStart(2, '0')}`;
 }
 
-export function buildYoutubeMeta({ preset, tracks, total, request, cfg }) {
+import { creditLine } from './images.js';
+
+export function buildYoutubeMeta({ preset, tracks, total, request, cfg, photoCredit = null }) {
   const lang = request.language || 'ko';
   const title = request.title || defaultTitle(preset, tracks.length, total, lang);
   const chapters = tracks.map(t => `${fmtTime(t.offset)} ${String(t.index).padStart(2, '0')}. ${t.title}`);
@@ -20,6 +22,7 @@ export function buildYoutubeMeta({ preset, tracks, total, request, cfg }) {
     cfg.youtube?.footer || 'Music generated with Treblo (https://treblo.com)',
     '이 플레이리스트의 음악은 AI(Treblo)로 생성되었습니다.',
   ];
+  if (photoCredit) lines.push(creditLine(photoCredit));
   if (cfg.youtube?.channelName) lines.push(`© ${cfg.youtube.channelName}`);
   const tags = [...new Set([...(preset.tags || []), ...(preset.keywords || []), 'playlist', 'ai music', preset.name])].slice(0, 30);
   return { title, description: lines.filter(l => l !== undefined).join('\n'), chapters, tags };
