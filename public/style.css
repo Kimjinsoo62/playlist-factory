@@ -85,7 +85,10 @@ summary { cursor: pointer; color: var(--dim); }
 .log { flex: 1; margin: 0; overflow: auto; background: #0e1014; border: 1px solid var(--line); border-radius: 3px; padding: 4px 6px; font: 7.5pt/1.35 Consolas, 'D2Coding', monospace; white-space: pre-wrap; word-break: break-all; }
 .log .warn { color: var(--warn); } .log .error { color: #ff6b6b; } .log .step { color: var(--accent2); }
 
-.box.wide { min-width: 760px; max-width: 900px; }
+.box.wide { min-width: 760px; max-width: 900px; max-height: 94vh; }
+.pm { display: flex; flex-direction: column; min-height: 0; flex: 1; overflow-y: auto; padding-right: 4px; }
+.pm .actions { position: sticky; bottom: 0; background: var(--panel); border-top: 1px solid var(--line); padding: 6px 0 2px; margin-top: 6px; z-index: 1; }
+.pm .actions .btn.primary { padding: 4px 16px; }
 .pm .row.top { align-items: flex-start; }
 .pm textarea { flex: 1; background: #12141a; border: 1px solid var(--line); border-radius: 3px; padding: 3px 5px; resize: vertical; font: inherit; line-height: 1.4; }
 .pm .pair { display: flex; gap: 4px; } .pm .pair input { width: 50%; }
