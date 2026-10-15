@@ -32,7 +32,12 @@ app.get('/api/presets', (req, res) => res.json(loadPresets()));
 app.get('/api/config', (req, res) => res.json(maskConfig(loadConfig())));
 app.post('/api/config', (req, res) => {
   const patch = req.body || {};
-  if (patch.treblo && typeof patch.treblo.apiKey === 'string' && patch.treblo.apiKey.includes('****')) delete patch.treblo.apiKey; // 마스킹된 값은 저장하지 않음
+  if (patch.treblo && typeof patch.treblo.apiKey === 'string') {
+    const key = patch.treblo.apiKey.trim();
+    if (!key || key.includes('****')) delete patch.treblo.apiKey; // 빈 값·마스킹된 값은 저장하지 않음
+    else if (!/^[\x21-\x7E]{8,300}$/.test(key)) return res.status(400).json({ error: `API 키 형식이 아닙니다 (길이 ${key.length}, 한글·공백 등 포함). treblo.com/developers 에서 발급한 키만 붙여 넣으세요.` });
+    else patch.treblo.apiKey = key;
+  }
   res.json(maskConfig(saveConfig(patch)));
 });
 app.get('/api/treblo/balance', async (req, res) => {

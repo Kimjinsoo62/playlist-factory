@@ -171,6 +171,7 @@ const statusText = (s) => ({ running: '진행 중', done: '완료', failed: '실
 async function select(id) { selected = id; renderJobs(); logEl.textContent = ''; await loadDetail(id); }
 async function loadDetail(id) {
   const j = await api('/api/jobs/' + id).catch(() => null); if (!j) return;
+  logEl.textContent = '';   // SSE로 먼저 들어온 줄과 중복되지 않도록 비우고 서버 기록으로 채움
   for (const l of j.logs || []) logLine(l.t, l.level, l.msg);
   renderDetail(j);
 }
