@@ -1,8 +1,25 @@
+# 의존성·산출물
 node_modules/
 output/
 cache/
+__pycache__/
+*.log
+*.download
+
+# 비밀·개인 설정 (API 키 포함)
+config.json
+.env
+.env.*
+
+# 입력 음원 (사용자 파일)
 input/*
 !input/.gitkeep
-config.json
-*.log
-__pycache__/
+
+# 자동 수집한 배경 사진 풀 (각 PC에서 다시 받음, 제외 목록만 공유)
+assets/backgrounds/*/
+!assets/backgrounds/_rejected.txt
+
+# 임시
+*.tmp
+_ui_shot.png
+Thumbs.db
