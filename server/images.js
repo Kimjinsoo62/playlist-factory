@@ -206,6 +206,24 @@ export async function findBackground({ presetId, queries, cfg, log, preferPool =
   }
 }
 
+/**
+ * 슬라이드쇼용으로 사진 여러 장을 모은다. 풀에 있는 것을 먼저 쓰고 모자라면 새로 받는다(최대 maxFetch 장).
+ * 반환: [{file, credit}]
+ */
+export async function collectBackgrounds({ presetId, queries, cfg, log, count = 8, maxFetch = 4, allowFetch = true }) {
+  const pool = listPool(presetId).sort(() => Math.random() - 0.5);
+  const picked = pool.slice(0, count);
+  let fetched = 0;
+  while (allowFetch && picked.length < count && fetched < maxFetch) {
+    const r = await findBackground({ presetId, queries, cfg, log });
+    fetched++;
+    if (!r) break;
+    if (r.fresh && !picked.some(p => p.file === r.file)) picked.push({ file: r.file, credit: r.credit });
+    else if (!r.fresh) break;   // 새 사진을 못 구해 풀에서 돌려준 경우 → 더 시도해도 같음
+  }
+  return picked;
+}
+
 export function creditLine(credit) {
   if (!credit) return '';
   const who = credit.creator ? ` by ${credit.creator}` : '';

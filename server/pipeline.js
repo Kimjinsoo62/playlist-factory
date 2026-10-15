@@ -8,7 +8,7 @@ import { LocalProvider } from './providers/local.js';
 import * as ff from './media/ffmpeg.js';
 import { buildAss, lyricLines, alignLinesToWords, distributeLines } from './media/subtitles.js';
 import { buildYoutubeMeta } from './youtube.js';
-import { findBackground } from './images.js';
+import { findBackground, collectBackgrounds } from './images.js';
 
 const LANG = {
   ko: { name: '한국어', instr: 'Sung in Korean. All lyrics must be in natural Korean (한국어 가사).' },
@@ -205,35 +205,59 @@ export async function runJob(job, cfg) {
     setStep(job, 6, '배경 사진·썸네일 생성');
     let bgImage = req.backgroundImage || preset.backgroundImage || '';
     let photoCredit = null;
-    const bgMode = bgImage ? 'custom' : (req.background || cfg.images?.defaultMode || 'photo');
-    if (bgMode === 'photo') {
-      const found = await findBackground({ presetId: preset.id, queries: preset.imageQueries, cfg, log: (m, lv) => log(job, m, lv), preferPool: providerName === 'mock' });
+    let slides = [];                 // 슬라이드쇼용 사진 목록 [{file, credit}]
+    const bgMode = bgImage ? 'custom' : (req.background || cfg.images?.defaultMode || 'slideshow');
+    const imgLog = (m, lv) => log(job, m, lv);
+    if (bgMode === 'slideshow') {
+      const want = Math.max(2, Math.min(30, Number(req.slideCount) || cfg.images?.slideCount || 8));
+      // 사진 수가 많아도 영상 길이보다 길 필요는 없음: 10초 × 장수 ≤ 총 길이 + 여유
+      const need = Math.max(2, Math.min(want, Math.ceil(total / (cfg.images?.slideSeconds || 10)) + 1));
+      slides = await collectBackgrounds({ presetId: preset.id, queries: preset.imageQueries, cfg, log: imgLog, count: need, maxFetch: providerName === 'mock' ? 0 : (cfg.images?.maxFetchPerJob ?? 4), allowFetch: providerName !== 'mock' });
+      if (slides.length >= 2) log(job, `슬라이드쇼 사진 ${slides.length}장 (${slides.map(s => (s.credit?.title || '').slice(0, 18)).join(' / ')})`);
+      else if (slides.length === 1) { log(job, '사진이 1장뿐이라 한 장 고정 배경으로 진행합니다', 'warn'); bgImage = slides[0].file; photoCredit = slides[0].credit; slides = []; }
+      else log(job, '사진을 구하지 못해 자동 생성 그라데이션 배경을 씁니다', 'warn');
+    } else if (bgMode === 'photo') {
+      const found = await findBackground({ presetId: preset.id, queries: preset.imageQueries, cfg, log: imgLog, preferPool: providerName === 'mock' });
       if (found) { bgImage = found.file; photoCredit = found.credit; }
       else log(job, '사진을 구하지 못해 자동 생성 그라데이션 배경을 씁니다', 'warn');
     } else if (bgMode === 'custom') {
       if (!fs.existsSync(bgImage)) { log(job, `배경 이미지 파일 없음: ${bgImage} → 그라데이션 사용`, 'warn'); bgImage = ''; }
     }
     setStepProgress(job, 50);
-    const meta = buildYoutubeMeta({ preset, tracks: collected, total, request: req, cfg, photoCredit });
+    const photoCredits = slides.map(s => s.credit).filter(Boolean);
+    const meta = buildYoutubeMeta({ preset, tracks: collected, total, request: req, cfg, photoCredit, photoCredits });
     const spec = {
       style: req.thumbnailStyle || preset.thumbnailStyle || 'night',
       title: req.thumbnailText || meta.title.replace(/^\[[^\]]*\]\s*/, ''),
       subtitle: req.thumbnailSub ?? `${collected.length} tracks · ${fmt(total)}`,
       background_image: bgImage,
+      slides: slides.map(s => s.file),
+      slides_dir: path.join(job.dir, 'slides'),
       out_background: path.join(job.dir, 'background.png'),
       out_thumbnail: path.join(job.dir, 'thumbnail.jpg'),
       seed: Date.now() % 100000,
     };
     const specFile = path.join(job.dir, 'thumb_spec.json');
     fs.writeFileSync(specFile, JSON.stringify(spec), 'utf8');
-    await runPython(path.join(DIRS.scripts, 'thumbnail.py'), [specFile], job.dir);
+    const thumbOut = await runPython(path.join(DIRS.scripts, 'thumbnail.py'), [specFile], job.dir);
+    let slideFiles = [];
+    try { slideFiles = JSON.parse(thumbOut.trim().split(/\r?\n/).pop()).slides || []; } catch {}
     setStepProgress(job, 100);
 
     // 7. 렌더링
     setStep(job, 7, '영상 렌더링(ffmpeg)');
     const outMp4 = path.join(job.dir, 'playlist.mp4');
+    let backgroundVideo = null;
+    if (slideFiles.length >= 2) {
+      setStepProgress(job, 2, '슬라이드쇼 배경 만드는 중');
+      await ff.buildSlideshow({
+        cwd: job.dir, images: slideFiles.map(f => rel(job, f)), out: 'slideshow.mp4', cfg: cfg.render,
+        slideSeconds: Number(cfg.images?.slideSeconds) || 10, fadeSeconds: Number(cfg.images?.fadeSeconds) || 1.2, onLog: m => log(job, m),
+      });
+      backgroundVideo = 'slideshow.mp4';
+    }
     await ff.renderVideo({
-      cwd: job.dir, background: 'background.png', audio: 'full.wav', ass: subsOn || cfg.subtitles.showTitleOverlay ? 'subs.ass' : null,
+      cwd: job.dir, background: 'background.png', backgroundVideo, audio: 'full.wav', ass: subsOn || cfg.subtitles.showTitleOverlay ? 'subs.ass' : null,
       out: 'playlist.mp4', duration: total, cfg: cfg.render,
       onProgress: p => setStepProgress(job, p, `렌더링 ${p.toFixed(0)}%`),
       onLog: m => log(job, m),
@@ -250,13 +274,14 @@ export async function runJob(job, cfg) {
     await ff.encodeMp3(fullWav, path.join(job.dir, 'playlist.mp3'));
     const lyricsAll = collected.filter(c => c.lyrics).map(c => `## ${pad(c.index)}. ${c.title}\n${c.lyrics.trim()}`).join('\n\n');
     if (lyricsAll) fs.writeFileSync(path.join(job.dir, 'lyrics.txt'), lyricsAll, 'utf8');
-    for (const f of ['full.wav', 'silence.wav', 'concat.txt']) { try { fs.unlinkSync(path.join(job.dir, f)); } catch {} }
+    for (const f of ['full.wav', 'silence.wav', 'concat.txt', 'slideshow.mp4']) { try { fs.unlinkSync(path.join(job.dir, f)); } catch {} }
+    try { fs.rmSync(path.join(job.dir, 'slides'), { recursive: true, force: true }); } catch {}
     for (const w of wavs) { try { fs.unlinkSync(w); } catch {} }
     setStepProgress(job, 100);
 
     finish(job, {
       video: rel(job, outMp4), audio: 'playlist.mp3', thumbnail: 'thumbnail.jpg', background: 'background.png',
-      subtitles: 'subs.ass', youtube: 'youtube.txt', lyrics: lyricsAll ? 'lyrics.txt' : null, photoCredit,
+      subtitles: 'subs.ass', youtube: 'youtube.txt', lyrics: lyricsAll ? 'lyrics.txt' : null, photoCredit, photoCredits, slideCount: slideFiles.length,
       total, title: meta.title, chapters: meta.chapters, trackCount: collected.length,
       tracks: collected.map(c => ({ index: c.index, title: c.title, offset: c.offset, duration: c.duration, file: rel(job, c.file) })),
     });

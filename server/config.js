@@ -30,7 +30,11 @@ const DEFAULTS = {
     titleOverlaySeconds: 6,
   },
   images: {
-    defaultMode: 'photo',          // 'photo' | 'gradient'
+    defaultMode: 'slideshow',      // 'slideshow' (사진 여러 장 페이드 전환) | 'photo' (한 장 고정) | 'gradient'
+    slideSeconds: 10,              // 사진 한 장 표시 시간
+    fadeSeconds: 1.2,              // 페이드 전환 시간
+    slideCount: 8,                 // 슬라이드쇼에 쓸 사진 수(풀 + 새로 받기)
+    maxFetchPerJob: 4,             // 작업당 새로 받는 사진 최대 수
     provider: 'commons',           // 'commons' (Wikimedia, 키 불필요, 빠름) | 'openverse' (키 불필요, CC0만, 느림) | 'pexels' (키 필요)
     pexelsKey: '',
   },

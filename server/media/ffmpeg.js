@@ -102,29 +102,61 @@ async function pickEncoder(pref) {
   return encoderCache;
 }
 
+function encoderArgs(enc, cfg) {
+  return enc === 'h264_qsv'
+    ? ['-c:v', 'h264_qsv', '-global_quality', String(cfg.crf || 23), '-look_ahead', '0']
+    : ['-c:v', 'libx264', '-preset', cfg.preset || 'veryfast', '-tune', 'stillimage', '-crf', String(cfg.crf || 20)];
+}
+
 /**
- * 정지 배경 + ASS 자막 + 오디오 → MP4. 모든 경로는 cwd 기준 상대 경로여야 함(Windows 콜론 문제 회피).
+ * 사진 여러 장 → 페이드 전환 슬라이드쇼 루프 영상(무음). 마지막에 첫 사진으로 되돌아와 끊김 없이 반복된다.
+ * images: cwd 기준 상대 경로 배열(2장 이상). 반환: 루프 길이(초)
  */
-export async function renderVideo({ cwd, background, audio, ass, out, duration, cfg, onProgress, onLog }) {
+export async function buildSlideshow({ cwd, images, out, cfg, slideSeconds = 10, fadeSeconds = 1, onLog }) {
+  const enc = await pickEncoder(cfg.encoder);
+  const W = cfg.width, H = cfg.height, fps = cfg.fps;
+  const seq = [...images, images[0]];              // 끝에 첫 장을 붙여 루프 지점을 매끄럽게
+  const hold = slideSeconds + fadeSeconds;
+  const args = ['-hide_banner', '-loglevel', 'error', '-y'];
+  for (const img of seq) args.push('-loop', '1', '-t', String(hold), '-framerate', String(fps), '-i', img);
+  const parts = seq.map((_, i) => `[${i}:v]scale=${W}:${H}:force_original_aspect_ratio=increase,crop=${W}:${H},setsar=1,format=yuv420p[s${i}]`);
+  let prev = 's0';
+  for (let i = 1; i < seq.length; i++) {
+    const outLabel = i === seq.length - 1 ? 'vout' : `x${i}`;
+    parts.push(`[${prev}][s${i}]xfade=transition=fade:duration=${fadeSeconds}:offset=${i * slideSeconds}[${outLabel}]`);
+    prev = outLabel;
+  }
+  const loopLen = images.length * slideSeconds + fadeSeconds;   // 첫 장이 완전히 돌아온 순간까지
+  args.push('-filter_complex', parts.join(';'), '-map', '[vout]', '-t', String(loopLen), '-r', String(fps), ...encoderArgs(enc, cfg), '-an', out);
+  onLog?.(`슬라이드쇼 ${images.length}장 × ${slideSeconds}초, 페이드 ${fadeSeconds}초, 루프 ${loopLen}초 (${enc})`);
+  try { await run('ffmpeg', args, { cwd }); }
+  catch (e) {
+    if (enc !== 'libx264') { encoderCache = 'libx264'; onLog?.(`${enc} 실패 → libx264 재시도`); return buildSlideshow({ cwd, images, out, cfg: { ...cfg, encoder: 'libx264' }, slideSeconds, fadeSeconds, onLog }); }
+    throw e;
+  }
+  return loopLen;
+}
+
+/**
+ * 배경(정지 이미지 또는 슬라이드쇼 루프 영상) + ASS 자막 + 오디오 → MP4. 모든 경로는 cwd 기준 상대 경로(Windows 콜론 문제 회피).
+ */
+export async function renderVideo({ cwd, background, backgroundVideo, audio, ass, out, duration, cfg, onProgress, onLog }) {
   const enc = await pickEncoder(cfg.encoder);
   onLog?.(`비디오 인코더: ${enc}`);
-  const vf = [`scale=${cfg.width}:${cfg.height}:force_original_aspect_ratio=increase`, `crop=${cfg.width}:${cfg.height}`, 'format=yuv420p'];
+  const vf = backgroundVideo ? ['format=yuv420p'] : [`scale=${cfg.width}:${cfg.height}:force_original_aspect_ratio=increase`, `crop=${cfg.width}:${cfg.height}`, 'format=yuv420p'];
   if (ass) vf.push(`ass=${ass.replace(/\\/g, '/')}`);
-  const args = ['-hide_banner', '-loglevel', 'error', '-nostats', '-progress', 'pipe:1', '-y',
-    '-loop', '1', '-framerate', String(cfg.fps), '-i', background,
-    '-i', audio,
-    '-vf', vf.join(','),
-    '-r', String(cfg.fps)];
-  if (enc === 'h264_qsv') args.push('-c:v', 'h264_qsv', '-global_quality', String(cfg.crf || 23), '-look_ahead', '0');
-  else args.push('-c:v', 'libx264', '-preset', cfg.preset || 'veryfast', '-tune', 'stillimage', '-crf', String(cfg.crf || 20));
-  args.push('-c:a', 'aac', '-b:a', '256k', '-shortest', '-movflags', '+faststart', out);
+  const args = ['-hide_banner', '-loglevel', 'error', '-nostats', '-progress', 'pipe:1', '-y'];
+  if (backgroundVideo) args.push('-stream_loop', '-1', '-i', backgroundVideo);
+  else args.push('-loop', '1', '-framerate', String(cfg.fps), '-i', background);
+  args.push('-i', audio, '-vf', vf.join(','), '-r', String(cfg.fps));
+  args.push(...encoderArgs(enc, cfg), '-c:a', 'aac', '-b:a', '256k', '-shortest', '-movflags', '+faststart', out);
   try {
     await run('ffmpeg', args, { cwd, onProgress: s => onProgress?.(Math.min(100, (s / duration) * 100)) });
   } catch (e) {
     if (enc !== 'libx264') {
       onLog?.(`${enc} 실패, libx264로 재시도: ${e.message.split('\n')[0]}`);
       encoderCache = 'libx264';
-      return renderVideo({ cwd, background, audio, ass, out, duration, cfg: { ...cfg, encoder: 'libx264' }, onProgress, onLog });
+      return renderVideo({ cwd, background, backgroundVideo, audio, ass, out, duration, cfg: { ...cfg, encoder: 'libx264' }, onProgress, onLog });
     }
     throw e;
   }

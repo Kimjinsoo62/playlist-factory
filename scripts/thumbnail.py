@@ -136,27 +136,42 @@ def draw_title(img, title, subtitle, st, fontpath):
     return img
 
 
+def darken_photo(path, W, H):
+    """사진을 1920x1080으로 맞추고 자막 가독성을 위해 어둡게 + 하단 그라데이션"""
+    base = fit_cover(Image.open(path).convert('RGB'), W, H)
+    base = Image.blend(base, Image.new('RGB', (W, H), (0, 0, 0)), 0.32)
+    grad = Image.new('L', (1, H), 0)
+    for yy in range(H):
+        grad.putpixel((0, yy), int(max(0, (yy - H * 0.72) / (H * 0.28)) * 140))
+    return Image.composite(Image.new('RGB', (W, H), (0, 0, 0)), base, grad.resize((W, H)))
+
+
 def main():
     spec = json.load(open(sys.argv[1], encoding='utf-8'))
     st = STYLES.get(spec.get('style') or 'night', STYLES['night'])
     seed = spec.get('seed', 1)
     W, H = 1920, 1080
     bg = spec.get('background_image')
-    if bg and os.path.exists(bg):
-        base = fit_cover(Image.open(bg).convert('RGB'), W, H)
-        base = Image.blend(base, Image.new('RGB', (W, H), (0, 0, 0)), 0.32)   # 자막 가독성을 위해 어둡게
-        # 하단 자막 영역 그라데이션
-        grad = Image.new('L', (1, H), 0)
-        for yy in range(H):
-            grad.putpixel((0, yy), int(max(0, (yy - H * 0.72) / (H * 0.28)) * 140))
-        base = Image.composite(Image.new('RGB', (W, H), (0, 0, 0)), base, grad.resize((W, H)))
+    slides_out = []
+    if spec.get('slides'):
+        # 슬라이드쇼: 각 사진을 어둡게 처리해 slides_dir 에 저장, 첫 장을 대표 배경으로
+        os.makedirs(spec['slides_dir'], exist_ok=True)
+        for i, p in enumerate(spec['slides']):
+            if not os.path.exists(p):
+                continue
+            outp = os.path.join(spec['slides_dir'], f'slide_{i + 1:02d}.png')
+            darken_photo(p, W, H).save(outp)
+            slides_out.append(outp)
+        base = Image.open(slides_out[0]).convert('RGB') if slides_out else gradient(W, H, st['colors'], seed)
+    elif bg and os.path.exists(bg):
+        base = darken_photo(bg, W, H)
     else:
         base = gradient(W, H, st['colors'], seed)
     base.save(spec['out_background'], quality=95)
     thumb = base.resize((1280, 720), Image.LANCZOS)
     thumb = draw_title(thumb, spec.get('title', ''), spec.get('subtitle', ''), st, spec.get('font'))
     thumb.convert('RGB').save(spec['out_thumbnail'], quality=92)
-    print(json.dumps({'ok': True, 'background': spec['out_background'], 'thumbnail': spec['out_thumbnail'], 'styles': list(STYLES)}))
+    print(json.dumps({'ok': True, 'background': spec['out_background'], 'thumbnail': spec['out_thumbnail'], 'slides': slides_out, 'styles': list(STYLES)}))
 
 
 if __name__ == '__main__':

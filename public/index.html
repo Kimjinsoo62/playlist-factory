@@ -45,7 +45,8 @@
       <div class="row"><label>썸네일 문구(선택)</label><input name="thumbnailText" id="thumbnailText" placeholder="비우면 영상 제목 사용"></div>
       <div class="row"><label>배경</label>
         <select name="background" id="background">
-          <option value="photo">무료 사진 자동(프리셋 분위기, 무료 라이선스)</option>
+          <option value="slideshow">무료 사진 슬라이드쇼(10초마다 페이드 전환)</option>
+          <option value="photo">무료 사진 한 장 고정</option>
           <option value="gradient">자동 생성 그라데이션</option>
         </select></div>
       <div class="row"><label>배경 이미지(선택)</label><input name="backgroundImage" id="backgroundImage" placeholder="예: C:\사진\bg.jpg  (지정하면 위 설정 무시)"></div>
@@ -77,6 +78,11 @@
           <div><label>자막 글꼴</label><input name="subtitles.fontName" value="Malgun Gothic"></div>
           <div><label>자막 크기</label><input type="number" name="subtitles.fontSize" min="20" max="120" value="54"></div>
           <div><label>곡 제목 오버레이</label><select name="subtitles.showTitleOverlay"><option value="true">표시</option><option value="false">숨김</option></select></div>
+        </div>
+        <div class="row3">
+          <div><label>슬라이드 표시(초)</label><input type="number" name="images.slideSeconds" min="3" max="120" value="10"></div>
+          <div><label>페이드(초)</label><input type="number" name="images.fadeSeconds" min="0.2" max="5" step="0.2" value="1.2"></div>
+          <div><label>슬라이드 사진 수</label><input type="number" name="images.slideCount" min="2" max="30" value="8"></div>
         </div>
         <div class="row3">
           <div><label>사진 소스</label><select name="images.provider"><option value="commons">Wikimedia Commons (키 불필요)</option><option value="openverse">Openverse CC0 (키 불필요, 느림)</option><option value="pexels">Pexels (키 필요)</option></select></div>

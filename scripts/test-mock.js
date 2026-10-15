@@ -11,7 +11,7 @@ const count = Number(process.argv[3] || 3);
 const mockSeconds = Number(process.argv[4] || 12);
 bus.on('event', ev => { if (ev.type === 'log') console.log(`[${ev.data.t}] ${ev.data.msg}`); });
 
-const job = createJob({ preset, count, language: 'ko', dryRun: true, provider: 'mock', mockSeconds, subtitles: true });
+const job = createJob({ preset, count, language: 'ko', dryRun: true, provider: 'mock', mockSeconds, subtitles: true, background: process.env.BG || 'slideshow' });
 console.log('job', job.id, job.dir);
 await runJob(job, cfg);
 if (job.status !== 'done') { console.error('FAILED:', job.error); process.exit(1); }

@@ -8,7 +8,7 @@ export function fmtTime(sec) {
 
 import { creditLine } from './images.js';
 
-export function buildYoutubeMeta({ preset, tracks, total, request, cfg, photoCredit = null }) {
+export function buildYoutubeMeta({ preset, tracks, total, request, cfg, photoCredit = null, photoCredits = [] }) {
   const lang = request.language || 'ko';
   const title = request.title || defaultTitle(preset, tracks.length, total, lang);
   const chapters = tracks.map(t => `${fmtTime(t.offset)} ${String(t.index).padStart(2, '0')}. ${t.title}`);
@@ -22,7 +22,8 @@ export function buildYoutubeMeta({ preset, tracks, total, request, cfg, photoCre
     cfg.youtube?.footer || 'Music generated with Treblo (https://treblo.com)',
     '이 플레이리스트의 음악은 AI(Treblo)로 생성되었습니다.',
   ];
-  if (photoCredit) lines.push(creditLine(photoCredit));
+  const credits = photoCredits.length ? photoCredits : (photoCredit ? [photoCredit] : []);
+  if (credits.length) { lines.push(''); lines.push(credits.length > 1 ? 'Background photos:' : ''); for (const c of credits) lines.push((credits.length > 1 ? '- ' : '') + creditLine(c).replace(/^Background photo: /, credits.length > 1 ? '' : 'Background photo: ')); }
   if (cfg.youtube?.channelName) lines.push(`© ${cfg.youtube.channelName}`);
   const tags = [...new Set([...(preset.tags || []), ...(preset.keywords || []), 'playlist', 'ai music', preset.name])].slice(0, 30);
   return { title, description: lines.filter(l => l !== undefined).join('\n'), chapters, tags };
