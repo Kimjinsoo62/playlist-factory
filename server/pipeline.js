@@ -100,6 +100,7 @@ export async function runJob(job, cfg) {
     let collected;
     if (providerName === 'treblo') {
       const tp = new TrebloProvider(cfg.treblo);
+      tp.onWarn = (m) => log(job, m, 'warn');
       const bal = await tp.balance().catch(e => { throw new Error(`Treblo API 연결 실패: ${e.message}`); });
       const credits = (bal.num_credits || 0) + (bal.num_credits_payg || 0);
       log(job, `크레딧 잔액: 구독 ${bal.num_credits ?? '?'} + 종량제 ${bal.num_credits_payg ?? '?'} (필요: ${specs.length * 100})`);

@@ -4,16 +4,81 @@
   "description": "80년대 감성의 시티팝. 반짝이는 신스, 펑키한 기타 커팅, 야경 드라이브.",
   "instrumental": false,
   "prompt": "1980s Japanese city pop, mid-tempo groove around 100-115 BPM, funky clean guitar cutting, bright FM electric piano and shimmering synth pads, slap bass, gated reverb drums, glossy nostalgic production, smooth confident vocals with layered harmonies, neon skyline night drive mood.",
-  "negative_tags": ["metal", "trap", "lo-fi", "acoustic folk"],
-  "length_range": [150, 240],
+  "negative_tags": [
+    "metal",
+    "trap",
+    "lo-fi",
+    "acoustic folk"
+  ],
+  "length_range": [
+    150,
+    240
+  ],
   "thumbnailStyle": "ocean",
   "topics": {
-    "ko": ["네온 스카이라인", "해안도로 자정", "플라스틱 러브레터", "여름의 끝 호텔", "라디오 주파수", "유리창 너머 도시", "택시 미터기", "카세트 되감기", "옥상 수영장", "새벽 편의점", "선글라스 야경", "마지막 전철"],
-    "en": ["Neon Skyline", "Coastal Road at Midnight", "Plastic Love Letter", "End-of-Summer Hotel", "Radio Frequency", "City Behind Glass", "Taxi Meter", "Cassette Rewind", "Rooftop Pool", "Dawn Convenience Store", "Sunglasses at Night", "The Last Train"],
-    "ja": ["ネオンスカイライン", "真夜中の海岸道路", "プラスティック・ラブレター", "夏の終わりのホテル", "ラジオの周波数", "ガラス越しの街", "タクシーメーター", "カセット巻き戻し", "屋上プール", "夜明けのコンビニ", "サングラスの夜景", "終電"]
+    "ko": [
+      "네온 스카이라인",
+      "해안도로 자정",
+      "플라스틱 러브레터",
+      "여름의 끝 호텔",
+      "라디오 주파수",
+      "유리창 너머 도시",
+      "택시 미터기",
+      "카세트 되감기",
+      "옥상 수영장",
+      "새벽 편의점",
+      "선글라스 야경",
+      "마지막 전철"
+    ],
+    "en": [
+      "Neon Skyline",
+      "Coastal Road at Midnight",
+      "Plastic Love Letter",
+      "End-of-Summer Hotel",
+      "Radio Frequency",
+      "City Behind Glass",
+      "Taxi Meter",
+      "Cassette Rewind",
+      "Rooftop Pool",
+      "Dawn Convenience Store",
+      "Sunglasses at Night",
+      "The Last Train"
+    ],
+    "ja": [
+      "ネオンスカイライン",
+      "真夜中の海岸道路",
+      "プラスティック・ラブレター",
+      "夏の終わりのホテル",
+      "ラジオの周波数",
+      "ガラス越しの街",
+      "タクシーメーター",
+      "カセット巻き戻し",
+      "屋上プール",
+      "夜明けのコンビニ",
+      "サングラスの夜景",
+      "終電"
+    ]
   },
-  "titleTemplate": { "ko": "[Playlist] 야경 보며 듣는 80년대 시티팝 🌃 {n}곡 · {dur}", "en": "[Playlist] 80s City Pop Night Drive 🌃 {n} songs · {dur}", "ja": "[Playlist] 夜景とシティポップ 🌃 {n}曲 · {dur}" },
-  "youtubeIntro": { "ko": "반짝이는 신스와 펑키한 기타. 밤의 도시를 달리며 듣는 시티팝.", "en": "Shimmering synths and funky guitar for a neon night drive.", "ja": "きらめくシンセとファンキーなギターで夜の街を走る。" },
-  "hashtags": ["#citypop", "#시티팝", "#80s", "#playlist"],
-  "keywords": ["city pop playlist", "시티팝", "night drive", "80s japanese pop"]
+  "titleTemplate": {
+    "ko": "[Playlist] 야경 보며 듣는 80년대 시티팝 🌃 {n}곡 · {dur}",
+    "en": "[Playlist] 80s City Pop Night Drive 🌃 {n} songs · {dur}",
+    "ja": "[Playlist] 夜景とシティポップ 🌃 {n}曲 · {dur}"
+  },
+  "youtubeIntro": {
+    "ko": "반짝이는 신스와 펑키한 기타. 밤의 도시를 달리며 듣는 시티팝.",
+    "en": "Shimmering synths and funky guitar for a neon night drive.",
+    "ja": "きらめくシンセとファンキーなギターで夜の街を走る。"
+  },
+  "hashtags": [
+    "#citypop",
+    "#시티팝",
+    "#80s",
+    "#playlist"
+  ],
+  "keywords": [
+    "city pop playlist",
+    "시티팝",
+    "night drive",
+    "80s japanese pop"
+  ]
 }

@@ -3,8 +3,18 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { pipeline } from 'node:stream/promises';
 import { Readable } from 'node:stream';
+import { fileURLToPath } from 'node:url';
 
 const TERMINAL = new Set(['SUCCESS', 'FAILURE']);
+
+// Treblo 태그 사전 (presets/_treblo-tags.txt, treblo.com/tag-explorer 에서 받은 목록). 파일이 없으면 검증하지 않음.
+let KNOWN_TAGS = null;
+try {
+  const f = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'presets', '_treblo-tags.txt');
+  KNOWN_TAGS = new Set(fs.readFileSync(f, 'utf8').split(/\r?\n/).map(s => s.trim().toLowerCase()).filter(Boolean));
+} catch { KNOWN_TAGS = null; }
+export function isKnownTag(t) { return !KNOWN_TAGS || KNOWN_TAGS.has(String(t).trim().toLowerCase()); }
+export function knownTagCount() { return KNOWN_TAGS ? KNOWN_TAGS.size : 0; }
 
 export class TrebloProvider {
   constructor(cfg) {
@@ -62,9 +72,33 @@ export class TrebloProvider {
       body.num_songs = 1;
       if (spec.bpm) body.bpm = spec.bpm;
     }
-    const data = await this.request('POST', `${this.base}/generations/${model}`, body);
-    if (!data?.task_id) throw new Error(`task_id 없음: ${JSON.stringify(data)}`);
-    return data.task_id;
+    // 태그 사전 검증: 사전에 없는 태그는 제거 (API가 422로 거부함)
+    for (const k of ['tags', 'negative_tags']) {
+      if (!body[k]) continue;
+      const kept = body[k].filter(t => isKnownTag(t));
+      const dropped = body[k].filter(t => !isKnownTag(t));
+      if (dropped.length) this.onWarn?.(`사전에 없는 ${k} 제거: ${dropped.join(', ')}`);
+      if (kept.length) body[k] = kept; else delete body[k];
+    }
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const data = await this.request('POST', `${this.base}/generations/${model}`, body, { retries: 2 });
+        if (!data?.task_id) throw new Error(`task_id 없음: ${JSON.stringify(data)}`);
+        return data.task_id;
+      } catch (e) {
+        // 422 "Invalid tags: a, b" → 해당 태그만 빼고 재시도, 그래도 안 되면 태그 필드 자체를 제거
+        const m = /Invalid tags?:\s*([^"}\]]+)/i.exec(e.message);
+        if (!/HTTP 422/.test(e.message) || !(body.tags || body.negative_tags)) throw e;
+        const bad = m ? m[1].split(',').map(s => s.trim().toLowerCase()).filter(Boolean) : [];
+        const field = /negative_tags/.test(e.message) ? 'negative_tags' : 'tags';
+        if (bad.length && body[field]) {
+          this.onWarn?.(`API가 거부한 ${field} 제거: ${bad.join(', ')}`);
+          body[field] = body[field].filter(t => !bad.includes(t.toLowerCase()));
+          if (!body[field].length) delete body[field];
+        } else { this.onWarn?.(`${field} 전체 제거 후 재시도`); delete body[field]; }
+      }
+    }
+    throw new Error('태그 오류로 생성 요청 실패');
   }
 
   async status(taskId) {
@@ -118,7 +152,8 @@ export class TrebloProvider {
  */
 export function extractAlignment(gen) {
   if (!gen || typeof gen !== 'object') return null;
-  const candidates = ['aligned_lyrics', 'alignment', 'lyrics_alignment', 'word_timings', 'words', 'alignments', 'aligned_words', 'timed_lyrics'];
+  // 실측(2026-10-15, v3-preview): 필드명은 word_aligned_lyrics, 항목은 {word,start,end}, word 에 "[Verse 1]\n" 같은 구조 태그와 줄바꿈이 섞여 옴
+  const candidates = ['word_aligned_lyrics', 'aligned_lyrics', 'alignment', 'lyrics_alignment', 'word_timings', 'words', 'alignments', 'aligned_words', 'timed_lyrics'];
   let raw = null;
   for (const k of candidates) if (gen[k] != null) { raw = gen[k]; break; }
   if (raw == null) {
@@ -139,7 +174,9 @@ export function extractAlignment(gen) {
     const start = num(w.start ?? w.start_time ?? w.startTime ?? w.s ?? w.begin);
     const end = num(w.end ?? w.end_time ?? w.endTime ?? w.e ?? w.stop);
     if (text == null || start == null || end == null) continue;
-    words.push({ word: String(text), start, end });
+    const clean = String(text).replace(/\[[^\]]*\]/g, '').replace(/\s+/g, ' ').trim();   // 구조 태그·줄바꿈 제거
+    if (!clean) continue;
+    words.push({ word: clean, start, end });
   }
   return words.length ? words : null;
 }

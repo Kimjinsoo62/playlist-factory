@@ -4,16 +4,82 @@
   "description": "거침없고 자신감 넘치는 무드. 묵직한 베이스, 힙합과 록이 섞인 당당한 에너지.",
   "instrumental": false,
   "prompt": "Confident swaggering alternative hip hop rock fusion, mid-fast tempo around 95-110 BPM, heavy 808 bass and hard-hitting drums, gritty electric guitar riffs, dark cinematic synth stabs, assertive low-register vocals mixing rap flow and sung hooks, bold and fearless attitude, workout and street energy.",
-  "negative_tags": ["ballad", "acoustic", "lo-fi", "cute", "soft"],
-  "length_range": [150, 240],
+  "negative_tags": [
+    "ballad",
+    "acoustic",
+    "lo-fi",
+    "playful",
+    "soft"
+  ],
+  "length_range": [
+    150,
+    240
+  ],
   "thumbnailStyle": "mono",
   "topics": {
-    "ko": ["벽에 비친 그림자", "말보다 행동", "뒤는 없다", "내 방식대로", "철로 된 심장", "지지 않는 밤", "증명할 시간", "한 걸음 더 세게", "거울 속 상대", "조용한 자신감", "불을 켜라", "끝까지 간다"],
-    "en": ["Shadow on the Wall", "Action Over Words", "No Way Back", "My Own Way", "Heart of Iron", "A Night That Won't Lose", "Time to Prove It", "One Step Harder", "The Rival in the Mirror", "Quiet Confidence", "Light It Up", "All the Way"],
-    "ja": ["壁に映る影", "言葉より行動", "後戻りはない", "俺のやり方で", "鉄の心臓", "負けない夜", "証明の時", "一歩、もっと強く", "鏡の中の相手", "静かな自信", "火をつけろ", "最後まで行く"]
+    "ko": [
+      "벽에 비친 그림자",
+      "말보다 행동",
+      "뒤는 없다",
+      "내 방식대로",
+      "철로 된 심장",
+      "지지 않는 밤",
+      "증명할 시간",
+      "한 걸음 더 세게",
+      "거울 속 상대",
+      "조용한 자신감",
+      "불을 켜라",
+      "끝까지 간다"
+    ],
+    "en": [
+      "Shadow on the Wall",
+      "Action Over Words",
+      "No Way Back",
+      "My Own Way",
+      "Heart of Iron",
+      "A Night That Won't Lose",
+      "Time to Prove It",
+      "One Step Harder",
+      "The Rival in the Mirror",
+      "Quiet Confidence",
+      "Light It Up",
+      "All the Way"
+    ],
+    "ja": [
+      "壁に映る影",
+      "言葉より行動",
+      "後戻りはない",
+      "俺のやり方で",
+      "鉄の心臓",
+      "負けない夜",
+      "証明の時",
+      "一歩、もっと強く",
+      "鏡の中の相手",
+      "静かな自信",
+      "火をつけろ",
+      "最後まで行く"
+    ]
   },
-  "titleTemplate": { "ko": "[Playlist] 자신감 끌어올리는 테토 무드 플리 🖤 {n}곡 · {dur}", "en": "[Playlist] Fearless Mood: Hip Hop × Rock 🖤 {n} songs · {dur}", "ja": "[Playlist] 自信を取り戻す攻めのプレイリスト 🖤 {n}曲 · {dur}" },
-  "youtubeIntro": { "ko": "묵직한 베이스와 거친 기타. 운동할 때, 출근길에, 밀어붙여야 할 때 트는 플레이리스트.", "en": "Heavy bass and gritty guitars for the gym, the commute, and the push.", "ja": "重いベースと荒いギター。踏ん張る時のためのプレイリスト。" },
-  "hashtags": ["#hiphop", "#rock", "#workout", "#playlist"],
-  "keywords": ["workout playlist", "hip hop rock", "운동 음악", "confidence music"]
+  "titleTemplate": {
+    "ko": "[Playlist] 자신감 끌어올리는 테토 무드 플리 🖤 {n}곡 · {dur}",
+    "en": "[Playlist] Fearless Mood: Hip Hop × Rock 🖤 {n} songs · {dur}",
+    "ja": "[Playlist] 自信を取り戻す攻めのプレイリスト 🖤 {n}曲 · {dur}"
+  },
+  "youtubeIntro": {
+    "ko": "묵직한 베이스와 거친 기타. 운동할 때, 출근길에, 밀어붙여야 할 때 트는 플레이리스트.",
+    "en": "Heavy bass and gritty guitars for the gym, the commute, and the push.",
+    "ja": "重いベースと荒いギター。踏ん張る時のためのプレイリスト。"
+  },
+  "hashtags": [
+    "#hiphop",
+    "#rock",
+    "#workout",
+    "#playlist"
+  ],
+  "keywords": [
+    "workout playlist",
+    "hip hop rock",
+    "운동 음악",
+    "confidence music"
+  ]
 }
