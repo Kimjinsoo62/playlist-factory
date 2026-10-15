@@ -1,0 +1,19 @@
+{
+  "id": "neosoul-rnb",
+  "name": "네오소울 R&B",
+  "description": "비 오는 날 쉬면서 듣는 느린 네오소울 R&B. 부드러운 보컬, 재지한 코드, 느긋한 그루브.",
+  "instrumental": false,
+  "prompt": "Slow neo-soul R&B, laid-back groove around 65-80 BPM, lush jazzy seventh and ninth chords on electric piano, warm sub bass, soft swung drums with crisp hi-hats, silky intimate vocals with gentle runs and harmonies, rainy-day mellow mood, classic neo-soul textures, analog tape warmth.",
+  "negative_tags": ["edm", "metal", "country", "harsh vocals"],
+  "length_range": [150, 240],
+  "thumbnailStyle": "warm",
+  "topics": {
+    "ko": ["비 오는 일요일", "네 목소리의 온도", "천천히, 우리", "창밖 빗소리", "소파 위의 오후", "느린 숨", "조금 더 가까이", "젖은 거리의 불빛", "너라는 계절", "우산 하나", "밤새 들려줘", "따뜻한 어둠"],
+    "en": ["Rainy Sunday", "The Warmth of Your Voice", "Slowly, Us", "Rain Outside the Window", "Afternoon on the Couch", "Slow Breath", "A Little Closer", "Lights on Wet Streets", "A Season Called You", "One Umbrella", "Play It All Night", "Warm Darkness"],
+    "ja": ["雨の日曜日", "君の声の温度", "ゆっくり、ふたり", "窓の外の雨音", "ソファの午後", "ゆるやかな息", "もう少し近くに", "濡れた街の灯り", "君という季節", "ひとつの傘", "一晩中聴かせて", "あたたかい闇"]
+  },
+  "titleTemplate": { "ko": "[Playlist] 비 오는 날 쉬면서 듣는 네오소울 R&B ☔ {n}곡 · {dur}", "en": "[Playlist] Rainy Day Neo-Soul R&B ☔ {n} songs · {dur}", "ja": "[Playlist] 雨の日のネオソウルR&B ☔ {n}曲 · {dur}" },
+  "youtubeIntro": { "ko": "빗소리와 어울리는 느린 네오소울 R&B. 아무것도 하지 않아도 괜찮은 오후를 위해.", "en": "Slow neo-soul R&B for an afternoon where doing nothing is just fine.", "ja": "何もしなくていい午後のための、ゆるやかなネオソウルR&B。" },
+  "hashtags": ["#rnb", "#neosoul", "#알앤비", "#playlist"],
+  "keywords": ["r&b playlist", "neo soul", "rainy day music", "알앤비 플레이리스트"]
+}

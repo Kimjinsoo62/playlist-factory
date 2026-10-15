@@ -1,0 +1,8 @@
+node_modules/
+output/
+cache/
+input/*
+!input/.gitkeep
+config.json
+*.log
+__pycache__/

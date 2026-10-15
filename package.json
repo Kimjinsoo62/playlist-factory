@@ -1,0 +1,18 @@
+{
+  "name": "playlist-factory",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AI 음악 플레이리스트 팩토리 (Treblo API + ffmpeg)",
+  "type": "module",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "mcp": "node mcp/server.js",
+    "test:mock": "node scripts/test-mock.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.0",
+    "express": "^5.1.0",
+    "zod": "^3.25.0"
+  }
+}

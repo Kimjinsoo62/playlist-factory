@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>플레이리스트 팩토리</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header id="hdr">
+  <div class="brand"><b>플레이리스트 팩토리</b> <span id="ver" class="dim"></span></div>
+  <div id="lan" class="dim" title="같은 네트워크의 다른 PC에서 접속할 수 있는 주소"></div>
+  <div class="grow"></div>
+  <a class="powered" href="https://treblo.com" target="_blank" rel="noopener">Powered by Treblo</a>
+  <span id="credits" class="chip" title="Treblo 크레딧 잔액 (곡당 100)">크레딧 –</span>
+  <button id="btnUpdate" class="btn">업데이트</button>
+  <a class="btn" href="/사용설명서.html" target="_blank">설명서</a>
+  <button id="btnQuit" class="btn danger">종료</button>
+</header>
+
+<main id="main">
+  <!-- 좌: 새 작업 -->
+  <section class="col left">
+    <h2>새 플레이리스트</h2>
+    <form id="form" autocomplete="off">
+      <div class="row"><label>소스</label>
+        <select name="provider" id="provider">
+          <option value="treblo">Treblo API (자동 생성)</option>
+          <option value="local">로컬 폴더 input/ (직접 만든 곡)</option>
+          <option value="mock">테스트(합성음, 크레딧 0)</option>
+        </select></div>
+      <div class="row"><label>프리셋</label><select name="preset" id="preset"></select></div>
+      <div id="presetDesc" class="desc dim"></div>
+      <div class="row3">
+        <div><label>곡 수</label><input type="number" name="count" id="count" min="1" max="40" value="6"></div>
+        <div><label>가사 언어</label><select name="language" id="language"><option value="ko">한국어</option><option value="en">English</option><option value="ja">日本語</option></select></div>
+        <div><label>보컬</label><select name="instrumental" id="instrumental"><option value="">프리셋 기본</option><option value="false">보컬</option><option value="true">연주곡</option></select></div>
+      </div>
+      <div class="row3">
+        <div><label>가사 자막</label><select name="subtitles" id="subtitles"><option value="true">표시</option><option value="false">숨김</option></select></div>
+        <div><label>썸네일 스타일</label><select name="thumbnailStyle" id="thumbnailStyle"><option value="">프리셋 기본</option><option>night</option><option>warm</option><option>mono</option><option>neon</option><option>paper</option><option>forest</option><option>ocean</option></select></div>
+        <div><label>테스트 곡 길이(초)</label><input type="number" name="mockSeconds" id="mockSeconds" value="20" min="5" max="300"></div>
+      </div>
+      <div class="row"><label>영상 제목(선택)</label><input name="title" id="title" placeholder="비우면 프리셋 템플릿으로 자동 작성"></div>
+      <div class="row"><label>썸네일 문구(선택)</label><input name="thumbnailText" id="thumbnailText" placeholder="비우면 영상 제목 사용"></div>
+      <div class="row"><label>배경 이미지(선택)</label><input name="backgroundImage" id="backgroundImage" placeholder="예: C:\사진\bg.jpg  (비우면 자동 생성)"></div>
+      <div class="row"><label>추가 프롬프트(선택)</label><input name="extraPrompt" id="extraPrompt" placeholder="예: female vocal, saxophone solo"></div>
+      <div id="estimate" class="estimate dim"></div>
+      <div id="localFiles" class="desc dim" hidden></div>
+      <div class="actions">
+        <button type="submit" id="btnRun" class="btn primary">▶ 자동 생성 시작</button>
+        <button type="button" id="btnOpenInput" class="btn">input 폴더</button>
+        <button type="button" id="btnOpenOutput" class="btn">output 폴더</button>
+      </div>
+    </form>
+
+    <details id="settings">
+      <summary>설정 (API 키 · 렌더링)</summary>
+      <form id="cfgForm">
+        <div class="row"><label>Treblo API 키</label><input name="treblo.apiKey" id="apiKey" type="password" placeholder="treblo.com/developers 에서 발급"></div>
+        <div class="row3">
+          <div><label>동시 생성 수</label><input type="number" name="treblo.concurrency" min="1" max="10" value="4"></div>
+          <div><label>모델</label><select name="treblo.model"><option value="v3">v3 (2~4분 곡)</option><option value="v2">v2 (1분 35초)</option></select></div>
+          <div><label>포트(재시작 필요)</label><input type="number" name="port" value="5177"></div>
+        </div>
+        <div class="row3">
+          <div><label>인코더</label><select name="render.encoder"><option value="auto">자동(QSV→x264)</option><option value="libx264">libx264</option><option value="h264_qsv">h264_qsv</option></select></div>
+          <div><label>FPS</label><input type="number" name="render.fps" min="1" max="30" value="10"></div>
+          <div><label>곡 사이 무음(초)</label><input type="number" name="render.gapSeconds" min="0" max="10" step="0.5" value="1.5"></div>
+        </div>
+        <div class="row3">
+          <div><label>자막 글꼴</label><input name="subtitles.fontName" value="Malgun Gothic"></div>
+          <div><label>자막 크기</label><input type="number" name="subtitles.fontSize" min="20" max="120" value="54"></div>
+          <div><label>곡 제목 오버레이</label><select name="subtitles.showTitleOverlay"><option value="true">표시</option><option value="false">숨김</option></select></div>
+        </div>
+        <div class="row"><label>채널명(설명 하단)</label><input name="youtube.channelName" placeholder="© 채널명"></div>
+        <div class="row"><label>해시태그</label><input name="youtube.hashtags" value="#playlist #aimusic"></div>
+        <div class="actions"><button type="submit" class="btn">설정 저장</button><button type="button" id="btnBalance" class="btn">크레딧 확인</button><span id="cfgMsg" class="dim"></span></div>
+      </form>
+    </details>
+  </section>
+
+  <!-- 중: 작업 -->
+  <section class="col mid">
+    <h2>작업 <span id="jobCount" class="dim"></span></h2>
+    <div id="jobs" class="jobs"></div>
+    <div id="detail" class="detail" hidden>
+      <div class="dhead">
+        <b id="dTitle"></b> <span id="dStatus" class="chip"></span>
+        <div class="grow"></div>
+        <button id="btnCancel" class="btn small">취소</button>
+        <button id="btnOpenJob" class="btn small">폴더 열기</button>
+        <button id="btnDelete" class="btn small danger">삭제</button>
+      </div>
+      <div class="bars">
+        <div class="barrow"><span class="barlabel">전체</span><div class="bar"><div id="pOverall" class="fill"></div><span id="pOverallTxt" class="bartxt"></span></div></div>
+        <div class="barrow"><span class="barlabel" id="stepName">단계</span><div class="bar"><div id="pStep" class="fill alt"></div><span id="pStepTxt" class="bartxt"></span></div></div>
+      </div>
+      <table id="tracks" class="tbl"><thead><tr><th>#</th><th>제목</th><th>상태</th><th>시작</th><th>길이</th></tr></thead><tbody></tbody></table>
+      <div id="result" class="result" hidden>
+        <div class="resgrid">
+          <img id="thumb" alt="썸네일">
+          <div>
+            <div class="links">
+              <a id="lnkVideo" class="btn small" target="_blank">▶ 영상(mp4)</a>
+              <a id="lnkAudio" class="btn small" target="_blank">♪ 오디오(mp3)</a>
+              <a id="lnkThumb" class="btn small" target="_blank">썸네일</a>
+              <a id="lnkYt" class="btn small" target="_blank">youtube.txt</a>
+              <a id="lnkLyrics" class="btn small" target="_blank">가사</a>
+              <button id="btnCopyYt" class="btn small">제목·설명 복사</button>
+            </div>
+            <pre id="ytText" class="yt"></pre>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 우: 로그 -->
+  <section class="col right">
+    <h2>로그 <button id="btnClearLog" class="btn small">지우기</button></h2>
+    <pre id="log" class="log"></pre>
+  </section>
+</main>
+
+<!-- 모달 -->
+<div id="modal" class="modal" hidden>
+  <div class="box">
+    <div class="mhead"><b id="mTitle"></b><div class="grow"></div><button id="mClose" class="btn small">닫기</button></div>
+    <div id="mBody" class="mbody"></div>
+    <div id="mActions" class="actions"></div>
+  </div>
+</div>
+<div id="overlay" class="overlay" hidden><div class="box"><b id="ovTitle">종료 중…</b><pre id="ovLog"></pre></div></div>
+
+<script src="app.js"></script>
+</body>
+</html>

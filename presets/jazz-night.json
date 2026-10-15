@@ -1,0 +1,19 @@
+{
+  "id": "jazz-night",
+  "name": "재즈 나이트",
+  "description": "늦은 밤 바(bar)의 스모키한 재즈. 브러시 드럼, 업라이트 베이스, 따뜻한 피아노와 색소폰.",
+  "instrumental": false,
+  "prompt": "Smooth late-night jazz ballad, intimate small-club atmosphere, brushed drums with soft ride cymbal, walking upright bass, warm Rhodes and acoustic piano comping, breathy tenor saxophone fills, slow swing around 70-85 BPM, vintage analog warmth, relaxed sultry vocal with subtle vibrato, minor-key sophistication.",
+  "negative_tags": ["edm", "trap", "distorted guitar", "autotune"],
+  "length_range": [150, 240],
+  "thumbnailStyle": "night",
+  "topics": {
+    "ko": ["새벽 두 시의 재즈바", "비 내리는 창가", "마지막 잔", "오래된 레코드", "네온 아래 발걸음", "느린 춤", "담배 연기처럼", "돌아오지 않는 밤", "커피가 식을 때", "골목 끝 피아노", "달빛 블루스", "낡은 트렁크의 편지"],
+    "en": ["Two A.M. Jazz Bar", "Rain on the Window", "The Last Glass", "Old Vinyl", "Footsteps Under Neon", "Slow Dance", "Like Smoke", "Nights That Never Return", "When the Coffee Cools", "Piano at the End of the Alley", "Moonlight Blues", "Letters in an Old Trunk"],
+    "ja": ["午前二時のジャズバー", "窓の雨", "最後の一杯", "古いレコード", "ネオンの下の足音", "スローダンス", "煙のように", "戻らない夜", "冷めたコーヒー", "路地裏のピアノ", "月明かりのブルース", "古いトランクの手紙"]
+  },
+  "titleTemplate": { "ko": "[Playlist] 새벽 재즈바에서 흘러나오는 노래들 🎷 {n}곡 · {dur}", "en": "[Playlist] Late Night Jazz Bar 🎷 {n} songs · {dur}", "ja": "[Playlist] 深夜のジャズバー 🎷 {n}曲 · {dur}" },
+  "youtubeIntro": { "ko": "늦은 밤, 조용한 재즈바에 앉아 있는 기분으로 들어보세요. 브러시 드럼과 색소폰이 하루의 끝을 감싸 줍니다.", "en": "Settle into a quiet late-night jazz bar. Brushed drums and saxophone to close out the day.", "ja": "深夜の静かなジャズバーで過ごすような時間を。" },
+  "hashtags": ["#jazz", "#재즈", "#playlist", "#latenight"],
+  "keywords": ["jazz playlist", "late night jazz", "재즈 플레이리스트", "bar jazz"]
+}

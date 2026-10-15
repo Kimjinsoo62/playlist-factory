@@ -1,0 +1,19 @@
+{
+  "id": "acoustic-ballad",
+  "name": "어쿠스틱 발라드",
+  "description": "잔잔한 어쿠스틱 기타와 피아노 발라드. 감성적인 가사, 따뜻한 보컬.",
+  "instrumental": false,
+  "prompt": "Gentle acoustic ballad, slow tempo around 65-75 BPM, fingerpicked acoustic guitar and soft piano, subtle strings swelling in the chorus, light brushed percussion, warm emotional heartfelt vocals with intimate dynamics, sentimental and comforting, singer-songwriter production.",
+  "negative_tags": ["edm", "metal", "rap", "distortion"],
+  "length_range": [180, 270],
+  "thumbnailStyle": "paper",
+  "topics": {
+    "ko": ["괜찮다는 말", "오래된 사진 한 장", "네가 없는 계절", "천천히 걸어가", "집으로 가는 길", "첫눈처럼", "말하지 못한 안녕", "창가의 편지", "그날의 온도", "우리였던 시간", "조용한 위로", "다시, 봄"],
+    "en": ["The Word Okay", "One Old Photograph", "A Season Without You", "Walk Slowly", "The Way Home", "Like First Snow", "An Unspoken Goodbye", "Letter by the Window", "The Warmth of That Day", "When We Were Us", "Quiet Comfort", "Spring, Again"],
+    "ja": ["大丈夫という言葉", "一枚の古い写真", "君のいない季節", "ゆっくり歩こう", "家へ帰る道", "初雪のように", "言えなかったさよなら", "窓辺の手紙", "あの日の温度", "ふたりだった時間", "静かな慰め", "また、春"]
+  },
+  "titleTemplate": { "ko": "[Playlist] 마음이 지친 날 듣는 어쿠스틱 발라드 🍂 {n}곡 · {dur}", "en": "[Playlist] Acoustic Ballads for Tired Hearts 🍂 {n} songs · {dur}", "ja": "[Playlist] 心が疲れた日のアコースティックバラード 🍂 {n}曲 · {dur}" },
+  "youtubeIntro": { "ko": "어쿠스틱 기타와 피아노, 그리고 따뜻한 목소리. 지친 하루 끝에 조용히 틀어두세요.", "en": "Acoustic guitar, piano and a warm voice for the end of a long day.", "ja": "アコースティックギターとピアノ、あたたかい声。" },
+  "hashtags": ["#ballad", "#acoustic", "#발라드", "#playlist"],
+  "keywords": ["acoustic ballad playlist", "발라드 플레이리스트", "감성 음악", "singer songwriter"]
+}

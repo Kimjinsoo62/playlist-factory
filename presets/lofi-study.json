@@ -1,0 +1,19 @@
+{
+  "id": "lofi-study",
+  "name": "로파이 스터디 (연주곡)",
+  "description": "공부·작업용 로파이 힙합 연주곡. 보컬 없음. 가사 자막 대신 곡 제목만 표시.",
+  "instrumental": true,
+  "prompt": "Chill lo-fi hip hop instrumental for studying, relaxed boom-bap drums around 70-85 BPM with vinyl crackle, dusty mellow jazz piano chords, warm muted bass, soft tape saturation, gentle rain ambience, nostalgic cozy mood, no vocals.",
+  "negative_tags": ["vocals", "edm", "metal", "aggressive"],
+  "length_range": [120, 210],
+  "thumbnailStyle": "forest",
+  "topics": {
+    "ko": ["창가의 노트", "오후 세 시 도서관", "빗소리와 연필", "식어가는 녹차", "조용한 책상", "커튼 사이 햇살", "느린 페이지", "밤의 스탠드 불빛", "고양이와 숙제", "안개 낀 아침", "따뜻한 스웨터", "마지막 한 문단"],
+    "en": ["Notebook by the Window", "3 PM Library", "Rain and Pencils", "Cooling Green Tea", "Quiet Desk", "Sun Through the Curtains", "Slow Pages", "Desk Lamp at Night", "Cat and Homework", "Foggy Morning", "Warm Sweater", "The Last Paragraph"],
+    "ja": ["窓辺のノート", "午後三時の図書館", "雨音と鉛筆", "冷めていく緑茶", "静かな机", "カーテン越しの光", "ゆっくりなページ", "夜のデスクライト", "猫と宿題", "霧の朝", "あたたかいセーター", "最後の一段落"]
+  },
+  "titleTemplate": { "ko": "[Playlist] 집중이 잘 되는 로파이 공부 음악 📚 {n}곡 · {dur}", "en": "[Playlist] Lo-fi Beats to Study To 📚 {n} tracks · {dur}", "ja": "[Playlist] 集中できるローファイ勉強用BGM 📚 {n}曲 · {dur}" },
+  "youtubeIntro": { "ko": "공부나 작업할 때 틀어두는 로파이 힙합 연주곡 모음. 빗소리와 바이닐 노이즈가 섞인 따뜻한 비트.", "en": "Lo-fi hip hop instrumentals for study and work. Warm beats with rain and vinyl crackle.", "ja": "勉強や作業のためのローファイ・ヒップホップ。" },
+  "hashtags": ["#lofi", "#studymusic", "#로파이", "#공부음악"],
+  "keywords": ["lofi study", "lofi hip hop", "공부 음악", "작업 bgm"]
+}

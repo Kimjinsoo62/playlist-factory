@@ -1,0 +1,19 @@
+{
+  "id": "hardrock-drive",
+  "name": "하드록 드라이브",
+  "description": "달리는 느낌의 신나는 하드록. 높은 BPM, 두꺼운 기타 리프, 질주하는 드럼.",
+  "instrumental": false,
+  "prompt": "High-energy hard rock driving anthem, fast tempo around 150-170 BPM, thick overdriven power-chord guitar riffs, punchy double-time drums with crashing cymbals, pumping bass, big sing-along chorus with powerful gritty vocals, soaring guitar solo, stadium rock production, highway at night.",
+  "negative_tags": ["ballad", "acoustic", "lo-fi", "jazz", "slow"],
+  "length_range": [150, 240],
+  "thumbnailStyle": "neon",
+  "topics": {
+    "ko": ["풀 스로틀", "뒤돌아보지 마", "밤의 고속도로", "브레이크 없는 심장", "12라운드", "불타는 백미러", "도시를 벗어나", "엔진처럼 뛰는", "끝까지 달려", "새벽 질주", "경계선 너머", "볼륨을 올려"],
+    "en": ["Full Throttle", "No Looking Back", "Midnight Highway", "Heart With No Brakes", "Twelve Rounds", "Burning Rearview", "Out of the City", "Beating Like an Engine", "Run Till the End", "Dawn Run", "Past the Line", "Turn It Up"],
+    "ja": ["フルスロットル", "振り返るな", "真夜中のハイウェイ", "ブレーキのない心臓", "12ラウンド", "燃えるバックミラー", "街を抜けて", "エンジンのように", "最後まで走れ", "夜明けの疾走", "境界線の向こう", "ボリュームを上げろ"]
+  },
+  "titleTemplate": { "ko": "[Playlist] 드라이브할 때 볼륨 끝까지 올리는 하드록 🔥 {n}곡 · {dur}", "en": "[Playlist] Full Throttle Hard Rock for the Drive 🔥 {n} songs · {dur}", "ja": "[Playlist] ドライブで爆音ハードロック 🔥 {n}曲 · {dur}" },
+  "youtubeIntro": { "ko": "밤의 고속도로를 달리는 기분. 두꺼운 리프와 질주하는 드럼으로 만든 드라이브 플레이리스트.", "en": "Thick riffs and racing drums for the night highway.", "ja": "夜のハイウェイを駆け抜けるためのハードロック。" },
+  "hashtags": ["#rock", "#hardrock", "#드라이브", "#playlist"],
+  "keywords": ["hard rock playlist", "driving music", "드라이브 음악", "rock anthem"]
+}
