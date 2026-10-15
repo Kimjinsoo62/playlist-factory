@@ -1,6 +1,15 @@
 const $ = (s) => document.querySelector(s);
+const OFFLINE_MSG = '서버에 연결할 수 없습니다. 앱이 종료된 상태입니다. START.bat 으로 다시 실행한 뒤 이 페이지를 새로고침하세요.';
+function setOffline(off) {
+  let b = document.getElementById('offline');
+  if (off && !b) { b = document.createElement('div'); b.id = 'offline'; b.className = 'offline'; b.textContent = '⚠ ' + OFFLINE_MSG; document.body.prepend(b); }
+  if (!off && b) b.remove();
+}
 const api = async (url, opt = {}) => {
-  const r = await fetch(url, { headers: { 'Content-Type': 'application/json' }, ...opt, body: opt.body ? JSON.stringify(opt.body) : undefined });
+  let r;
+  try { r = await fetch(url, { headers: { 'Content-Type': 'application/json' }, ...opt, body: opt.body ? JSON.stringify(opt.body) : undefined }); }
+  catch { setOffline(true); throw new Error(OFFLINE_MSG); }
+  setOffline(false);
   const j = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(j.error || `HTTP ${r.status}`);
   return j;
@@ -90,8 +99,8 @@ $('#form').onsubmit = async (e) => {
   catch (err) { alert(err.message); }
   finally { $('#btnRun').disabled = false; }
 };
-$('#btnOpenInput').onclick = () => api('/api/open', { method: 'POST', body: { path: 'input' } });
-$('#btnOpenOutput').onclick = () => api('/api/open', { method: 'POST', body: { path: 'output' } });
+$('#btnOpenInput').onclick = () => api('/api/open', { method: 'POST', body: { path: 'input' } }).catch(e => alert(e.message));
+$('#btnOpenOutput').onclick = () => api('/api/open', { method: 'POST', body: { path: 'output' } }).catch(e => alert(e.message));
 
 // ── 설정
 function fillForm(form, cfg) {
@@ -117,7 +126,8 @@ $('#cfgForm').onsubmit = async (e) => {
     o[keys.at(-1)] = v;
   }
   patch.provider = $('#provider').value === 'mock' ? 'treblo' : $('#provider').value;
-  const cfg = await api('/api/config', { method: 'POST', body: patch });
+  let cfg;
+  try { cfg = await api('/api/config', { method: 'POST', body: patch }); } catch (err) { alert(err.message); return; }
   fillForm($('#cfgForm'), cfg); $('#apiKey').value = '';
   $('#cfgMsg').textContent = '저장됨 ' + new Date().toLocaleTimeString();
   if (cfg.hasApiKey) refreshBalance();
@@ -139,7 +149,8 @@ function connectSSE() {
     renderJobs(); if (selected === j.id) renderDetail(j);
   });
   es.addEventListener('log', (e) => { const ev = JSON.parse(e.data); if (!selected || ev.jobId === selected) logLine(ev.data.t, ev.data.level, ev.data.msg); });
-  es.onerror = () => { es.close(); setTimeout(connectSSE, 3000); };
+  es.onopen = () => setOffline(false);
+  es.onerror = () => { es.close(); setOffline(true); setTimeout(connectSSE, 3000); };
 }
 
 // ── 작업 목록/상세
