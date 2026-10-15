@@ -45,10 +45,11 @@ async function init() {
   providerChanged();
   jobs = await api('/api/jobs'); renderJobs();
   connectSSE();
+  if (location.hash === '#preset') openPresetModal($('#preset').value);   // 링크로 바로 열기
 }
 function updatePresetUI() {
   const p = presets.find(x => x.id === $('#preset').value); if (!p) return;
-  $('#presetDesc').textContent = p.description + (p.instrumental ? ' (연주곡: 가사 자막 없음)' : '');
+  $('#presetDesc').textContent = p.description + (p.instrumental ? ' (연주곡: 가사 자막 없음)' : '') + (p.koDescription && p.useKoDescription !== false ? ' · 한국어 상세 설명 사용 중' : '');
   estimate();
 }
 async function estimate() {
@@ -205,6 +206,77 @@ $('#btnDelete').onclick = async () => {
   jobs = jobs.filter(j => j.id !== selected); selected = null; $('#detail').hidden = true; renderJobs();
 };
 $('#btnCopyYt').onclick = () => navigator.clipboard.writeText($('#ytText').textContent).then(() => $('#btnCopyYt').textContent = '복사됨!');
+
+// ── 프리셋 설명·편집 모달
+let pmPreset = null, pmLang = 'ko', pmTopics = {};
+const pmf = () => $('#pmForm');
+$('#btnPreset').onclick = () => openPresetModal($('#preset').value);
+$('#pmClose').onclick = () => $('#pmodal').hidden = true;
+function openPresetModal(id) {
+  const p = presets.find(x => x.id === id); if (!p) return;
+  pmPreset = p; pmTopics = JSON.parse(JSON.stringify(p.topics || { ko: [], en: [], ja: [] })); pmLang = 'ko';
+  $('#pmTitle').textContent = `프리셋: ${p.name}`; $('#pmId').textContent = p.id;
+  const f = pmf();
+  f.name.value = p.name || ''; f.description.value = p.description || ''; f.koDescription.value = p.koDescription || '';
+  f.useKoDescription.checked = p.useKoDescription !== false; f.prompt.value = p.prompt || '';
+  f.instrumental.value = String(Boolean(p.instrumental)); f.thumbnailStyle.value = p.thumbnailStyle || 'night';
+  f.len0.value = p.length_range?.[0] ?? 150; f.len1.value = p.length_range?.[1] ?? 240;
+  f.negative_tags.value = (p.negative_tags || []).join(', '); f.imageQueries.value = (p.imageQueries || []).join(', ');
+  showTopics('ko'); $('#pmMsg').textContent = ''; $('#pmodal').hidden = false; pmPreview();
+}
+function showTopics(l) {
+  pmTopics[pmLang] = pmf().topics.value.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+  pmLang = l; pmf().topics.value = (pmTopics[l] || []).join('\n');
+  document.querySelectorAll('#pmForm .tab').forEach(b => b.classList.toggle('on', b.dataset.l === l));
+}
+document.querySelectorAll('#pmForm .tab').forEach(b => b.onclick = () => showTopics(b.dataset.l));
+function pmBody() {
+  const f = pmf(); showTopics(pmLang);
+  return {
+    name: f.name.value.trim(), description: f.description.value.trim(), koDescription: f.koDescription.value.trim(), useKoDescription: f.useKoDescription.checked,
+    prompt: f.prompt.value.trim(), instrumental: f.instrumental.value === 'true', thumbnailStyle: f.thumbnailStyle.value,
+    length_range: [Number(f.len0.value), Number(f.len1.value)], topics: pmTopics,
+    negative_tags: f.negative_tags.value.split(',').map(s => s.trim()).filter(Boolean),
+    imageQueries: f.imageQueries.value.split(',').map(s => s.trim()).filter(Boolean),
+  };
+}
+async function pmPreview() {
+  const b = pmBody();
+  try {
+    const r = await api('/api/plan', { method: 'POST', body: { preset: pmPreset.id, count: 1, language: $('#language').value, koDescription: b.koDescription, useKoDescription: b.useKoDescription } });
+    $('#pmPreview').textContent = r.specs[0].prompt.replace(pmPreset.prompt, b.prompt);
+  } catch (e) { $('#pmPreview').textContent = e.message; }
+}
+$('#pmPreviewBtn').onclick = pmPreview;
+pmf().onsubmit = async (e) => {
+  e.preventDefault();
+  try {
+    const saved = await api('/api/presets/' + pmPreset.id, { method: 'PUT', body: pmBody() });
+    const i = presets.findIndex(x => x.id === saved.id); if (i >= 0) presets[i] = saved; pmPreset = saved;
+    $('#preset').options[$('#preset').selectedIndex].text = saved.name; updatePresetUI();
+    $('#pmMsg').textContent = '저장됨 ' + new Date().toLocaleTimeString(); pmPreview();
+  } catch (err) { $('#pmMsg').textContent = '오류: ' + err.message; }
+};
+$('#pmCopy').onclick = async () => {
+  const newId = prompt('새 프리셋 id (영문 소문자·숫자·하이픈)', pmPreset.id + '-2'); if (!newId) return;
+  const name = prompt('새 프리셋 이름', pmPreset.name + ' (내 버전)') || undefined;
+  try {
+    await api(`/api/presets/${pmPreset.id}`, { method: 'PUT', body: pmBody() });   // 현재 편집 내용 먼저 저장
+    const p = await api(`/api/presets/${pmPreset.id}/copy`, { method: 'POST', body: { newId, name } });
+    presets = await api('/api/presets');
+    $('#preset').innerHTML = presets.map(x => `<option value="${x.id}">${x.name}</option>`).join('');
+    $('#preset').value = p.id; updatePresetUI(); openPresetModal(p.id);
+  } catch (err) { $('#pmMsg').textContent = '오류: ' + err.message; }
+};
+$('#pmDelete').onclick = async () => {
+  if (presets.length <= 1 || !confirm(`프리셋 "${pmPreset.name}" 파일을 삭제할까요? 되돌릴 수 없습니다.`)) return;
+  try {
+    await api('/api/presets/' + pmPreset.id, { method: 'DELETE' });
+    presets = await api('/api/presets');
+    $('#preset').innerHTML = presets.map(x => `<option value="${x.id}">${x.name}</option>`).join('');
+    updatePresetUI(); $('#pmodal').hidden = true;
+  } catch (err) { $('#pmMsg').textContent = '오류: ' + err.message; }
+};
 
 // ── 모달
 function modal(title, html, actions = []) {

@@ -29,7 +29,7 @@
           <option value="local">로컬 폴더 input/ (직접 만든 곡)</option>
           <option value="mock">테스트(합성음, 크레딧 0)</option>
         </select></div>
-      <div class="row"><label>프리셋</label><select name="preset" id="preset"></select></div>
+      <div class="row"><label>프리셋</label><select name="preset" id="preset"></select><button type="button" id="btnPreset" class="btn small" title="프리셋 설명 보기·편집">설명·편집</button></div>
       <div id="presetDesc" class="desc dim"></div>
       <div class="row3">
         <div><label>곡 수</label><input type="number" name="count" id="count" min="1" max="40" value="6"></div>
@@ -138,6 +138,37 @@
     <div class="mhead"><b id="mTitle"></b><div class="grow"></div><button id="mClose" class="btn small">닫기</button></div>
     <div id="mBody" class="mbody"></div>
     <div id="mActions" class="actions"></div>
+  </div>
+</div>
+<!-- 프리셋 설명·편집 모달 -->
+<div id="pmodal" class="modal" hidden>
+  <div class="box wide">
+    <div class="mhead"><b id="pmTitle">프리셋</b><span id="pmId" class="dim"></span><div class="grow"></div><button id="pmClose" class="btn small">닫기</button></div>
+    <form id="pmForm" class="pm">
+      <div class="row"><label>이름</label><input name="name"></div>
+      <div class="row"><label>한 줄 설명</label><input name="description"></div>
+      <div class="row top"><label>한국어 상세 설명<br><span class="dim">곡 생성에 사용됨</span></label><textarea name="koDescription" rows="5" placeholder="분위기, 악기, 템포(BPM), 보컬 톤, 참고 장르를 한국어로 자세히 적으세요. 이 내용이 영어 프롬프트 뒤에 붙어 Treblo에 전달됩니다."></textarea></div>
+      <div class="row"><label>설명 사용</label><label class="inline"><input type="checkbox" name="useKoDescription"> 한국어 상세 설명을 곡 생성 프롬프트에 포함</label></div>
+      <div class="row top"><label>영어 프롬프트<br><span class="dim">기본 스타일</span></label><textarea name="prompt" rows="3"></textarea></div>
+      <div class="row3">
+        <div><label>보컬</label><select name="instrumental"><option value="false">보컬</option><option value="true">연주곡</option></select></div>
+        <div><label>곡 길이(초, 30 배수)</label><div class="pair"><input type="number" name="len0" step="30" min="0" max="270"><input type="number" name="len1" step="30" min="30" max="300"></div></div>
+        <div><label>썸네일 스타일</label><select name="thumbnailStyle"><option>night</option><option>warm</option><option>mono</option><option>neon</option><option>paper</option><option>forest</option><option>ocean</option></select></div>
+      </div>
+      <div class="row top"><label>곡 주제·제목<br><span class="dim">한 줄에 하나</span></label>
+        <div class="grow"><div class="tabs"><button type="button" class="btn small tab on" data-l="ko">한국어</button><button type="button" class="btn small tab" data-l="en">English</button><button type="button" class="btn small tab" data-l="ja">日本語</button></div>
+        <textarea name="topics" rows="5"></textarea></div></div>
+      <div class="row"><label>제외 태그</label><input name="negative_tags" placeholder="쉼표로 구분. Treblo 태그 사전에 있는 값만 (예: edm, metal, rap)"></div>
+      <div class="row"><label>배경 사진 검색어</label><input name="imageQueries" placeholder="쉼표로 구분, 영어 2~3단어 (예: rainy window, coffee rain)"></div>
+      <div class="row top"><label>최종 프롬프트 미리보기</label><pre id="pmPreview" class="yt grow"></pre></div>
+      <div class="actions">
+        <button type="submit" class="btn primary">저장</button>
+        <button type="button" id="pmPreviewBtn" class="btn">미리보기 갱신</button>
+        <button type="button" id="pmCopy" class="btn">복제해서 새 프리셋</button>
+        <button type="button" id="pmDelete" class="btn danger small">삭제</button>
+        <span id="pmMsg" class="dim"></span>
+      </div>
+    </form>
   </div>
 </div>
 <div id="overlay" class="overlay" hidden><div class="box"><b id="ovTitle">종료 중…</b><pre id="ovLog"></pre></div></div>

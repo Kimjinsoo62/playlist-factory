@@ -88,5 +88,7 @@
     "field sunset golden hour",
     "wheat field sunset",
     "forest fog morning"
-  ]
+  ],
+  "koDescription": "잔잔한 어쿠스틱 발라드. 65~75 BPM, 핑거피킹 어쿠스틱 기타와 부드러운 피아노, 후렴에서 은은하게 차오르는 스트링, 가벼운 브러시 퍼커션. 따뜻하고 진심 어린 보컬, 속삭이듯 시작해 후렴에서 감정이 커지는 구성. 싱어송라이터 감성.",
+  "useKoDescription": true
 }

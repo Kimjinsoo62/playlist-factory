@@ -84,6 +84,13 @@ summary { cursor: pointer; color: var(--dim); }
 .log { flex: 1; margin: 0; overflow: auto; background: #0e1014; border: 1px solid var(--line); border-radius: 3px; padding: 4px 6px; font: 7.5pt/1.35 Consolas, 'D2Coding', monospace; white-space: pre-wrap; word-break: break-all; }
 .log .warn { color: var(--warn); } .log .error { color: #ff6b6b; } .log .step { color: var(--accent2); }
 
+.box.wide { min-width: 760px; max-width: 900px; }
+.pm .row.top { align-items: flex-start; }
+.pm textarea { flex: 1; background: #12141a; border: 1px solid var(--line); border-radius: 3px; padding: 3px 5px; resize: vertical; font: inherit; line-height: 1.4; }
+.pm .pair { display: flex; gap: 4px; } .pm .pair input { width: 50%; }
+.pm label.inline { display: flex; align-items: center; gap: 4px; color: var(--fg); width: auto; }
+.pm .tabs { display: flex; gap: 3px; margin-bottom: 3px; } .pm .tab.on { border-color: var(--accent); color: var(--accent); }
+.pm #pmPreview { max-height: 90px; margin: 0; }
 .offline { position: fixed; top: 30px; left: 0; right: 0; z-index: 40; background: var(--danger); color: #fff; font-weight: bold; text-align: center; padding: 4px 8px; }
 .modal, .overlay { position: fixed; inset: 0; background: rgba(0,0,0,.6); display: flex; align-items: center; justify-content: center; z-index: 50; }
 .box { background: var(--panel); border: 1px solid var(--line); border-radius: 5px; padding: 10px 12px; min-width: 420px; max-width: 760px; max-height: 80vh; display: flex; flex-direction: column; }

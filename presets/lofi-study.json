@@ -88,5 +88,7 @@
     "rainy window",
     "coffee cup book",
     "desk lamp night"
-  ]
+  ],
+  "koDescription": "공부·작업용 로파이 힙합 연주곡. 보컬 없음. 70~85 BPM의 느긋한 붐뱁 드럼에 바이닐 노이즈, 먼지 낀 듯 부드러운 재즈 피아노 코드, 둥근 뮤트 베이스, 테이프 새추레이션, 잔잔한 빗소리. 아늑하고 향수 어린 분위기.",
+  "useKoDescription": true
 }

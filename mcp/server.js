@@ -46,6 +46,7 @@ server.tool('create_playlist', '플레이리스트 영상 생성 작업을 시�
   extraPrompt: z.string().optional().describe('음악 프롬프트에 덧붙일 영어 지시 (예: "female vocal, saxophone solo")'),
   subtitles: z.boolean().default(true),
   background: z.enum(['photo', 'gradient']).default('photo').describe('photo=프리셋 분위기의 무료 CC0 사진 자동 수집, gradient=자동 생성 그라데이션'),
+  koDescription: z.string().optional().describe('이 작업에만 적용할 한국어 상세 스타일 설명(분위기·악기·템포·보컬). 생략하면 프리셋에 저장된 설명을 사용'),
 }, async (args) => {
   const body = { ...args };
   if (body.provider === 'mock') body.dryRun = true;

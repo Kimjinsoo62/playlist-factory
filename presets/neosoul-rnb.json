@@ -88,5 +88,7 @@
     "umbrella rain city",
     "coffee rain window",
     "wet street lights"
-  ]
+  ],
+  "koDescription": "비 오는 일요일 오후의 느린 네오소울 R&B. 65~80 BPM의 느긋한 그루브, 일렉트릭 피아노의 재지한 7th·9th 코드, 묵직하고 따뜻한 서브 베이스, 스윙감 있는 부드러운 드럼과 또렷한 하이햇. 비단결 같은 친밀한 보컬에 가벼운 애드리브와 화음. 테이프 질감의 따뜻함.",
+  "useKoDescription": true
 }

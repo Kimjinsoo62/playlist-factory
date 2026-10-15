@@ -89,5 +89,7 @@
     "road long exposure night",
     "mountain road night",
     "city traffic night"
-  ]
+  ],
+  "koDescription": "밤의 고속도로를 질주하는 하드록. 150~170 BPM의 빠른 템포, 두껍게 왜곡된 파워코드 기타 리프, 질주하는 더블타임 드럼과 크래시 심벌, 밀어붙이는 베이스. 거칠고 힘 있는 보컬, 따라 부르기 좋은 큰 후렴, 솟구치는 기타 솔로. 스타디움 록 사운드.",
+  "useKoDescription": true
 }

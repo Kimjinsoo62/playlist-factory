@@ -29,6 +29,41 @@ app.get('/api/info', (req, res) => {
   res.json({ title: APP_TITLE, port: PORT, pid: process.pid, lan: lanAddresses(PORT), root: DIRS.root, inputDir: DIRS.input, outputDir: DIRS.output, version: JSON.parse(fs.readFileSync(path.join(DIRS.root, 'package.json'), 'utf8')).version });
 });
 app.get('/api/presets', (req, res) => res.json(loadPresets()));
+const PRESET_FIELDS = ['name', 'description', 'koDescription', 'useKoDescription', 'prompt', 'instrumental', 'topics', 'negative_tags', 'tags', 'length_range', 'thumbnailStyle', 'imageQueries', 'titleTemplate', 'youtubeIntro', 'hashtags', 'keywords'];
+function presetPath(id) { if (!/^[a-z0-9][a-z0-9-]{1,40}$/.test(id)) throw new Error('프리셋 id는 영문 소문자·숫자·하이픈만'); return path.join(DIRS.presets, id + '.json'); }
+app.put('/api/presets/:id', async (req, res) => {
+  try {
+    const file = presetPath(req.params.id);
+    if (!fs.existsSync(file)) return res.status(404).json({ error: '프리셋 없음' });
+    const cur = JSON.parse(fs.readFileSync(file, 'utf8'));
+    const { isKnownTag } = await import('./providers/treblo.js');
+    for (const k of PRESET_FIELDS) if (k in (req.body || {})) cur[k] = req.body[k];
+    if (typeof cur.topics === 'object') for (const l of Object.keys(cur.topics)) cur.topics[l] = (cur.topics[l] || []).map(s => String(s).trim()).filter(Boolean);
+    for (const k of ['negative_tags', 'tags']) if (Array.isArray(cur[k])) {
+      const bad = cur[k].filter(t => !isKnownTag(t));
+      if (bad.length) return res.status(400).json({ error: `Treblo 태그 사전에 없는 태그: ${bad.join(', ')}` });
+    }
+    if (cur.length_range && !(Array.isArray(cur.length_range) && cur.length_range.length === 2 && cur.length_range.every(n => Number.isInteger(n) && n % 30 === 0))) return res.status(400).json({ error: '길이 범위는 30의 배수 두 개 [최소, 최대]' });
+    cur.id = req.params.id;
+    fs.writeFileSync(file, JSON.stringify(cur, null, 2) + '\n', 'utf8');
+    res.json(cur);
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+app.post('/api/presets/:id/copy', (req, res) => {
+  try {
+    const src = presetPath(req.params.id); const newId = String(req.body?.newId || '').trim();
+    const dst = presetPath(newId);
+    if (!fs.existsSync(src)) return res.status(404).json({ error: '원본 프리셋 없음' });
+    if (fs.existsSync(dst)) return res.status(400).json({ error: '이미 있는 id' });
+    const p = JSON.parse(fs.readFileSync(src, 'utf8')); p.id = newId; p.name = req.body?.name || `${p.name} (복제)`;
+    fs.writeFileSync(dst, JSON.stringify(p, null, 2) + '\n', 'utf8');
+    res.json(p);
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+app.delete('/api/presets/:id', (req, res) => {
+  try { const f = presetPath(req.params.id); if (!fs.existsSync(f)) return res.sendStatus(404); fs.unlinkSync(f); res.json({ ok: true }); }
+  catch (e) { res.status(400).json({ error: e.message }); }
+});
 app.get('/api/config', (req, res) => res.json(maskConfig(loadConfig())));
 app.post('/api/config', (req, res) => {
   const patch = req.body || {};
