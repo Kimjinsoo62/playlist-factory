@@ -22,6 +22,10 @@ scripts/thumbnail.py  배경·썸네일 (Pillow)
 public/            UI (8pt, 1920×1080 기준)
 ```
 
+## 주의: 배치 파일 인코딩
+
+`START.bat`, `install.bat`, `STOP.bat`은 한국어 Windows 기본 인코딩(CP949, ANSI)으로 저장되어 있다. UTF-8로 다시 저장하면 cmd가 한글 줄 뒤의 명령을 잘라먹는 버그가 생기므로, 편집 후에는 반드시 ANSI(CP949)로 저장한다.
+
 ## 테스트
 
 ```

@@ -29,6 +29,7 @@ if not exist "node_modules\" (
 )
 
 for /f %%p in ('node -p "try{JSON.parse(require('fs').readFileSync('config.json','utf8')).port||5177}catch(e){5177}"') do set PORT=%%p
+if "%PORT%"=="" set PORT=5177
 
 echo 브라우저를 엽니다: http://localhost:%PORT%
 echo.
