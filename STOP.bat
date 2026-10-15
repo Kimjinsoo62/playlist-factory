@@ -1,6 +1,5 @@
 @echo off
-chcp 65001 >nul
-title í”Œë ˆì´ë¦¬ìŠ¤íŠ¸ íŒ©í† ë¦¬ - ë¹„ìƒ ì¢…ë£Œ
+title ÇÃ·¹ÀÌ¸®½ºÆ® ÆÑÅä¸® - ºñ»ó Á¾·á
 cd /d "%~dp0"
 set ROOT=%~dp0
 set ROOT=%ROOT:~0,-1%
@@ -9,39 +8,39 @@ for /f %%p in ('node -p "try{JSON.parse(require('fs').readFileSync('config.json'
 if "%PORT%"=="" set PORT=5177
 
 echo ============================================================
-echo   í”Œë ˆì´ë¦¬ìŠ¤íŠ¸ íŒ©í† ë¦¬ - ë¹„ìƒ ì¢…ë£Œ (í¬íŠ¸ %PORT%)
+echo   ÇÃ·¹ÀÌ¸®½ºÆ® ÆÑÅä¸® - ºñ»ó Á¾·á (Æ÷Æ® %PORT%)
 echo ============================================================
 echo.
 
-echo [1] ì„œë²„ì— ì¢…ë£Œ API í˜¸ì¶œ ì‹œë„ (POST /api/shutdown)...
+echo [1] ¼­¹ö¿¡ Á¾·á API È£Ãâ ½Ãµµ (POST /api/shutdown)...
 curl -s -m 5 -X POST http://localhost:%PORT%/api/shutdown >nul 2>&1
 if not errorlevel 1 (
-  echo     ì„œë²„ê°€ ì‘ë‹µí–ˆìŠµë‹ˆë‹¤. [ì¢…ë£Œ] ë²„íŠ¼ê³¼ ê°™ì€ ì ˆì°¨ë¡œ ì •ë¦¬í•©ë‹ˆë‹¤. 5ì´ˆ ëŒ€ê¸°...
+  echo     ¼­¹ö°¡ ÀÀ´äÇß½À´Ï´Ù. [Á¾·á] ¹öÆ°°ú °°Àº ÀýÂ÷·Î Á¤¸®ÇÕ´Ï´Ù. 5ÃÊ ´ë±â...
   timeout /t 5 /nobreak >nul
 ) else (
-  echo     ì„œë²„ê°€ ì‘ë‹µí•˜ì§€ ì•ŠìŠµë‹ˆë‹¤. ì§ì ‘ ì •ë¦¬í•©ë‹ˆë‹¤.
+  echo     ¼­¹ö°¡ ÀÀ´äÇÏÁö ¾Ê½À´Ï´Ù. Á÷Á¢ Á¤¸®ÇÕ´Ï´Ù.
 )
 
-echo [2] ìºì‹œ ì‚­ì œ...
+echo [2] Ä³½Ã »èÁ¦...
 if exist "cache\" ( del /q /s "cache\*" >nul 2>&1 & for /d %%d in ("cache\*") do rd /s /q "%%d" >nul 2>&1 )
 
-echo [3] ì´ ì•±ì˜ ì„œë²„ í”„ë¡œì„¸ìŠ¤ ì¢…ë£Œ (ëª…ë ¹ì¤„ì— í”„ë¡œì íŠ¸ ê²½ë¡œê°€ í¬í•¨ëœ node/ffmpeg/python ë§Œ)...
+echo [3] ÀÌ ¾ÛÀÇ ¼­¹ö ÇÁ·Î¼¼½º Á¾·á (¸í·ÉÁÙ¿¡ ÇÁ·ÎÁ§Æ® °æ·Î°¡ Æ÷ÇÔµÈ node/ffmpeg/python ¸¸)...
 powershell -NoProfile -NonInteractive -Command ^
-  "$root='%ROOT%'; $n=0; Get-CimInstance Win32_Process | Where-Object { ($_.Name -in 'node.exe','ffmpeg.exe','ffprobe.exe','python.exe') -and $_.CommandLine -and $_.CommandLine.ToLower().Contains($root.ToLower()) } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue; $n++ }; Write-Host ('    ì¢…ë£Œí•œ í”„ë¡œì„¸ìŠ¤: ' + $n + 'ê°œ')"
+  "$root='%ROOT%'; $n=0; Get-CimInstance Win32_Process | Where-Object { ($_.Name -in 'node.exe','ffmpeg.exe','ffprobe.exe','python.exe') -and $_.CommandLine -and $_.CommandLine.ToLower().Contains($root.ToLower()) } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue; $n++ }; Write-Host ('    Á¾·áÇÑ ÇÁ·Î¼¼½º: ' + $n + '°³')"
 
-echo [4] í¬íŠ¸ %PORT% ì •ë¦¬ (ì´ ì•±ì´ ì ìœ í•œ ê²½ìš°ë§Œ)...
+echo [4] Æ÷Æ® %PORT% Á¤¸® (ÀÌ ¾ÛÀÌ Á¡À¯ÇÑ °æ¿ì¸¸)...
 powershell -NoProfile -NonInteractive -Command ^
-  "$root='%ROOT%'; $n=0; $pids = Get-NetTCPConnection -LocalPort %PORT% -State Listen -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess -Unique; foreach($p in $pids){ $proc = Get-CimInstance Win32_Process -Filter ('ProcessId=' + $p); if($proc -and $proc.Name -eq 'node.exe'){ Stop-Process -Id $p -Force -ErrorAction SilentlyContinue; $n++ } }; Write-Host ('    í¬íŠ¸ ì •ë¦¬: ' + $n + 'ê°œ')"
+  "$root='%ROOT%'; $n=0; $pids = Get-NetTCPConnection -LocalPort %PORT% -State Listen -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess -Unique; foreach($p in $pids){ $proc = Get-CimInstance Win32_Process -Filter ('ProcessId=' + $p); if($proc -and $proc.Name -eq 'node.exe'){ Stop-Process -Id $p -Force -ErrorAction SilentlyContinue; $n++ } }; Write-Host ('    Æ÷Æ® Á¤¸®: ' + $n + '°³')"
 
-echo [5] ì´ ì•±ì˜ ë¸Œë¼ìš°ì € ì°½ ë‹«ê¸° (ì°½ ì œëª©ì— ì•± ì´ë¦„ì´ ìžˆëŠ” ì°½ë§Œ)...
+echo [5] ÀÌ ¾ÛÀÇ ºê¶ó¿ìÀú Ã¢ ´Ý±â (Ã¢ Á¦¸ñ¿¡ ¾Û ÀÌ¸§ÀÌ ÀÖ´Â Ã¢¸¸)...
 powershell -NoProfile -NonInteractive -Command ^
-  "$n=0; foreach($p in Get-Process | Where-Object { $_.MainWindowTitle -like '*í”Œë ˆì´ë¦¬ìŠ¤íŠ¸ íŒ©í† ë¦¬*' -and $_.ProcessName -ne 'cmd' -and $_.ProcessName -ne 'powershell' }){ $null=$p.CloseMainWindow(); $n++ }; Write-Host ('    ë‹«ê¸° ìš”ì²­: ' + $n + 'ê°œ ì°½')"
+  "$n=0; foreach($p in Get-Process | Where-Object { $_.MainWindowTitle -like '*ÇÃ·¹ÀÌ¸®½ºÆ® ÆÑÅä¸®*' -and $_.ProcessName -ne 'cmd' -and $_.ProcessName -ne 'powershell' }){ $null=$p.CloseMainWindow(); $n++ }; Write-Host ('    ´Ý±â ¿äÃ»: ' + $n + '°³ Ã¢')"
 
-echo [6] ì´ í”„ë¡œì íŠ¸ì˜ ëª…ë ¹ ì°½ ë‹«ê¸° (ëª…ë ¹ì¤„ì— í”„ë¡œì íŠ¸ ê²½ë¡œê°€ í¬í•¨ëœ cmd ë§Œ, ì´ ì°½ ì œì™¸)...
+echo [6] ÀÌ ÇÁ·ÎÁ§Æ®ÀÇ ¸í·É Ã¢ ´Ý±â (¸í·ÉÁÙ¿¡ ÇÁ·ÎÁ§Æ® °æ·Î°¡ Æ÷ÇÔµÈ cmd ¸¸, ÀÌ Ã¢ Á¦¿Ü)...
 powershell -NoProfile -NonInteractive -Command ^
-  "$root='%ROOT%'; $me=(Get-CimInstance Win32_Process -Filter ('ProcessId=' + $PID)).ParentProcessId; $n=0; Get-CimInstance Win32_Process | Where-Object { $_.Name -eq 'cmd.exe' -and $_.ProcessId -ne $me -and $_.CommandLine -and $_.CommandLine.ToLower().Contains($root.ToLower()) -and $_.CommandLine -notlike '*STOP.bat*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue; $n++ }; Write-Host ('    ë‹«ì€ ëª…ë ¹ ì°½: ' + $n + 'ê°œ')"
+  "$root='%ROOT%'; $me=(Get-CimInstance Win32_Process -Filter ('ProcessId=' + $PID)).ParentProcessId; $n=0; Get-CimInstance Win32_Process | Where-Object { $_.Name -eq 'cmd.exe' -and $_.ProcessId -ne $me -and $_.CommandLine -and $_.CommandLine.ToLower().Contains($root.ToLower()) -and $_.CommandLine -notlike '*STOP.bat*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue; $n++ }; Write-Host ('    ´ÝÀº ¸í·É Ã¢: ' + $n + '°³')"
 
 echo.
-echo ì •ë¦¬ê°€ ëë‚¬ìŠµë‹ˆë‹¤. ì´ ì°½ì€ 3ì´ˆ í›„ ë‹«íž™ë‹ˆë‹¤.
+echo Á¤¸®°¡ ³¡³µ½À´Ï´Ù. ÀÌ Ã¢Àº 3ÃÊ ÈÄ ´ÝÈü´Ï´Ù.
 timeout /t 3 >nul
 exit

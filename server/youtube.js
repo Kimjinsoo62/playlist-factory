@@ -26,7 +26,7 @@ export function buildYoutubeMeta({ preset, tracks, total, request, cfg }) {
 }
 
 function defaultTitle(preset, n, total, lang) {
-  const h = Math.floor(total / 3600), m = Math.round((total % 3600) / 60);
+  const h = Math.floor(total / 3600), m = Math.max(h ? 0 : 1, Math.round((total % 3600) / 60));
   const dur = h ? `${h}시간 ${m ? m + '분' : ''}`.trim() : `${m}분`;
   const tpl = preset.titleTemplate?.[lang] || preset.titleTemplate?.ko || `[Playlist] ${preset.name} ${n}곡 · {dur}`;
   return tpl.replace('{n}', n).replace('{dur}', dur).replace('{date}', new Date().toLocaleDateString('ko-KR'));

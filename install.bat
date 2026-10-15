@@ -1,45 +1,44 @@
 @echo off
-chcp 65001 >nul
-title í”Œë ˆì´ë¦¬ìŠ¤íŠ¸ íŒ©í† ë¦¬ - ì˜ì¡´ì„± ì„¤ì¹˜
+title ÇÃ·¹ÀÌ¸®½ºÆ® ÆÑÅä¸® - ÀÇÁ¸¼º ¼³Ä¡
 cd /d "%~dp0"
 
 echo ============================================================
-echo   í”Œë ˆì´ë¦¬ìŠ¤íŠ¸ íŒ©í† ë¦¬ - ì˜ì¡´ì„± ì„¤ì¹˜
+echo   ÇÃ·¹ÀÌ¸®½ºÆ® ÆÑÅä¸® - ÀÇÁ¸¼º ¼³Ä¡
 echo ============================================================
 echo.
 
 where node >nul 2>&1
 if errorlevel 1 (
-  echo [ì˜¤ë¥˜] Node.js ê°€ í•„ìš”í•©ë‹ˆë‹¤. https://nodejs.org ì—ì„œ LTS ë¥¼ ì„¤ì¹˜í•˜ì„¸ìš”.
+  echo [¿À·ù] Node.js °¡ ÇÊ¿äÇÕ´Ï´Ù. https://nodejs.org ¿¡¼­ LTS ¸¦ ¼³Ä¡ÇÏ¼¼¿ä.
   exit /b 1
 )
-echo [1/3] Node íŒ¨í‚¤ì§€ ì„¤ì¹˜ (express, MCP SDK)...
+echo [1/3] Node ÆĞÅ°Áö ¼³Ä¡ (express, MCP SDK)...
 call npm install --no-fund --no-audit
-if errorlevel 1 ( echo [ì˜¤ë¥˜] npm install ì‹¤íŒ¨ & exit /b 1 )
+if errorlevel 1 ( echo [¿À·ù] npm install ½ÇÆĞ & exit /b 1 )
 
 echo.
-echo [2/3] Python íŒ¨í‚¤ì§€ í™•ì¸ (Pillow: ì¸ë„¤ì¼/ë°°ê²½ ìƒì„±)...
+echo [2/3] Python ÆĞÅ°Áö È®ÀÎ (Pillow: ½æ³×ÀÏ/¹è°æ »ı¼º)...
 where python >nul 2>&1
 if errorlevel 1 (
-  echo [ê²½ê³ ] Python ì´ ì—†ìŠµë‹ˆë‹¤. https://www.python.org ì—ì„œ 3.10 ì´ìƒì„ ì„¤ì¹˜í•˜ê³  PATH ì— ì¶”ê°€í•˜ì„¸ìš”.
+  echo [°æ°í] Python ÀÌ ¾ø½À´Ï´Ù. https://www.python.org ¿¡¼­ 3.10 ÀÌ»óÀ» ¼³Ä¡ÇÏ°í PATH ¿¡ Ãß°¡ÇÏ¼¼¿ä.
 ) else (
   python -c "import PIL" >nul 2>&1
-  if errorlevel 1 ( python -m pip install --quiet pillow ) else ( echo   Pillow ì„¤ì¹˜ë¨ )
+  if errorlevel 1 ( python -m pip install --quiet pillow ) else ( echo   Pillow ¼³Ä¡µÊ )
 )
 
 echo.
-echo [3/3] ffmpeg í™•ì¸...
+echo [3/3] ffmpeg È®ÀÎ...
 where ffmpeg >nul 2>&1
 if errorlevel 1 (
-  echo [ê²½ê³ ] ffmpeg ê°€ ì—†ìŠµë‹ˆë‹¤. ë‹¤ìŒ ì¤‘ í•˜ë‚˜ë¡œ ì„¤ì¹˜í•˜ì„¸ìš”:
+  echo [°æ°í] ffmpeg °¡ ¾ø½À´Ï´Ù. ´ÙÀ½ Áß ÇÏ³ª·Î ¼³Ä¡ÇÏ¼¼¿ä:
   echo    winget install Gyan.FFmpeg
-  echo    ë˜ëŠ” https://www.gyan.dev/ffmpeg/builds/ ì—ì„œ essentials ë¹Œë“œë¥¼ ë°›ì•„ PATH ì— ì¶”ê°€
+  echo    ¶Ç´Â https://www.gyan.dev/ffmpeg/builds/ ¿¡¼­ essentials ºôµå¸¦ ¹Ş¾Æ PATH ¿¡ Ãß°¡
 ) else (
-  for /f "tokens=3" %%v in ('ffmpeg -version 2^>^&1 ^| findstr /b "ffmpeg version"') do echo   ffmpeg %%v ì„¤ì¹˜ë¨
+  for /f "tokens=3" %%v in ('ffmpeg -version 2^>^&1 ^| findstr /b "ffmpeg version"') do echo   ffmpeg %%v ¼³Ä¡µÊ
 )
 
 echo.
-echo ì„¤ì¹˜ê°€ ëë‚¬ìŠµë‹ˆë‹¤. START.bat ìœ¼ë¡œ ì‹¤í–‰í•˜ì„¸ìš”.
-echo Treblo API í‚¤ëŠ” ì•± í™”ë©´ì˜ [ì„¤ì •]ì—ì„œ ì…ë ¥í•©ë‹ˆë‹¤. (https://treblo.com/developers)
+echo ¼³Ä¡°¡ ³¡³µ½À´Ï´Ù. START.bat À¸·Î ½ÇÇàÇÏ¼¼¿ä.
+echo Treblo API Å°´Â ¾Û È­¸éÀÇ [¼³Á¤]¿¡¼­ ÀÔ·ÂÇÕ´Ï´Ù. (https://treblo.com/developers)
 if "%~1"=="" pause
 exit /b 0

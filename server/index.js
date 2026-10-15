@@ -53,7 +53,18 @@ app.post('/api/plan', (req, res) => {
 
 // ── 작업
 app.get('/api/jobs', (req, res) => res.json(listJobs()));
-app.get('/api/jobs/:id', (req, res) => { const j = getJob(req.params.id); if (!j) return res.sendStatus(404); res.json({ ...summarize(j), logs: j.logs.slice(-500) }); });
+app.get('/api/jobs/:id', (req, res) => {
+  const j = getJob(req.params.id); if (!j) return res.sendStatus(404);
+  let logs = j.logs.slice(-500);
+  if (!logs.length) {
+    // 서버 재시작 전 작업: 디스크의 job.log 에서 복원
+    try {
+      logs = fs.readFileSync(path.join(j.dir, 'job.log'), 'utf8').split(/\r?\n/).filter(Boolean).slice(-500)
+        .map(l => { const m = l.match(/^\[(\d\d:\d\d:\d\d)\] (\w+) (.*)$/); return m ? { t: m[1], level: m[2].toLowerCase(), msg: m[3] } : { t: '', level: 'info', msg: l }; });
+    } catch {}
+  }
+  res.json({ ...summarize(j), logs });
+});
 app.post('/api/jobs', (req, res) => {
   const body = req.body || {};
   if (!body.preset) return res.status(400).json({ error: 'preset 필요' });

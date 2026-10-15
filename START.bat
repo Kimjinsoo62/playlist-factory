@@ -1,29 +1,28 @@
 @echo off
-chcp 65001 >nul
-title í”Œë ˆì´ë¦¬ìŠ¤íŠ¸ íŒ©í† ë¦¬ - ì„œë²„
+title ÇÃ·¹ÀÌ¸®½ºÆ® ÆÑÅä¸® - ¼­¹ö
 cd /d "%~dp0"
 
 echo ============================================================
-echo   í”Œë ˆì´ë¦¬ìŠ¤íŠ¸ íŒ©í† ë¦¬  (Treblo API + ffmpeg)
+echo   ÇÃ·¹ÀÌ¸®½ºÆ® ÆÑÅä¸®  (Treblo API + ffmpeg)
 echo ============================================================
 echo.
 
 where node >nul 2>&1
 if errorlevel 1 (
-  echo [ì˜¤ë¥˜] Node.js ê°€ ì„¤ì¹˜ë˜ì–´ ìžˆì§€ ì•ŠìŠµë‹ˆë‹¤. https://nodejs.org ì—ì„œ LTS ë²„ì „ì„ ì„¤ì¹˜í•œ ë’¤ ë‹¤ì‹œ ì‹¤í–‰í•˜ì„¸ìš”.
+  echo [¿À·ù] Node.js °¡ ¼³Ä¡µÇ¾î ÀÖÁö ¾Ê½À´Ï´Ù. https://nodejs.org ¿¡¼­ LTS ¹öÀüÀ» ¼³Ä¡ÇÑ µÚ ´Ù½Ã ½ÇÇàÇÏ¼¼¿ä.
   pause
   exit /b 1
 )
 where ffmpeg >nul 2>&1
 if errorlevel 1 (
-  echo [ê²½ê³ ] ffmpeg ë¥¼ ì°¾ì„ ìˆ˜ ì—†ìŠµë‹ˆë‹¤. ì˜ìƒ ë Œë”ë§ì— í•„ìš”í•©ë‹ˆë‹¤. install.bat ì˜ ì•ˆë‚´ë¥¼ ì°¸ê³ í•˜ì„¸ìš”.
+  echo [°æ°í] ffmpeg ¸¦ Ã£À» ¼ö ¾ø½À´Ï´Ù. ¿µ»ó ·»´õ¸µ¿¡ ÇÊ¿äÇÕ´Ï´Ù. install.bat ÀÇ ¾È³»¸¦ Âü°íÇÏ¼¼¿ä.
 )
 
 if not exist "node_modules\" (
-  echo ì˜ì¡´ì„±ì´ ì„¤ì¹˜ë˜ì–´ ìžˆì§€ ì•ŠìŠµë‹ˆë‹¤. install.bat ì„ ì‹¤í–‰í•©ë‹ˆë‹¤...
+  echo ÀÇÁ¸¼ºÀÌ ¼³Ä¡µÇ¾î ÀÖÁö ¾Ê½À´Ï´Ù. install.bat À» ½ÇÇàÇÕ´Ï´Ù...
   call install.bat
   if errorlevel 1 (
-    echo [ì˜¤ë¥˜] ì˜ì¡´ì„± ì„¤ì¹˜ì— ì‹¤íŒ¨í–ˆìŠµë‹ˆë‹¤.
+    echo [¿À·ù] ÀÇÁ¸¼º ¼³Ä¡¿¡ ½ÇÆÐÇß½À´Ï´Ù.
     pause
     exit /b 1
   )
@@ -31,15 +30,15 @@ if not exist "node_modules\" (
 
 for /f %%p in ('node -p "try{JSON.parse(require('fs').readFileSync('config.json','utf8')).port||5177}catch(e){5177}"') do set PORT=%%p
 
-echo ë¸Œë¼ìš°ì €ë¥¼ ì—½ë‹ˆë‹¤: http://localhost:%PORT%
+echo ºê¶ó¿ìÀú¸¦ ¿±´Ï´Ù: http://localhost:%PORT%
 echo.
-echo  * ì•± ì¢…ë£Œ: í™”ë©´ ìš°ì¸¡ ìƒë‹¨ì˜ ë¹¨ê°„ [ì¢…ë£Œ] ë²„íŠ¼
-echo  * ë¹„ìƒ ì¢…ë£Œ(í™”ë©´ì´ ë©ˆì·„ê±°ë‚˜ ì°½ì„ ë‹«ì•„ ë²„ë¦° ê²½ìš°): STOP.bat ì‹¤í–‰
-echo  * ì‚¬ìš©ì„¤ëª…ì„œ: í™”ë©´ ìƒë‹¨ [ì„¤ëª…ì„œ] ë²„íŠ¼ ë˜ëŠ” ì‚¬ìš©ì„¤ëª…ì„œ.html
+echo  * ¾Û Á¾·á: È­¸é ¿ìÃø »ó´ÜÀÇ »¡°£ [Á¾·á] ¹öÆ°
+echo  * ºñ»ó Á¾·á(È­¸éÀÌ ¸ØÃè°Å³ª Ã¢À» ´Ý¾Æ ¹ö¸° °æ¿ì): STOP.bat ½ÇÇà
+echo  * »ç¿ë¼³¸í¼­: È­¸é »ó´Ü [¼³¸í¼­] ¹öÆ° ¶Ç´Â »ç¿ë¼³¸í¼­.html
 echo.
 
 start "" /b cmd /c "timeout /t 2 /nobreak >nul & start "" http://localhost:%PORT%"
-node server\index.js
+node "%~dp0server\index.js"
 echo.
-echo ì„œë²„ê°€ ì¢…ë£Œë˜ì—ˆìŠµë‹ˆë‹¤.
+echo ¼­¹ö°¡ Á¾·áµÇ¾ú½À´Ï´Ù.
 timeout /t 3 >nul

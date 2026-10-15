@@ -239,4 +239,6 @@ async function shutdown() {
   }, 1200);
 }
 
-init().catch(e => { logLine('--', 'error', '초기화 실패: ' + e.message); });
+window.addEventListener('error', (e) => logLine('--', 'error', `스크립트 오류: ${e.message} (${e.filename?.split('/').pop()}:${e.lineno})`));
+window.addEventListener('unhandledrejection', (e) => logLine('--', 'error', `처리되지 않은 오류: ${e.reason?.stack || e.reason}`));
+init().catch(e => { logLine('--', 'error', '초기화 실패: ' + (e.stack || e.message)); });
