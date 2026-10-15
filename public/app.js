@@ -224,11 +224,21 @@ let pmPreset = null, pmLang = 'ko', pmTopics = {};
 const pmf = () => $('#pmForm');
 $('#btnPreset').onclick = () => openPresetModal($('#preset').value);
 $('#pmClose').onclick = () => $('#pmodal').hidden = true;
+let pmMode = 'edit';   // 'edit' | 'new'
+$('#btnNewPreset').onclick = () => openPresetModal(null);
 function openPresetModal(id) {
-  const p = presets.find(x => x.id === id); if (!p) return;
+  const p = id ? presets.find(x => x.id === id) : {
+    id: '', name: '', description: '', koDescription: '', useKoDescription: true, prompt: '', instrumental: false,
+    thumbnailStyle: 'night', length_range: [150, 240], negative_tags: [], imageQueries: [], topics: { ko: [], en: [], ja: [] },
+  };
+  if (!p) return;
+  pmMode = id ? 'edit' : 'new';
   pmPreset = p; pmTopics = JSON.parse(JSON.stringify(p.topics || { ko: [], en: [], ja: [] })); pmLang = 'ko';
-  $('#pmTitle').textContent = `프리셋: ${p.name}`; $('#pmId').textContent = p.id;
+  $('#pmTitle').textContent = id ? `프리셋: ${p.name}` : '새 프리셋 만들기'; $('#pmId').textContent = id || '';
+  $('#pmIdRow').hidden = Boolean(id);
+  $('#pmCopy').hidden = !id; $('#pmDelete').hidden = !id;
   const f = pmf();
+  f.id.value = id ? p.id : `my-${Date.now().toString(36).slice(-5)}`;
   f.name.value = p.name || ''; f.description.value = p.description || ''; f.koDescription.value = p.koDescription || '';
   f.useKoDescription.checked = p.useKoDescription !== false; f.prompt.value = p.prompt || '';
   f.instrumental.value = String(Boolean(p.instrumental)); f.thumbnailStyle.value = p.thumbnailStyle || 'night';
@@ -254,15 +264,38 @@ function pmBody() {
 }
 async function pmPreview() {
   const b = pmBody();
+  if (pmMode === 'new') {
+    // 저장 전 미리보기: 서버와 같은 규칙으로 조립
+    let p = b.prompt;
+    if (b.koDescription && b.useKoDescription) p = p ? `${p} Detailed style notes (written in Korean, follow them closely): ${b.koDescription}` : `Music style (described in Korean, follow it closely): ${b.koDescription}`;
+    if (!p) p = b.description || b.name || '(설명을 입력하세요)';
+    $('#pmPreview').textContent = p + (b.instrumental ? ' Instrumental only, no vocals. Mood: "…".' : ' Sung in Korean. … Theme of this song: "…".');
+    return;
+  }
   try {
     const r = await api('/api/plan', { method: 'POST', body: { preset: pmPreset.id, count: 1, language: $('#language').value, koDescription: b.koDescription, useKoDescription: b.useKoDescription } });
     $('#pmPreview').textContent = r.specs[0].prompt.replace(pmPreset.prompt, b.prompt);
   } catch (e) { $('#pmPreview').textContent = e.message; }
 }
+async function refreshPresetSelect(selectId) {
+  presets = await api('/api/presets');
+  $('#preset').innerHTML = presets.map(x => `<option value="${x.id}">${x.name}</option>`).join('');
+  if (selectId) $('#preset').value = selectId;
+  updatePresetUI();
+}
 $('#pmPreviewBtn').onclick = pmPreview;
 pmf().onsubmit = async (e) => {
   e.preventDefault();
   try {
+    if (pmMode === 'new') {
+      const body = { ...pmBody(), id: pmf().id.value.trim().toLowerCase() };
+      if (!/^[a-z0-9][a-z0-9-]{1,40}$/.test(body.id)) throw new Error('프리셋 id는 영문 소문자·숫자·하이픈 2~41자');
+      const created = await api('/api/presets', { method: 'POST', body });
+      await refreshPresetSelect(created.id);
+      openPresetModal(created.id);
+      $('#pmMsg').textContent = `새 프리셋 "${created.name}" 저장됨. 이제 선택되어 있습니다.`;
+      return;
+    }
     const saved = await api('/api/presets/' + pmPreset.id, { method: 'PUT', body: pmBody() });
     const i = presets.findIndex(x => x.id === saved.id); if (i >= 0) presets[i] = saved; pmPreset = saved;
     $('#preset').options[$('#preset').selectedIndex].text = saved.name; updatePresetUI();

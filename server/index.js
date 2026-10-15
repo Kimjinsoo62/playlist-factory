@@ -49,6 +49,39 @@ app.put('/api/presets/:id', async (req, res) => {
     res.json(cur);
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
+app.post('/api/presets', async (req, res) => {
+  // 새 프리셋 만들기 (한국어 설명만 있어도 됨: 영어 프롬프트가 비면 한국어 설명을 프롬프트로 사용)
+  try {
+    const b = req.body || {};
+    const id = String(b.id || '').trim().toLowerCase();
+    const file = presetPath(id);
+    if (fs.existsSync(file)) return res.status(400).json({ error: `이미 있는 id: ${id}` });
+    if (!b.name?.trim()) return res.status(400).json({ error: '이름을 입력하세요' });
+    if (!b.koDescription?.trim() && !b.prompt?.trim()) return res.status(400).json({ error: '한국어 상세 설명 또는 영어 프롬프트 중 하나는 필요합니다' });
+    const { isKnownTag } = await import('./providers/treblo.js');
+    const bad = (b.negative_tags || []).filter(t => !isKnownTag(t));
+    if (bad.length) return res.status(400).json({ error: `Treblo 태그 사전에 없는 태그: ${bad.join(', ')}` });
+    const name = b.name.trim();
+    const topics = { ko: [], en: [], ja: [], ...(b.topics || {}) };
+    for (const l of Object.keys(topics)) topics[l] = (topics[l] || []).map(s => String(s).trim()).filter(Boolean);
+    if (!topics.ko.length) topics.ko = ['첫 번째 이야기', '밤의 끝에서', '천천히 흐르는 시간', '창밖의 계절', '다시 만난 오후', '조용한 약속'];
+    if (!topics.en.length) topics.en = topics.ko; if (!topics.ja.length) topics.ja = topics.ko;
+    const p = {
+      id, name, description: (b.description || '').trim() || name,
+      koDescription: (b.koDescription || '').trim(), useKoDescription: b.useKoDescription !== false,
+      prompt: (b.prompt || '').trim(), instrumental: Boolean(b.instrumental),
+      negative_tags: b.negative_tags || [], length_range: Array.isArray(b.length_range) && b.length_range.length === 2 ? b.length_range : [150, 240],
+      thumbnailStyle: b.thumbnailStyle || 'night', topics,
+      titleTemplate: { ko: `[Playlist] ${name} {n}곡 · {dur}`, en: `[Playlist] ${name} {n} songs · {dur}`, ja: `[Playlist] ${name} {n}曲 · {dur}` },
+      youtubeIntro: { ko: (b.description || '').trim() || name },
+      hashtags: ['#playlist', '#aimusic'], keywords: [name, 'playlist'],
+      imageQueries: (b.imageQueries || []).length ? b.imageQueries : ['abstract background', 'night city lights', 'nature landscape calm'],
+      createdAt: new Date().toISOString(),
+    };
+    fs.writeFileSync(file, JSON.stringify(p, null, 2) + '\n', 'utf8');
+    res.json(p);
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
 app.post('/api/presets/:id/copy', (req, res) => {
   try {
     const src = presetPath(req.params.id); const newId = String(req.body?.newId || '').trim();

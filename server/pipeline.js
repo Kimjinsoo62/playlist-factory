@@ -42,10 +42,13 @@ export function planTracks(preset, request) {
   const specs = [];
   for (let i = 0; i < n; i++) {
     const topic = pick(topics, i) || `Track ${i + 1}`;
-    let prompt = preset.prompt;
-    // 한국어 상세 설명을 프롬프트에 포함 (모달에서 편집 가능)
+    let prompt = (preset.prompt || '').trim();
+    // 한국어 상세 설명을 프롬프트에 포함 (모달에서 편집 가능). 영어 프롬프트가 없으면 한국어 설명이 곧 프롬프트.
     const ko = (request.koDescription ?? preset.koDescription ?? '').trim();
-    if (ko && (request.useKoDescription ?? preset.useKoDescription ?? true)) prompt += ` Detailed style notes (written in Korean, follow them closely): ${ko}`;
+    if (ko && (request.useKoDescription ?? preset.useKoDescription ?? true)) {
+      prompt = prompt ? `${prompt} Detailed style notes (written in Korean, follow them closely): ${ko}` : `Music style (described in Korean, follow it closely): ${ko}`;
+    }
+    if (!prompt) prompt = preset.description || preset.name;
     if (!instrumental) prompt += ` ${LANG[lang].instr} Theme of this song: "${topic}".`;
     else prompt += ` Instrumental only, no vocals. Mood: "${topic}".`;
     if (request.extraPrompt) prompt += ` ${request.extraPrompt}`;
