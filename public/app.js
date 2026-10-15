@@ -111,6 +111,7 @@ function fillForm(form, cfg) {
     if (v === undefined || v === null) continue;
     if (el.name === 'treblo.apiKey') { el.placeholder = cfg.hasApiKey ? `저장됨 (${v})` : el.placeholder; continue; }
     if (el.name === 'images.pexelsKey') { if (v) el.placeholder = '저장됨'; continue; }
+    if (el.name === 'anthropic.apiKey') { if (cfg.hasAnthropicKey) el.placeholder = '저장됨 (****)'; continue; }
     el.value = String(v);
   }
 }
@@ -120,7 +121,7 @@ $('#cfgForm').onsubmit = async (e) => {
   for (const el of $('#cfgForm').elements) {
     if (!el.name) continue;
     let v = el.value;
-    if ((el.name === 'treblo.apiKey' || el.name === 'images.pexelsKey') && !v) continue;
+    if ((el.name === 'treblo.apiKey' || el.name === 'images.pexelsKey' || el.name === 'anthropic.apiKey') && !v) continue;
     if (el.type === 'number') v = Number(v);
     if (v === 'true') v = true; if (v === 'false') v = false;
     const keys = el.name.split('.'); let o = patch;
@@ -284,6 +285,30 @@ async function refreshPresetSelect(selectId) {
   updatePresetUI();
 }
 $('#pmPreviewBtn').onclick = pmPreview;
+// ── AI로 영어 프롬프트 자동 생성 (Claude API)
+$('#pmGen').onclick = async () => {
+  const f = pmf(); const ko = f.koDescription.value.trim();
+  if (!ko) return alert('한국어 상세 설명을 먼저 적어 주세요.');
+  if (f.prompt.value.trim() && !confirm('이미 영어 프롬프트가 있습니다. 새로 생성한 내용으로 바꿀까요?')) return;
+  const wantTopics = $('#pmGenTopics').checked;
+  const btn = $('#pmGen'); btn.disabled = true; $('#pmGenMsg').textContent = 'Claude가 프롬프트를 쓰는 중… (10~30초)';
+  try {
+    const r = await api('/api/presets/generate', { method: 'POST', body: { koDescription: ko, name: f.name.value.trim(), instrumental: f.instrumental.value === 'true', wantTopics } });
+    f.prompt.value = r.prompt;
+    if (r.description && !f.description.value.trim()) f.description.value = r.description;
+    if (wantTopics) {
+      if (r.negative_tags?.length && !f.negative_tags.value.trim()) f.negative_tags.value = r.negative_tags.join(', ');
+      if (r.imageQueries?.length && !f.imageQueries.value.trim()) f.imageQueries.value = r.imageQueries.join(', ');
+      showTopics(pmLang);   // 현재 탭 내용을 pmTopics 에 반영
+      let filled = 0;
+      for (const l of ['ko', 'en', 'ja']) if (r.topics?.[l]?.length && !(pmTopics[l] || []).length) { pmTopics[l] = r.topics[l]; filled++; }
+      f.topics.value = (pmTopics[pmLang] || []).join('\n');
+      $('#pmGenMsg').textContent = `생성 완료 (${r.model}, 토큰 ${r.usage.input}+${r.usage.output}) · 주제 ${filled}개 언어 채움. 저장을 눌러 반영하세요.`;
+    } else $('#pmGenMsg').textContent = `생성 완료 (${r.model}). 저장을 눌러 반영하세요.`;
+    pmPreview();
+  } catch (e) { $('#pmGenMsg').textContent = '실패: ' + e.message; }
+  finally { btn.disabled = false; }
+};
 pmf().onsubmit = async (e) => {
   e.preventDefault();
   try {

@@ -38,6 +38,10 @@ const DEFAULTS = {
     provider: 'commons',           // 'commons' (Wikimedia, 키 불필요, 빠름) | 'openverse' (키 불필요, CC0만, 느림) | 'pexels' (키 필요)
     pexelsKey: '',
   },
+  anthropic: {
+    apiKey: '',                    // 프리셋 영어 프롬프트 자동 생성에 사용 (선택)
+    model: 'claude-opus-5-5',
+  },
   youtube: {
     channelName: '',
     hashtags: '#playlist #aimusic',
@@ -75,5 +79,7 @@ export function maskConfig(cfg) {
   if (c.treblo?.apiKey) c.treblo.apiKey = c.treblo.apiKey.slice(0, 4) + '****' + c.treblo.apiKey.slice(-4);
   c.hasApiKey = Boolean(cfg.treblo?.apiKey);
   if (c.images?.pexelsKey) c.images.pexelsKey = '****';
+  c.hasAnthropicKey = Boolean(cfg.anthropic?.apiKey || process.env.ANTHROPIC_API_KEY);
+  if (c.anthropic?.apiKey) c.anthropic.apiKey = '****';
   return c;
 }

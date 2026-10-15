@@ -49,6 +49,15 @@ app.put('/api/presets/:id', async (req, res) => {
     res.json(cur);
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
+app.post('/api/presets/generate', async (req, res) => {
+  // 한국어 설명 → 영어 프롬프트(+태그·주제·검색어) 자동 생성 (Claude API)
+  try {
+    const { generatePresetFromKorean } = await import('./llm.js');
+    const r = await generatePresetFromKorean({ ...req.body, cfg: loadConfig() });
+    console.log(`[AI 프롬프트] ${r.model} in=${r.usage.input} out=${r.usage.output}`);
+    res.json(r);
+  } catch (e) { const { describeError } = await import('./llm.js'); res.status(400).json({ error: describeError(e) }); }
+});
 app.post('/api/presets', async (req, res) => {
   // 새 프리셋 만들기 (한국어 설명만 있어도 됨: 영어 프롬프트가 비면 한국어 설명을 프롬프트로 사용)
   try {
@@ -100,6 +109,12 @@ app.delete('/api/presets/:id', (req, res) => {
 app.get('/api/config', (req, res) => res.json(maskConfig(loadConfig())));
 app.post('/api/config', (req, res) => {
   const patch = req.body || {};
+  if (patch.anthropic && typeof patch.anthropic.apiKey === 'string') {
+    const k = patch.anthropic.apiKey.trim();
+    if (!k || k.includes('****')) delete patch.anthropic.apiKey;
+    else if (!/^[\x21-\x7E]{20,300}$/.test(k)) return res.status(400).json({ error: 'Claude API 키 형식이 아닙니다 (sk-ant-… 형태의 영문·숫자)' });
+    else patch.anthropic.apiKey = k;
+  }
   if (patch.treblo && typeof patch.treblo.apiKey === 'string') {
     const key = patch.treblo.apiKey.trim();
     if (!key || key.includes('****')) delete patch.treblo.apiKey; // 빈 값·마스킹된 값은 저장하지 않음

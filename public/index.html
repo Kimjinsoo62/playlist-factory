@@ -88,6 +88,10 @@
           <div><label>사진 소스</label><select name="images.provider"><option value="commons">Wikimedia Commons (키 불필요)</option><option value="openverse">Openverse CC0 (키 불필요, 느림)</option><option value="pexels">Pexels (키 필요)</option></select></div>
           <div style="grid-column: span 2"><label>Pexels API 키(선택)</label><input name="images.pexelsKey" type="password" placeholder="pexels.com/api 에서 무료 발급"></div>
         </div>
+        <div class="row3">
+          <div style="grid-column: span 2"><label>Claude(Anthropic) API 키 — 프리셋 영어 프롬프트 자동 생성</label><input name="anthropic.apiKey" id="anthropicKey" type="password" placeholder="sk-ant-… (platform.claude.com 에서 발급, 선택)"></div>
+          <div><label>모델</label><select name="anthropic.model"><option value="claude-opus-5-5">Opus 5.5 (기본)</option><option value="claude-sonnet-5-5">Sonnet 5.5</option><option value="claude-haiku-5-5">Haiku 5.5 (가장 저렴)</option></select></div>
+        </div>
         <div class="row"><label>채널명(설명 하단)</label><input name="youtube.channelName" placeholder="© 채널명"></div>
         <div class="row"><label>해시태그</label><input name="youtube.hashtags" value="#playlist #aimusic"></div>
         <div class="actions"><button type="submit" class="btn">설정 저장</button><button type="button" id="btnBalance" class="btn">크레딧 확인</button><span id="cfgMsg" class="dim"></span></div>
@@ -158,6 +162,10 @@
       <div class="row"><label>이름</label><input name="name" placeholder="예: 새벽 감성 피아노"></div>
       <div class="row"><label>한 줄 설명</label><input name="description"></div>
       <div class="row top"><label>한국어 상세 설명<br><span class="dim">곡 생성에 사용됨</span></label><textarea name="koDescription" rows="5" placeholder="분위기, 악기, 템포(BPM), 보컬 톤, 참고 장르를 한국어로 자세히 적으세요. 이 내용이 영어 프롬프트 뒤에 붙어 Treblo에 전달됩니다."></textarea></div>
+      <div class="row"><label></label>
+        <button type="button" id="pmGen" class="btn primary small">✨ AI로 영어 프롬프트 자동 생성</button>
+        <label class="inline"><input type="checkbox" id="pmGenTopics" checked> 곡 주제·제외 태그·배경 검색어도 함께</label>
+        <span id="pmGenMsg" class="dim"></span></div>
       <div class="row"><label>설명 사용</label><label class="inline"><input type="checkbox" name="useKoDescription"> 한국어 상세 설명을 곡 생성 프롬프트에 포함</label></div>
       <div class="row top"><label>영어 프롬프트<br><span class="dim">기본 스타일</span></label><textarea name="prompt" rows="3" placeholder="비워도 됩니다. 비우면 한국어 상세 설명이 그대로 생성 프롬프트로 쓰입니다."></textarea></div>
       <div class="row3">
