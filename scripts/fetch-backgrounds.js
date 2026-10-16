@@ -12,7 +12,7 @@ for (const p of loadPresets()) {
   console.log(`\n[${p.id}] 보유 ${have}장, 목표 ${want}장`);
   let fails = 0;
   while (have < want && fails < 4) {
-    const r = await findBackground({ presetId: p.id, queries: p.imageQueries, cfg, log: (m) => console.log('  ' + m) });
+    const r = await findBackground({ presetId: p.id, queries: p.imageQueries, cfg, log: (m) => console.log('  ' + m), freshOnly: true });
     if (r?.fresh) have++; else fails++;
   }
 }

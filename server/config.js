@@ -45,10 +45,10 @@ const DEFAULTS = {
     provider: 'commons',           // 'commons' (Wikimedia, 키 불필요, 빠름) | 'openverse' (키 불필요, CC0만, 느림) | 'pexels' (키 필요)
     pexelsKey: '',
   },
-  anthropic: {
-    apiKey: '',                    // 프리셋 영어 프롬프트 자동 생성에 사용 (선택)
-    model: 'claude-opus-5-5',
-  },
+  llm: { provider: 'anthropic' },   // 메인 LLM: 'anthropic' | 'openai' | 'gemini' (번역·프리셋 생성·배경 사진 기획에 사용)
+  anthropic: { apiKey: '', model: 'claude-opus-5-5', cheapModel: 'claude-haiku-5-5' },
+  openai: { apiKey: '', model: 'gpt-5.4', cheapModel: 'gpt-5.4-mini' },
+  gemini: { apiKey: '', model: 'gemini-3.6-flash', cheapModel: 'gemini-3.5-flash-lite' },   // 키를 비우면 Lyria(Gemini) 키를 같이 쓴다
   youtube: {
     channelName: '',
     hashtags: '#playlist #aimusic',
@@ -75,7 +75,9 @@ function fileConfig() {
 export function loadConfig() {
   const cfg = fileConfig();
   if (process.env.TREBLO_API_KEY) cfg.treblo.apiKey = process.env.TREBLO_API_KEY;
-  if (process.env.GEMINI_API_KEY) cfg.lyria.apiKey = process.env.GEMINI_API_KEY;
+  if (process.env.GEMINI_API_KEY) { cfg.lyria.apiKey = process.env.GEMINI_API_KEY; cfg.gemini.apiKey = process.env.GEMINI_API_KEY; }
+  if (process.env.OPENAI_API_KEY) cfg.openai.apiKey = process.env.OPENAI_API_KEY;
+  if (process.env.ANTHROPIC_API_KEY) cfg.anthropic.apiKey = process.env.ANTHROPIC_API_KEY;
   if (process.env.PORT) cfg.port = Number(process.env.PORT);
   return cfg;
 }
@@ -95,6 +97,6 @@ export function maskConfig(cfg) {
   c.hasLyriaKey = Boolean(cfg.lyria?.apiKey);
   if (c.images?.pexelsKey) c.images.pexelsKey = '****';
   c.hasAnthropicKey = Boolean(cfg.anthropic?.apiKey || process.env.ANTHROPIC_API_KEY);
-  if (c.anthropic?.apiKey) c.anthropic.apiKey = '****';
+  for (const id of ['anthropic', 'openai', 'gemini']) if (c[id]?.apiKey) c[id].apiKey = '****';
   return c;
 }

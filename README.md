@@ -41,6 +41,9 @@ START.bat
 - 음악 생성: [Treblo](https://treblo.com) (구 Sonauto) 공개 API. 곡당 100크레딧. *Powered by Treblo*
 - 음원 소스 4종: Treblo API 자동 생성 / Google Lyria 자동 생성(연주곡 전용) / `input/` 로컬 파일 / 테스트 합성음(크레딧 0)
 - 배경 사진 자동 수집: Wikimedia Commons(Unsplash 출처 CC0 우선, 키 불필요) / Openverse / Pexels(키). `assets/backgrounds/`에 풀로 저장, `_rejected.txt`로 제외 관리
+  - 상업적 이용 가능 라이선스만(CC0·퍼블릭 도메인·CC BY·Pexels). NC/ND/SA·사용 제한 파일 제외, CC BY 출처는 유튜브 설명에 자동 기재
+  - 메인 LLM 키가 있으면 작업마다 곡 제목·가사로 검색어를 기획하고 후보(풀 + 새 검색)를 분위기 기준으로 선별
+- 메인 LLM: Claude · OpenAI · Gemini 중 하나를 상단 [설정] 모달에서 키 등록 후 "● 메인으로" 지정(`llm.provider`). 한글 요청(상세 설명·추가 프롬프트) → 영어 번역, 새 프리셋 생성, 배경 사진 기획·선별에 사용. 카드마다 모델(품질)·경량 모델(작업마다) id 를 자유 입력하며 "모델 목록" 버튼으로 확인. Gemini 카드를 비우면 Lyria 키 공유
 
 ### Google Lyria (연주곡 전용 소스)
 

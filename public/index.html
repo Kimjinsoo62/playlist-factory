@@ -63,11 +63,11 @@
     </form>
 
     <details id="settings">
-      <summary>기타 설정 (렌더링 · 사진 · 유튜브 · Claude 키)</summary>
+      <summary>기타 설정 (렌더링 · 사진 · 유튜브)</summary>
       <form id="cfgForm">
         <div class="row3">
           <div><label>포트(재시작 필요)</label><input type="number" name="port" value="5177"></div>
-          <div style="grid-column: span 2"><label>작곡 AI API 키</label><div class="dim" style="padding-top:3px">Treblo·Lyria 키와 모델은 상단 <b>[설정]</b> 버튼에서 등록·관리합니다.</div></div>
+          <div style="grid-column: span 2"><label>작곡 AI API 키</label><div class="dim" style="padding-top:3px">작곡 AI(Treblo·Lyria)와 메인 LLM(Claude) 키·모델은 상단 <b>[설정]</b> 버튼에서 등록·관리합니다.</div></div>
         </div>
         <div class="row3">
           <div><label>인코더</label><select name="render.encoder"><option value="auto">자동(QSV→x264)</option><option value="libx264">libx264</option><option value="h264_qsv">h264_qsv</option></select></div>
@@ -87,10 +87,6 @@
         <div class="row3">
           <div><label>사진 소스</label><select name="images.provider"><option value="commons">Wikimedia Commons (키 불필요)</option><option value="openverse">Openverse CC0 (키 불필요, 느림)</option><option value="pexels">Pexels (키 필요)</option></select></div>
           <div style="grid-column: span 2"><label>Pexels API 키(선택)</label><input name="images.pexelsKey" type="password" placeholder="pexels.com/api 에서 무료 발급"></div>
-        </div>
-        <div class="row3">
-          <div style="grid-column: span 2"><label>Claude(Anthropic) API 키 — 프리셋 영어 프롬프트 자동 생성</label><input name="anthropic.apiKey" id="anthropicKey" type="password" placeholder="sk-ant-… (platform.claude.com 에서 발급, 선택)"></div>
-          <div><label>모델</label><select name="anthropic.model"><option value="claude-opus-5-5">Opus 5.5 (기본)</option><option value="claude-sonnet-5-5">Sonnet 5.5</option><option value="claude-haiku-5-5">Haiku 5.5 (가장 저렴)</option></select></div>
         </div>
         <div class="row"><label>채널명(설명 하단)</label><input name="youtube.channelName" placeholder="© 채널명"></div>
         <div class="row"><label>해시태그</label><input name="youtube.hashtags" value="#playlist #aimusic"></div>
@@ -156,7 +152,7 @@
 <!-- 설정: 작곡 AI API 키 관리 모달 -->
 <div id="kmodal" class="modal" hidden>
   <div class="box km">
-    <div class="mhead"><b>설정 · 작곡 AI API 키</b><div class="grow"></div><button id="kmClose" class="btn small">닫기</button></div>
+    <div class="mhead"><b>설정 · API 키 (작곡 AI · 메인 LLM)</b><span class="dim">작곡 AI: Treblo · Lyria / 메인 LLM: Claude · OpenAI · Gemini</span><div class="grow"></div><button id="kmClose" class="btn small">닫기</button></div>
     <div id="kmMsg" class="desc dim" style="margin:0 0 6px"></div>
     <div id="kmBody" class="mbody">
       <div class="kcard" data-p="treblo">
@@ -179,8 +175,39 @@
         </div>
         <div class="actions"><button type="button" class="btn primary small" data-act="save">저장</button><button type="button" class="btn small" data-act="check">키 확인</button><button type="button" class="btn danger small" data-act="delete">키 삭제</button><span class="sep"></span><button type="button" class="btn small act" data-act="activate">● 활성화</button><button type="button" class="btn small" data-act="standby">○ 대기</button><span class="dim" data-r="msg"></span></div>
       </div>
+      <div class="ksec">메인 LLM — 셋 중 <b>하나만 메인</b>으로 씁니다. 용도: 한글 요청 → 영어 프롬프트 번역 · 새 장르(프리셋) 생성 · 배경 사진 기획·선별. 모델 id 는 자유 입력이며 <b>모델 목록</b> 버튼으로 확인할 수 있습니다.</div>
+      <div class="kcard" data-p="anthropic" data-kind="llm">
+        <div class="khead"><b>Claude (Anthropic)</b><span class="dim"></span><div class="grow"></div><span class="chip" data-r="active">–</span><span class="chip" data-r="status">–</span></div>
+        <div class="row"><label>API 키</label><input type="password" data-r="key" autocomplete="off" placeholder="sk-ant-… (platform.claude.com 에서 발급)"><button type="button" class="btn small" data-act="toggle">보기</button></div>
+        <div class="row3">
+          <div><label>모델 (프리셋 생성용)</label><input data-r="model" list="dl-anthropic-m" placeholder="claude-opus-5-5" spellcheck="false"><datalist id="dl-anthropic-m"><option value="claude-opus-5-5"><option value="claude-sonnet-5-5"><option value="claude-haiku-5-5"></datalist></div>
+          <div><label>경량 모델 (번역·사진 선별, 작업마다)</label><input data-r="cheapModel" list="dl-anthropic-c" placeholder="claude-haiku-5-5" spellcheck="false"><datalist id="dl-anthropic-c"><option value="claude-opus-5-5"><option value="claude-sonnet-5-5"><option value="claude-haiku-5-5"></datalist></div>
+          <div><label>발급</label><a href="https://platform.claude.com" target="_blank" rel="noopener">platform.claude.com ↗</a></div>
+        </div>
+        <div class="actions"><button type="button" class="btn primary small" data-act="save">저장</button><button type="button" class="btn small" data-act="check">키 확인</button><button type="button" class="btn small" data-act="models" title="이 키로 쓸 수 있는 모델 id 를 불러와 입력칸의 제안 목록에 넣습니다">모델 목록</button><button type="button" class="btn danger small" data-act="delete">키 삭제</button><span class="sep"></span><button type="button" class="btn small act" data-act="activate">● 메인으로</button><button type="button" class="btn small" data-act="standby">○ 대기</button><span class="dim" data-r="msg"></span></div>
+      </div>
+      <div class="kcard" data-p="openai" data-kind="llm">
+        <div class="khead"><b>OpenAI</b><span class="dim"></span><div class="grow"></div><span class="chip" data-r="active">–</span><span class="chip" data-r="status">–</span></div>
+        <div class="row"><label>API 키</label><input type="password" data-r="key" autocomplete="off" placeholder="sk-… (platform.openai.com 에서 발급)"><button type="button" class="btn small" data-act="toggle">보기</button></div>
+        <div class="row3">
+          <div><label>모델 (프리셋 생성용)</label><input data-r="model" list="dl-openai-m" placeholder="gpt-5.4" spellcheck="false"><datalist id="dl-openai-m"><option value="gpt-5.4"><option value="gpt-5.4-mini"><option value="gpt-5.4-nano"></datalist></div>
+          <div><label>경량 모델 (번역·사진 선별, 작업마다)</label><input data-r="cheapModel" list="dl-openai-c" placeholder="gpt-5.4-mini" spellcheck="false"><datalist id="dl-openai-c"><option value="gpt-5.4"><option value="gpt-5.4-mini"><option value="gpt-5.4-nano"></datalist></div>
+          <div><label>발급</label><a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener">platform.openai.com ↗</a></div>
+        </div>
+        <div class="actions"><button type="button" class="btn primary small" data-act="save">저장</button><button type="button" class="btn small" data-act="check">키 확인</button><button type="button" class="btn small" data-act="models" title="이 키로 쓸 수 있는 모델 id 를 불러와 입력칸의 제안 목록에 넣습니다">모델 목록</button><button type="button" class="btn danger small" data-act="delete">키 삭제</button><span class="sep"></span><button type="button" class="btn small act" data-act="activate">● 메인으로</button><button type="button" class="btn small" data-act="standby">○ 대기</button><span class="dim" data-r="msg"></span></div>
+      </div>
+      <div class="kcard" data-p="gemini" data-kind="llm">
+        <div class="khead"><b>Gemini (Google)</b><span class="dim">비워 두면 Lyria 의 Google 키를 같이 씁니다</span><div class="grow"></div><span class="chip" data-r="active">–</span><span class="chip" data-r="status">–</span></div>
+        <div class="row"><label>API 키</label><input type="password" data-r="key" autocomplete="off" placeholder="AIza… (aistudio.google.com 에서 발급, Lyria 키와 같은 키 가능)"><button type="button" class="btn small" data-act="toggle">보기</button></div>
+        <div class="row3">
+          <div><label>모델 (프리셋 생성용)</label><input data-r="model" list="dl-gemini-m" placeholder="gemini-3.6-flash" spellcheck="false"><datalist id="dl-gemini-m"><option value="gemini-3.1-pro-preview"><option value="gemini-3.6-flash"><option value="gemini-3.5-flash-lite"></datalist></div>
+          <div><label>경량 모델 (번역·사진 선별, 작업마다)</label><input data-r="cheapModel" list="dl-gemini-c" placeholder="gemini-3.5-flash-lite" spellcheck="false"><datalist id="dl-gemini-c"><option value="gemini-3.1-pro-preview"><option value="gemini-3.6-flash"><option value="gemini-3.5-flash-lite"></datalist></div>
+          <div><label>발급</label><a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com ↗</a></div>
+        </div>
+        <div class="actions"><button type="button" class="btn primary small" data-act="save">저장</button><button type="button" class="btn small" data-act="check">키 확인</button><button type="button" class="btn small" data-act="models" title="이 키로 쓸 수 있는 모델 id 를 불러와 입력칸의 제안 목록에 넣습니다">모델 목록</button><button type="button" class="btn danger small" data-act="delete">키 삭제</button><span class="sep"></span><button type="button" class="btn small act" data-act="activate">● 메인으로</button><button type="button" class="btn small" data-act="standby">○ 대기</button><span class="dim" data-r="msg"></span></div>
+      </div>
     </div>
-    <div class="dim" style="margin-top:4px"><b>활성/대기</b>: 작곡 AI 는 한 번에 하나만 활성입니다. 활성 소스가 새 작업의 기본 소스가 되고, 대기 소스는 소스 목록에서 선택할 수 없으며 작업 요청도 거부됩니다. 키는 이 PC의 <code>config.json</code>에만 저장됩니다(git 제외). 환경변수(<code>TREBLO_API_KEY</code>, <code>GEMINI_API_KEY</code>)로 지정된 키는 여기서 지울 수 없습니다. 저장된 키는 앞뒤 4자만 표시됩니다.</div>
+    <div class="dim" style="margin-top:4px"><b>활성/대기</b>: 작곡 AI 는 한 번에 하나만 활성입니다. 활성 소스가 새 작업의 기본 소스가 되고, 대기 소스는 소스 목록에서 선택할 수 없으며 작업 요청도 거부됩니다. 키는 이 PC의 <code>config.json</code>에만 저장됩니다(git 제외). 환경변수(<code>TREBLO_API_KEY</code>, <code>GEMINI_API_KEY</code>, <code>ANTHROPIC_API_KEY</code>, <code>OPENAI_API_KEY</code>)로 지정된 키는 여기서 지울 수 없습니다. 저장된 키는 앞뒤 4자만 표시됩니다.</div>
   </div>
 </div>
 <!-- 프리셋 설명·편집 모달 -->

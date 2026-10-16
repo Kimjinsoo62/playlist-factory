@@ -1,4 +1,9 @@
-// 무료 배경 사진 자동 수집: Openverse(키 불필요, CC0/퍼블릭도메인만) 또는 Pexels(키 필요)
+// 무료 배경 사진 자동 수집: Wikimedia Commons(키 불필요) / Openverse(키 불필요) / Pexels(키 필요)
+// 라이선스 정책: 상업적 이용(유튜브 수익화 포함)이 허용되는 사진만 쓴다.
+//   허용 = CC0 · 퍼블릭 도메인 · CC BY(출처 표기 필요, 영상 설명에 자동 기재) · Pexels License
+//   제외 = NC(비영리) · ND(변경 금지) · SA(동일조건, 영상 전체에 전파될 수 있어 제외) · 사용 제한(상표·초상권 등)이 붙은 파일
+// 분위기 적합성: 작업마다 LLM이 곡 제목·가사·스타일로 검색어를 짜고(plan), 후보(저장 풀 + 새 검색)를 분위기 기준으로 고른다(rank).
+//   LLM 키가 없으면 프리셋 검색어 + 휴리스틱 점수로 동작한다.
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
@@ -8,6 +13,19 @@ import { DIRS } from './paths.js';
 
 const UA = 'playlist-factory/0.1 (https://github.com; local app)';
 const PEOPLE = /\b(person|people|man|woman|men|women|girl|boy|guy|lady|portrait|face|child|children|kid|kids|baby|crowd|selfie|model|wedding|bride|player|players|playing|athlete|athletes|musician|musicians|band|concert|dancers?|boxers?|audience|team|students?|businesswoman|businessman|couple|family|soldiers?)\b/i;
+const JUNK = /(map|diagram|logo|scan|document|manuscript|painting|drawing|portrait|museum|HAER|HABS|DPLA|archive|festival|school|church|cathedral|building|house|station|monument|statue|exhibition|panorama|poster|cover|flag|coat of arms|satellite|wildfire|NASA|SVS|HLS|composite|performance|performing|hiking|hiker|sitting|standing|walking)/i;
+
+/** 상업적 이용이 허용되는 라이선스인지 (SA·NC·ND 및 사용 제한 있는 파일은 제외) */
+export function isCommercialOk(r) {
+  const lic = String(r.license || '').trim();
+  if (!lic) return false;
+  if (/\b(NC|ND|SA)\b/i.test(lic)) return false;
+  if (r.restrictions && String(r.restrictions).trim()) return false;
+  if (/^pexels license$/i.test(lic)) return true;
+  if (/^(CC0|CC0 1\.0|Public domain|PD|PDM|Public Domain Mark( 1\.0)?)$/i.test(lic)) return true;
+  if (/^CC BY( \d\.\d)?( [A-Za-z]{2}(-[A-Za-z]{2})?)?$/i.test(lic)) return true;   // CC BY, CC BY 2.0, CC BY 4.0 DE ...
+  return false;
+}
 
 function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 function score(r) {
@@ -45,10 +63,12 @@ export async function searchOpenverse(query, { count = 20 } = {}) {
     .filter(r => !/video|svg|\.gif$/i.test(`${r.category || ''} ${r.url || ''}`))
     .map(r => ({
       id: r.id, url: /upload\.wikimedia\.org/.test(r.url) ? wikimediaThumb(r.url) : r.url,
-      title: (r.title || '').replace(/<[^>]+>/g, '').trim(), creator: r.creator || '', license: (r.license || '').toUpperCase(),
+      title: (r.title || '').replace(/<[^>]+>/g, '').trim(), creator: r.creator || '', license: (r.license || '').toUpperCase() === 'PDM' ? 'Public domain' : (r.license || '').toUpperCase(),
+      licenseUrl: r.license_url || '', desc: (r.tags || []).map(t => t.name).slice(0, 12).join(', '),
       source: r.source || '', page: r.foreign_landing_url || '', provider: 'openverse',
       width: r.width, height: r.height,
-    }));
+    }))
+    .filter(isCommercialOk);
 }
 
 /** Wikimedia Commons 검색(키 불필요, 1~3초). CC0·퍼블릭도메인·CC BY 만 사용(BY-SA 는 동일조건 의무가 있어 제외). */
@@ -66,7 +86,8 @@ export async function searchCommons(query, { count = 40 } = {}) {
 async function commonsQuery(gsrsearch, count) {
   const q = new URLSearchParams({
     action: 'query', format: 'json', generator: 'search', gsrsearch, gsrnamespace: '6', gsrlimit: String(count),
-    prop: 'imageinfo', iiprop: 'url|size|extmetadata', iiurlwidth: '1920', iiextmetadatafilter: 'LicenseShortName|Artist|ObjectName|Categories',
+    prop: 'imageinfo', iiprop: 'url|size|extmetadata', iiurlwidth: '1920',
+    iiextmetadatafilter: 'LicenseShortName|LicenseUrl|Artist|ObjectName|Categories|ImageDescription|Restrictions|Copyrighted|UsageTerms',
   });
   const d = await fetchJson(`https://commons.wikimedia.org/w/api.php?${q}`, {}, 25000);
   const pages = Object.values(d.query?.pages || {});
@@ -76,12 +97,17 @@ async function commonsQuery(gsrsearch, count) {
     const title = String(p.title || '').replace(/^File:/, '').replace(/\.[a-z]+$/i, '');
     const artist = (md.Artist?.value || '').replace(/<[^>]+>/g, '').trim();
     const cats = md.Categories?.value || '';
-    return { id: `cm${p.pageid}`, url: ii.thumburl || ii.url, title, creator: artist, license: lic, source: 'wikimedia commons', page: ii.descriptionurl || '', provider: 'commons', width: ii.width || 0, height: ii.height || 0, cats };
+    const desc = (md.ImageDescription?.value || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 240);
+    return {
+      id: `cm${p.pageid}`, url: ii.thumburl || ii.url, title, creator: artist, license: lic, licenseUrl: md.LicenseUrl?.value || '',
+      restrictions: (md.Restrictions?.value || '').trim(), usageTerms: (md.UsageTerms?.value || '').replace(/<[^>]+>/g, '').trim().slice(0, 120),
+      desc, source: 'wikimedia commons', page: ii.descriptionurl || '', provider: 'commons', width: ii.width || 0, height: ii.height || 0, cats,
+    };
   }).filter(r => r.url && r.width >= 1600 && r.height >= 900 && r.width > r.height)
-    .filter(r => /^(CC0|Public domain|CC BY( \d\.\d)?( [A-Za-z]{2})?)$/i.test(r.license) || /^CC BY \d/i.test(r.license) && !/SA|NC|ND/i.test(r.license))
+    .filter(isCommercialOk)
     .filter(r => !PEOPLE.test(`${r.title} ${r.cats}`))
     .filter(r => !/\.(svg|gif|tif|tiff)$/i.test(r.url))
-    .filter(r => !/(map|diagram|logo|scan|document|manuscript|painting|drawing|portrait|museum|HAER|HABS|DPLA|archive|festival|school|church|cathedral|building|house|station|monument|statue|exhibition|panorama|poster|cover|flag|coat of arms|satellite|wildfire|NASA|SVS|HLS|composite|performance|performing|hiking|hiker|sitting|standing|walking)/i.test(`${r.title} ${r.cats}`))
+    .filter(r => !JUNK.test(`${r.title} ${r.cats}`))
     .filter(r => !/^(DSC|IMG|P\d{6}|\d{8}_)/i.test(r.title))
     .filter(r => r.width / r.height >= 1.3 && r.width / r.height <= 2.2);
 }
@@ -91,7 +117,7 @@ export async function searchPexels(query, apiKey, { count = 15 } = {}) {
   const d = await fetchJson(`https://api.pexels.com/v1/search?${q}`, { Authorization: apiKey });
   return (d.photos || []).map(p => ({
     id: String(p.id), url: p.src?.large2x || p.src?.original, title: p.alt || '', creator: p.photographer || '',
-    license: 'Pexels License', source: 'pexels', page: p.url, provider: 'pexels', width: p.width, height: p.height,
+    license: 'Pexels License', licenseUrl: 'https://www.pexels.com/license/', desc: p.alt || '', source: 'pexels', page: p.url, provider: 'pexels', width: p.width, height: p.height,
   }));
 }
 
@@ -150,83 +176,129 @@ export function listPool(presetId) {
   });
 }
 
-/**
- * 프리셋에 맞는 배경 사진을 구한다. 새로 받아보고, 실패하면 저장된 풀에서 고른다.
- * 반환: {file, credit, fresh} | null
- */
-export async function findBackground({ presetId, queries, cfg, log, preferPool = false }) {
-  const pool = listPool(presetId);
-  if (preferPool && pool.length) { const c = pick(pool); return { ...c, fresh: false }; }
+/** 검색어 여러 개로 후보를 모은다(라이선스·인물·중복·거부 목록 필터 적용, 점수순). */
+async function gatherCandidates({ presetId, queries, cfg, log, avoid = [], maxQueries = 3 }) {
   const provider = cfg?.images?.provider || 'commons';
-  const query = pick(queries && queries.length ? queries : ['abstract background']);
-  try {
-    log?.(`배경 사진 검색: "${query}" (${provider})`);
+  const qs = [...new Set((queries || []).map(q => String(q).trim()).filter(Boolean))];
+  const useQs = qs.length > maxQueries ? qs.sort(() => Math.random() - 0.5).slice(0, maxQueries) : qs;
+  if (!useQs.length) useQs.push('abstract background');
+  log?.(`배경 사진 검색 (${provider}): ${useQs.map(q => `"${q}"`).join(', ')}`);
+  const searchOne = async (query) => {
     let results = [];
     if (provider === 'pexels' && cfg?.images?.pexelsKey) results = await searchPexels(query, cfg.images.pexelsKey);
     else if (provider === 'openverse') {
-      // Openverse(스톡 사진, 느리고 불안정)와 Wikimedia Commons(빠름)를 동시에 검색해 합친다
       const [ov, cm] = await Promise.allSettled([
         searchOpenverse(query).then(rs => rs.filter(r => !/rawpixel/i.test(r.source))),   // rawpixel 은 다운로드 URL 만료(410)
         searchCommons(query),
       ]);
       if (ov.status === 'rejected') log?.(`Openverse 응답 없음(${ov.reason?.message?.split('\n')[0]}) → Commons 결과만 사용`, 'warn');
       results = [...(ov.value || []), ...(cm.value || [])];
-    } else {
-      results = await searchCommons(query);
+    } else results = await searchCommons(query);
+    return results.map(r => ({ ...r, query }));
+  };
+  const settled = await Promise.allSettled(useQs.map(searchOne));
+  const used = new Set(listPool(presetId).map(p => p.credit?.id));
+  const rejected = loadRejected();
+  const avoidRe = avoid.length ? new RegExp(`\\b(${avoid.map(a => String(a).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})\\b`, 'i') : null;
+  const seen = new Set(); const out = [];
+  settled.forEach((s, i) => {
+    if (s.status === 'rejected') { log?.(`"${useQs[i]}" 검색 실패: ${s.reason?.message?.split('\n')[0]}`, 'warn'); return; }
+    for (const r of s.value) {
+      if (seen.has(r.id) || used.has(r.id) || rejected.has(r.id)) continue;
+      if (!isCommercialOk(r)) continue;
+      if (avoidRe && avoidRe.test(`${r.title} ${r.desc || ''} ${r.cats || ''}`)) continue;
+      seen.add(r.id); out.push(r);
     }
-    // 스톡형 소스·CC0 를 앞으로
-    results.sort((a, b) => score(b) - score(a));
-    if (results.length) log?.(`후보 ${results.length}장 (최고 점수 ${score(results[0])}: ${results[0].title.slice(0, 40)} / ${results[0].source})`);
-    const used = new Set(pool.map(p => p.credit?.id));
-    const rejected = loadRejected();
-    results = results.filter(r => !used.has(r.id) && !rejected.has(r.id));
-    if (!results.length) throw new Error('적합한 결과 없음');
-    const tries = results.slice(0, 8).sort(() => Math.random() - 0.5).slice(0, 4);
-    for (const r of tries) {
-      const dir = poolDir(presetId);
-      const base = `${Date.now()}_${r.id.slice(0, 8)}`;
-      const raw = path.join(dir, base + '.download');
-      const out = path.join(dir, base + '.jpg');
-      try {
-        await download(r.url, raw);
-        const size = await normalizeImage(raw, out);
-        const credit = { ...r, downloaded: new Date().toISOString(), original: size, query };
-        fs.writeFileSync(path.join(dir, base + '.json'), JSON.stringify(credit, null, 2), 'utf8');
-        log?.(`배경 사진 확보: "${credit.title || r.id}" by ${credit.creator || '?'} · ${credit.license} · ${credit.source} (${size.width}x${size.height})`);
-        return { file: out, credit, fresh: true };
-      } catch (e) {
-        log?.(`사진 후보 건너뜀 (${e.message.split('\n')[0]})`, 'warn');
-      } finally { try { fs.unlinkSync(raw); } catch {} }
-    }
-    throw new Error('후보 4개 모두 실패');
+  });
+  out.sort((a, b) => score(b) - score(a));
+  log?.(`후보 ${out.length}장 (상업적 이용 가능 라이선스만)`);
+  return out;
+}
+
+/** 후보 한 장을 내려받아 풀에 저장. 반환 {file, credit} | null */
+async function downloadCandidate(r, presetId, log) {
+  const dir = poolDir(presetId);
+  const base = `${Date.now()}_${String(r.id).slice(0, 8)}`;
+  const raw = path.join(dir, base + '.download');
+  const out = path.join(dir, base + '.jpg');
+  try {
+    await download(r.url, raw);
+    const size = await normalizeImage(raw, out);
+    const { query, ...rest } = r;
+    const credit = { ...rest, downloaded: new Date().toISOString(), original: size, query };
+    fs.writeFileSync(path.join(dir, base + '.json'), JSON.stringify(credit, null, 2), 'utf8');
+    log?.(`배경 사진 확보: "${credit.title || r.id}" by ${credit.creator || '?'} · ${credit.license} · ${credit.source} (${size.width}x${size.height})`);
+    return { file: out, credit };
   } catch (e) {
-    log?.(`배경 사진 검색 실패: ${e.message}`, 'warn');
-    if (pool.length) { const c = pick(pool); log?.(`저장된 배경 사진 사용: ${path.basename(c.file)}`); return { ...c, fresh: false }; }
+    log?.(`사진 후보 건너뜀 "${(r.title || r.id).slice(0, 40)}" (${e.message.split('\n')[0]})`, 'warn');
     return null;
-  }
+  } finally { try { fs.unlinkSync(raw); } catch {} }
+}
+
+/** 풀 항목을 후보 형식으로 */
+function poolCandidates(presetId) {
+  return listPool(presetId).map((p, i) => {
+    const c = p.credit || {};
+    return { id: c.id || `pool${i}`, title: c.title || path.basename(p.file), desc: [c.desc, c.query ? `(found with: ${c.query})` : '', (c.cats || '').split('|').slice(0, 4).join(', ')].filter(Boolean).join(' '), source: 'pool', file: p.file, credit: p.credit, license: c.license };
+  });
+}
+
+/** LLM 없이 고르는 순서: 이번 검색어와 맞는 풀 사진 → 새 후보(점수순) → 나머지 풀 */
+function heuristicOrder(poolCands, fresh, queries) {
+  const words = new Set((queries || []).join(' ').toLowerCase().split(/\W+/).filter(w => w.length > 3));
+  const hit = (c) => { const t = `${c.title} ${c.desc} ${c.credit?.query || ''}`.toLowerCase(); return [...words].some(w => t.includes(w)); };
+  const poolHit = poolCands.filter(hit).sort(() => Math.random() - 0.5);
+  const poolMiss = poolCands.filter(c => !hit(c)).sort(() => Math.random() - 0.5);
+  return [...poolHit, ...fresh, ...poolMiss];
 }
 
 /**
- * 슬라이드쇼용으로 사진 여러 장을 모은다. 풀에 있는 것을 먼저 쓰고 모자라면 새로 받는다(최대 maxFetch 장).
- * 반환: [{file, credit}]
+ * 배경 사진 여러 장을 모은다. 후보 = 저장 풀 + 새 검색 결과. rank(LLM)가 있으면 분위기 기준으로 고르고, 없으면 휴리스틱.
+ * 새 사진은 maxFetch 장까지만 내려받고, 모자라면 풀에서 채운다.
+ * @param rank  async ({candidates:[{id,title,desc}], count}) => [id...]  (분위기 적합 순)
+ * 반환: [{file, credit, fresh}]
  */
-export async function collectBackgrounds({ presetId, queries, cfg, log, count = 8, maxFetch = 4, allowFetch = true }) {
-  const pool = listPool(presetId).sort(() => Math.random() - 0.5);
-  const picked = pool.slice(0, count);
-  let fetched = 0;
-  while (allowFetch && picked.length < count && fetched < maxFetch) {
-    const r = await findBackground({ presetId, queries, cfg, log });
-    fetched++;
-    if (!r) break;
-    if (r.fresh && !picked.some(p => p.file === r.file)) picked.push({ file: r.file, credit: r.credit });
-    else if (!r.fresh) break;   // 새 사진을 못 구해 풀에서 돌려준 경우 → 더 시도해도 같음
+export async function collectBackgrounds({ presetId, queries, cfg, log, count = 8, maxFetch = 4, allowFetch = true, plan = null, rank = null, freshOnly = false }) {
+  const poolCands = freshOnly ? [] : poolCandidates(presetId);
+  if (!allowFetch) return poolCands.sort(() => Math.random() - 0.5).slice(0, count).map(c => ({ file: c.file, credit: c.credit, fresh: false }));
+  const qs = plan?.queries?.length ? plan.queries : queries;
+  let fresh = [];
+  try { fresh = await gatherCandidates({ presetId, queries: qs, cfg, log, avoid: plan?.avoid || [] }); }
+  catch (e) { log?.(`배경 사진 검색 실패: ${e.message}`, 'warn'); }
+  let order = null;
+  const all = [...poolCands, ...fresh];
+  if (rank && all.length) {
+    try {
+      const ids = await rank({ candidates: all.map(c => ({ id: String(c.id), title: c.title, desc: (c.desc || c.cats || '').slice(0, 200), pool: c.source === 'pool' })), count: count + 4 });
+      const byId = new Map(all.map(c => [String(c.id), c]));
+      order = ids.map(id => byId.get(String(id))).filter(Boolean);
+      if (order.length) log?.(`분위기 적합 순 선별(LLM): ${order.slice(0, count).map(c => `"${(c.title || c.id).slice(0, 30)}"${c.source === 'pool' ? '(풀)' : ''}`).join(', ')}`);
+      else { log?.('LLM 선별 결과가 비어 휴리스틱으로 고릅니다', 'warn'); order = null; }
+    } catch (e) { log?.(`LLM 선별 실패(${e.message.split('\n')[0]}) → 휴리스틱으로 고릅니다`, 'warn'); }
   }
+  if (!order) order = heuristicOrder(poolCands, fresh, qs);
+  const picked = []; let fetched = 0; const usedFiles = new Set();
+  for (const c of order) {
+    if (picked.length >= count) break;
+    if (c.source === 'pool') { if (!usedFiles.has(c.file)) { usedFiles.add(c.file); picked.push({ file: c.file, credit: c.credit, fresh: false }); } }
+    else if (fetched < maxFetch) { fetched++; const r = await downloadCandidate(c, presetId, log); if (r) picked.push({ ...r, fresh: true }); }
+  }
+  if (picked.length < count) for (const c of poolCands.sort(() => Math.random() - 0.5)) { if (picked.length >= count) break; if (!usedFiles.has(c.file)) { usedFiles.add(c.file); picked.push({ file: c.file, credit: c.credit, fresh: false }); } }
   return picked;
+}
+
+/**
+ * 배경 사진 한 장. preferPool 이면 풀에서만, freshOnly 면 새로 받은 것만.
+ * 반환: {file, credit, fresh} | null
+ */
+export async function findBackground({ presetId, queries, cfg, log, preferPool = false, plan = null, rank = null, freshOnly = false }) {
+  const r = await collectBackgrounds({ presetId, queries, cfg, log, count: 1, maxFetch: 4, allowFetch: !preferPool, plan, rank, freshOnly });
+  return r[0] || null;
 }
 
 export function creditLine(credit) {
   if (!credit) return '';
   const who = credit.creator ? ` by ${credit.creator}` : '';
-  const lic = credit.license ? ` (${credit.license})` : '';
+  const lic = credit.license ? ` (${credit.license}${credit.licenseUrl ? ' ' + credit.licenseUrl : ''})` : '';
   return `Background photo: ${credit.title || 'untitled'}${who}${lic} via ${credit.source || credit.provider}${credit.page ? ' ' + credit.page : ''}`;
 }

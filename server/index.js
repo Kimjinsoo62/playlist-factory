@@ -11,6 +11,7 @@ import { checkUpdate, applyUpdate } from './update.js';
 import { TrebloProvider } from './providers/treblo.js';
 import { LocalProvider } from './providers/local.js';
 import { LyriaProvider, LYRIA_USD_PER_SONG, LYRIA_MODELS } from './providers/lyria.js';
+import { LLM_PROVIDERS, llmProvider, llmKey, checkLlmKey, listLlmModels, describeError as describeLlmError } from './llm.js';
 
 const cfg0 = loadConfig();
 const PORT = cfg0.port;
@@ -143,25 +144,30 @@ app.post('/api/backgrounds/:preset/fetch', async (req, res) => {
   const { findBackground } = await import('./images.js');
   const preset = loadPresets().find(p => p.id === req.params.preset);
   if (!preset) return res.status(404).json({ error: '프리셋 없음' });
-  const r = await findBackground({ presetId: preset.id, queries: preset.imageQueries, cfg: loadConfig(), log: () => {} });
+  const r = await findBackground({ presetId: preset.id, queries: preset.imageQueries, cfg: loadConfig(), log: () => {}, freshOnly: true });   // 새 사진만(풀 재사용 금지)
   res.json(r ? { ok: true, file: path.basename(r.file), credit: r.credit } : { ok: false, error: '사진을 구하지 못했습니다' });
 });
 app.use('/assets', express.static(DIRS.assets));
 // ── 작곡 AI API 키 관리 (설정 모달)
 const KEY_PROVIDERS = {
-  treblo: { label: 'Treblo', env: 'TREBLO_API_KEY', pattern: /^[\x21-\x7E]{8,300}$/, models: ['v3', 'v2'], maxConc: 10, hint: 'treblo.com/developers 에서 발급한 키만 붙여 넣으세요.' },
-  lyria: { label: 'Lyria(Gemini)', env: 'GEMINI_API_KEY', pattern: /^[\x21-\x7E]{20,300}$/, models: LYRIA_MODELS, maxConc: 6, hint: 'aistudio.google.com 에서 발급한 AIza… 형태의 키만 붙여 넣으세요.' },
+  treblo: { kind: 'music', label: 'Treblo', env: 'TREBLO_API_KEY', pattern: /^[\x21-\x7E]{8,300}$/, models: ['v3', 'v2'], maxConc: 10, hint: 'treblo.com/developers 에서 발급한 키만 붙여 넣으세요.' },
+  lyria: { kind: 'music', label: 'Lyria(Gemini)', env: 'GEMINI_API_KEY', pattern: /^[\x21-\x7E]{20,300}$/, models: LYRIA_MODELS, maxConc: 6, hint: 'aistudio.google.com 에서 발급한 AIza… 형태의 키만 붙여 넣으세요.' },
+  ...Object.fromEntries(Object.entries(LLM_PROVIDERS).map(([id, m]) => [id, { kind: 'llm', label: m.label, env: m.env, pattern: /^[\x21-\x7E]{20,300}$/, models: null, maxConc: 0, hint: `${m.site} 에서 발급한 ${m.keyHint} 형태의 키만 붙여 넣으세요.` }])),
 };
+const isMusic = (id) => KEY_PROVIDERS[id]?.kind === 'music';
+const isLlm = (id) => KEY_PROVIDERS[id]?.kind === 'llm';
+const MODEL_ID = /^[\w.\-:/]{3,80}$/;   // LLM 모델 id 는 자유 입력(제공자마다 수시로 바뀜)
 function keyStatus(cfg) {
   const out = {};
   for (const [id, m] of Object.entries(KEY_PROVIDERS)) {
     const k = cfg[id]?.apiKey || '';
-    out[id] = { set: Boolean(k), masked: k ? k.slice(0, 4) + '****' + k.slice(-4) : '', fromEnv: Boolean(process.env[m.env]), model: cfg[id]?.model, concurrency: cfg[id]?.concurrency, active: activeProvider(cfg) === id };
+    const shared = m.kind === 'llm' && id === 'gemini' && !k && Boolean(cfg.lyria?.apiKey);   // Lyria 키 공유
+    out[id] = { kind: m.kind, set: Boolean(k) || shared, shared, masked: k ? k.slice(0, 4) + '****' + k.slice(-4) : (shared ? 'Lyria 키 공유' : ''), fromEnv: Boolean(process.env[m.env]), model: cfg[id]?.model, cheapModel: m.kind === 'llm' ? cfg[id]?.cheapModel : undefined, concurrency: m.maxConc ? cfg[id]?.concurrency : undefined, active: m.kind === 'music' ? activeProvider(cfg) === id : llmProvider(cfg) === id };
   }
   return out;
 }
 /** 활성 작곡 AI: config.provider (treblo | lyria). 작곡 AI 가 아닌 값이 들어 있으면 treblo 로 간주 */
-function activeProvider(cfg) { return KEY_PROVIDERS[cfg.provider] ? cfg.provider : 'treblo'; }
+function activeProvider(cfg) { return isMusic(cfg.provider) ? cfg.provider : 'treblo'; }
 app.get('/api/keys', (req, res) => res.json(keyStatus(loadConfig())));
 app.put('/api/keys/:provider', (req, res) => {
   const id = req.params.provider, m = KEY_PROVIDERS[id];
@@ -173,8 +179,9 @@ app.put('/api/keys/:provider', (req, res) => {
     if (!m.pattern.test(k)) return res.status(400).json({ error: `${m.label} API 키 형식이 아닙니다 (길이 ${k.length}, 한글·공백 등 포함). ${m.hint}` });
     patch.apiKey = k;
   }
-  if (typeof b.model === 'string' && m.models.includes(b.model)) patch.model = b.model;
-  if (Number.isFinite(Number(b.concurrency)) && Number(b.concurrency) >= 1) patch.concurrency = Math.min(m.maxConc, Math.floor(Number(b.concurrency)));
+  if (typeof b.model === 'string' && (m.models ? m.models.includes(b.model) : MODEL_ID.test(b.model.trim()))) patch.model = b.model.trim();
+  if (isLlm(id) && typeof b.cheapModel === 'string' && MODEL_ID.test(b.cheapModel.trim())) patch.cheapModel = b.cheapModel.trim();
+  if (m.maxConc && Number.isFinite(Number(b.concurrency)) && Number(b.concurrency) >= 1) patch.concurrency = Math.min(m.maxConc, Math.floor(Number(b.concurrency)));
   if (!Object.keys(patch).length) return res.status(400).json({ error: '저장할 값이 없습니다' });
   res.json(keyStatus(saveConfig({ [id]: patch })));
 });
@@ -190,6 +197,10 @@ app.post('/api/keys/:provider/activate', (req, res) => {
   const id = req.params.provider, m = KEY_PROVIDERS[id];
   if (!m) return res.status(404).json({ error: '알 수 없는 소스' });
   const cfg = loadConfig();
+  if (isLlm(id)) {
+    if (!llmKey(cfg, id)) return res.status(400).json({ error: `${m.label} API 키가 없어 메인 LLM 으로 지정할 수 없습니다. 먼저 키를 저장하세요.` });
+    return res.json(keyStatus(saveConfig({ llm: { provider: id } })));
+  }
   if (!cfg[id]?.apiKey) return res.status(400).json({ error: `${m.label} API 키가 없어 활성화할 수 없습니다. 먼저 키를 저장하세요.` });
   res.json(keyStatus(saveConfig({ provider: id })));
 });
@@ -197,8 +208,14 @@ app.post('/api/keys/:provider/standby', (req, res) => {
   const id = req.params.provider, m = KEY_PROVIDERS[id];
   if (!m) return res.status(404).json({ error: '알 수 없는 소스' });
   const cfg = loadConfig();
+  if (isLlm(id)) {
+    if (llmProvider(cfg) !== id) return res.json(keyStatus(cfg));
+    const next = Object.keys(LLM_PROVIDERS).find(p => p !== id && llmKey(cfg, p));
+    if (!next) return res.status(400).json({ error: `다른 LLM 키가 없어 ${m.label} 를 대기로 둘 수 없습니다. 메인 LLM 은 하나가 지정되어 있어야 합니다.` });
+    return res.json(keyStatus(saveConfig({ llm: { provider: next } })));
+  }
   if (activeProvider(cfg) !== id) return res.json(keyStatus(cfg));          // 이미 대기
-  const other = Object.keys(KEY_PROVIDERS).find(p => p !== id && cfg[p]?.apiKey);
+  const other = Object.keys(KEY_PROVIDERS).find(p => p !== id && isMusic(p) && cfg[p]?.apiKey);
   if (!other) return res.status(400).json({ error: `다른 작곡 AI 키가 없어 ${m.label} 를 대기로 둘 수 없습니다. 작곡 AI 는 최소 하나가 활성이어야 합니다.` });
   res.json(keyStatus(saveConfig({ provider: other })));
 });
@@ -207,8 +224,15 @@ app.get('/api/keys/:provider/check', async (req, res) => {
   try {
     if (id === 'treblo') { const b = await new TrebloProvider(cfg.treblo).balance(); return res.json({ ok: true, summary: `크레딧 구독 ${(b.num_credits || 0).toLocaleString()} + 종량제 ${(b.num_credits_payg || 0).toLocaleString()} (곡당 100)`, balance: b }); }
     if (id === 'lyria') { const r = await new LyriaProvider(cfg.lyria).check(); return res.json({ ok: true, summary: `연결 정상: ${r.model}${r.displayName ? ' (' + r.displayName + ')' : ''}`, ...r }); }
+    if (isLlm(id)) { try { const r = await checkLlmKey(cfg, id); return res.json({ ok: true, summary: `연결 정상: ${r.model}${r.displayName ? ' (' + r.displayName + ')' : ''}`, ...r }); } catch (e) { return res.status(400).json({ error: describeLlmError(e, id) }); } }
     res.status(404).json({ error: '알 수 없는 소스' });
   } catch (e) { res.status(400).json({ error: e.message }); }
+});
+app.get('/api/keys/:provider/models', async (req, res) => {
+  const id = req.params.provider;
+  if (!isLlm(id)) return res.status(404).json({ error: '모델 목록은 LLM 제공자만 지원합니다' });
+  try { res.json({ models: await listLlmModels(loadConfig(), id) }); }
+  catch (e) { res.status(400).json({ error: describeLlmError(e, id) }); }
 });
 app.get('/api/treblo/balance', async (req, res) => {
   try { const tp = new TrebloProvider(loadConfig().treblo); res.json(await tp.balance()); }
@@ -251,7 +275,7 @@ app.post('/api/jobs', (req, res) => {
   if (!body.preset) return res.status(400).json({ error: 'preset 필요' });
   const cfg = loadConfig();
   const provider = body.dryRun ? 'mock' : (body.provider || cfg.provider);
-  if (KEY_PROVIDERS[provider] && activeProvider(cfg) !== provider) return res.status(400).json({ error: `${KEY_PROVIDERS[provider].label} 소스는 대기 상태입니다. 상단 [설정]에서 활성화한 뒤 사용하세요. (현재 활성: ${KEY_PROVIDERS[activeProvider(cfg)].label})` });
+  if (isMusic(provider) && activeProvider(cfg) !== provider) return res.status(400).json({ error: `${KEY_PROVIDERS[provider].label} 소스는 대기 상태입니다. 상단 [설정]에서 활성화한 뒤 사용하세요. (현재 활성: ${KEY_PROVIDERS[activeProvider(cfg)].label})` });
   if (provider === 'treblo' && !cfg.treblo.apiKey) return res.status(400).json({ error: 'Treblo API 키가 없습니다. 설정에서 입력하거나 소스를 "로컬 폴더"로 바꾸세요.' });
   if (provider === 'lyria') {
     if (!cfg.lyria.apiKey) return res.status(400).json({ error: 'Lyria(Gemini) API 키가 없습니다. 설정에서 입력하세요.' });

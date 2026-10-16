@@ -170,26 +170,35 @@ function applyActive(active) {
   }
   if (changed) providerChanged();
 }
+const NAMES = { treblo: 'Treblo', lyria: 'Lyria', anthropic: 'Claude', openai: 'OpenAI', gemini: 'Gemini' };
 async function refreshKeys() {
   let ks; try { ks = await api('/api/keys'); } catch (e) { $('#kmMsg').textContent = e.message; return; }
-  const active = Object.keys(ks).find(p => ks[p].active) || 'treblo';
+  const active = Object.keys(ks).find(p => ks[p].kind === 'music' && ks[p].active) || 'treblo';
   applyActive(active);
+  // 메인 LLM 에 키가 없는데 다른 LLM 에는 키가 있으면 안내
+  const mainLlm = Object.keys(ks).find(p => ks[p].kind === 'llm' && ks[p].active);
+  const otherLlm = Object.keys(ks).filter(p => ks[p].kind === 'llm' && !ks[p].active && ks[p].set);
+  if (mainLlm && !ks[mainLlm].set && otherLlm.length) $('#kmMsg').textContent = `메인 LLM(${NAMES[mainLlm]})에 키가 없어 번역·사진 기획이 꺼져 있습니다. 키가 있는 ${otherLlm.map(p => NAMES[p]).join('·')} 카드의 [● 메인으로]를 누르세요.`;
   for (const c of document.querySelectorAll('#kmBody .kcard')) {
     const k = ks[c.dataset.p]; if (!k) continue;
     const ac = c.querySelector('[data-r=active]');
-    ac.textContent = k.active ? '● 활성' : '○ 대기'; ac.className = 'chip ' + (k.active ? 'ok' : '');
-    c.classList.toggle('active', Boolean(k.active));
-    c.querySelector('[data-act=activate]').hidden = Boolean(k.active);
-    c.querySelector('[data-act=activate]').disabled = !k.set;
-    c.querySelector('[data-act=activate]').title = k.set ? '이 소스를 활성화하고 다른 소스는 대기로 둡니다' : '키를 먼저 저장하세요';
-    c.querySelector('[data-act=standby]').hidden = !k.active;
+    if (ac) {
+      const llm = k.kind === 'llm';
+      ac.textContent = k.active ? (llm ? '● 메인 LLM' : '● 활성') : '○ 대기'; ac.className = 'chip ' + (k.active ? 'ok' : '');
+      c.classList.toggle('active', Boolean(k.active));
+      const bA = c.querySelector('[data-act=activate]'), bS = c.querySelector('[data-act=standby]');
+      if (bA) { bA.hidden = Boolean(k.active); bA.disabled = !k.set; bA.title = k.set ? (llm ? '이 제공자를 메인 LLM 으로 씁니다' : '이 소스를 활성화하고 다른 소스는 대기로 둡니다') : '키를 먼저 저장하세요'; }
+      if (bS) bS.hidden = !k.active;
+    }
     const st = c.querySelector('[data-r=status]');
-    st.textContent = k.set ? `저장됨 ${k.masked}${k.fromEnv ? ' (환경변수)' : ''}` : '키 없음';
-    st.className = 'chip ' + (k.set ? 'ok' : 'err');
+    st.textContent = k.set ? `${k.shared ? '' : '저장됨 '}${k.masked}${k.fromEnv ? ' (환경변수)' : ''}` : '키 없음';
+    st.className = 'chip ' + (k.set ? (k.shared ? 'warn' : 'ok') : 'err');
     c.querySelector('[data-r=key]').placeholder = k.set ? `저장됨 (${k.masked}) — 바꾸려면 새 키 입력` : c.querySelector('[data-r=key]').placeholder;
-    if (k.model) c.querySelector('[data-r=model]').value = k.model;
-    if (k.concurrency) c.querySelector('[data-r=concurrency]').value = k.concurrency;
-    c.querySelector('[data-act=delete]').disabled = !k.set || k.fromEnv;
+    if (k.model && c.querySelector('[data-r=model]')) c.querySelector('[data-r=model]').value = k.model;
+    if (k.cheapModel && c.querySelector('[data-r=cheapModel]')) c.querySelector('[data-r=cheapModel]').value = k.cheapModel;
+    const bM = c.querySelector('[data-act=models]'); if (bM) bM.disabled = !k.set;
+    if (k.concurrency && c.querySelector('[data-r=concurrency]')) c.querySelector('[data-r=concurrency]').value = k.concurrency;
+    c.querySelector('[data-act=delete]').disabled = !k.set || k.fromEnv || k.shared;
     c.querySelector('[data-act=check]').disabled = !k.set;
   }
 }
@@ -201,7 +210,7 @@ $('#kmBody').addEventListener('click', async (e) => {
   btn.disabled = true;
   try {
     if (act === 'save') {
-      const body = { model: card.querySelector('[data-r=model]').value, concurrency: Number(card.querySelector('[data-r=concurrency]').value) || undefined };
+      const body = { model: card.querySelector('[data-r=model]')?.value?.trim() || undefined, cheapModel: card.querySelector('[data-r=cheapModel]')?.value?.trim() || undefined, concurrency: Number(card.querySelector('[data-r=concurrency]')?.value) || undefined };
       const k = keyEl.value.trim(); if (k) body.apiKey = k;
       msg.textContent = '저장 중…';
       await api(`/api/keys/${p}`, { method: 'PUT', body });
@@ -214,15 +223,20 @@ $('#kmBody').addEventListener('click', async (e) => {
       const r = await api(`/api/keys/${p}/check`);
       msg.textContent = '✔ ' + r.summary;
       if (p === 'treblo') refreshBalance();
+    } else if (act === 'models') {
+      msg.textContent = '모델 목록 불러오는 중…';
+      const r = await api(`/api/keys/${p}/models`);
+      for (const dl of card.querySelectorAll('datalist')) dl.innerHTML = r.models.map(m => `<option value="${m}">`).join('');
+      msg.textContent = `모델 ${r.models.length}개: ${r.models.slice(0, 8).join(', ')}${r.models.length > 8 ? ' …' : ''} (입력칸에서 ▼ 로 선택)`;
     } else if (act === 'activate') {
       await api(`/api/keys/${p}/activate`, { method: 'POST' });
-      msg.textContent = '활성화됨 — 새 작업의 기본 소스';
-      $('#provider').value = p; providerChanged();
+      if (card.dataset.kind === 'llm') msg.textContent = '메인 LLM 으로 지정됨';
+      else { msg.textContent = '활성화됨 — 새 작업의 기본 소스'; $('#provider').value = p; providerChanged(); }
     } else if (act === 'standby') {
       await api(`/api/keys/${p}/standby`, { method: 'POST' });
       msg.textContent = '대기로 전환됨';
     } else if (act === 'delete') {
-      if (!confirm(`${p === 'treblo' ? 'Treblo' : 'Lyria'} API 키를 config.json 에서 지울까요?`)) return;
+      if (!confirm(`${NAMES[p] || p} API 키를 config.json 에서 지울까요?`)) return;
       await api(`/api/keys/${p}`, { method: 'DELETE' });
       msg.textContent = '키 삭제됨';
       if (p === 'treblo') { $('#credits').textContent = '크레딧 –'; $('#credits').className = 'chip'; }

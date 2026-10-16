@@ -10,6 +10,9 @@ import * as ff from './media/ffmpeg.js';
 import { buildAss, lyricLines, alignLinesToWords, distributeLines } from './media/subtitles.js';
 import { buildYoutubeMeta } from './youtube.js';
 import { findBackground, collectBackgrounds } from './images.js';
+import { hasLlmKey, llmModel, llmProvider, LLM_PROVIDERS, translateToEnglish, planBackgroundQueries, rankBackgrounds } from './llm.js';
+
+const HANGUL = /[\uac00-\ud7a3]/;
 
 const LANG = {
   ko: { name: '한국어', instr: 'Sung in Korean. All lyrics must be in natural Korean (한국어 가사).' },
@@ -46,13 +49,15 @@ export function planTracks(preset, request) {
     let prompt = (preset.prompt || '').trim();
     // 한국어 상세 설명을 프롬프트에 포함 (모달에서 편집 가능). 영어 프롬프트가 없으면 한국어 설명이 곧 프롬프트.
     const ko = (request.koDescription ?? preset.koDescription ?? '').trim();
+    const koEn = (request.koDescriptionEn || '').trim();   // runJob 에서 LLM 으로 번역한 영어(있으면 우선)
     if (ko && (request.useKoDescription ?? preset.useKoDescription ?? true)) {
-      prompt = prompt ? `${prompt} Detailed style notes (written in Korean, follow them closely): ${ko}` : `Music style (described in Korean, follow it closely): ${ko}`;
+      if (koEn) prompt = prompt ? `${prompt} Detailed style notes (follow them closely): ${koEn}` : `Music style (follow it closely): ${koEn}`;
+      else prompt = prompt ? `${prompt} Detailed style notes (written in Korean, follow them closely): ${ko}` : `Music style (described in Korean, follow it closely): ${ko}`;
     }
     if (!prompt) prompt = preset.description || preset.name;
     if (!instrumental) prompt += ` ${LANG[lang].instr} Theme of this song: "${topic}".`;
     else prompt += ` Instrumental only, no vocals. Mood: "${topic}".`;
-    if (request.extraPrompt) prompt += ` ${request.extraPrompt}`;
+    if (request.extraPromptEn || request.extraPrompt) prompt += ` ${request.extraPromptEn || request.extraPrompt}`;
     specs.push({
       index: i + 1, title: topic, prompt, instrumental,
       tags: preset.tags?.length ? preset.tags : undefined,
@@ -94,8 +99,23 @@ export async function runJob(job, cfg) {
     const providerName = req.dryRun ? 'mock' : (req.provider || cfg.provider || 'treblo');
     const tracksDir = path.join(job.dir, 'tracks');
 
-    // 1. 계획
+    // 1. 계획 (+ 한국어 요청을 LLM 으로 영어 번역: 메인 LLM 키가 있을 때만, 테스트 소스는 제외)
     setStep(job, 1, '트랙 계획');
+    const llmOn = providerName !== 'mock' && hasLlmKey(cfg);
+    if (llmOn) {
+      const items = [];
+      const ko = (req.koDescription ?? preset.koDescription ?? '').trim();
+      if (ko && (req.useKoDescription ?? preset.useKoDescription ?? true) && HANGUL.test(ko)) items.push(['koDescriptionEn', ko]);
+      if (req.extraPrompt && HANGUL.test(req.extraPrompt)) items.push(['extraPromptEn', String(req.extraPrompt)]);
+      if (items.length) {
+        try {
+          const r = await translateToEnglish(items.map(i => i[1]), { cfg });
+          items.forEach((it, i) => { req[it[0]] = r.texts[i]; });
+          log(job, `한국어 요청 → 영어 번역 (${LLM_PROVIDERS[llmProvider(cfg)].label} ${r.model || llmModel(cfg, true)}): ${items.map(i => i[0] === 'koDescriptionEn' ? '상세 설명' : '추가 프롬프트').join(', ')}`);
+          fs.writeFileSync(path.join(job.dir, 'translation.json'), JSON.stringify(Object.fromEntries(items.map((it, i) => [it[0], { ko: it[1], en: r.texts[i] }])), null, 2), 'utf8');
+        } catch (e) { log(job, `번역 실패(한국어 그대로 전달): ${e.message.split('\n')[0]}`, 'warn'); }
+      }
+    } else if (providerName !== 'mock') log(job, '메인 LLM 키가 없어 한국어 요청을 번역하지 않고 그대로 전달합니다 (상단 [설정]에서 등록 가능)', 'warn');
     const { specs, lang, instrumental } = planTracks(preset, req);
     log(job, `프리셋 "${preset.name}" · ${specs.length}곡 · 언어 ${LANG[lang].name} · ${instrumental ? '연주곡' : '보컬'} · 소스 ${providerName}`);
     job.tracks = specs.map(s => ({ index: s.index, title: s.title, status: 'pending' }));
@@ -249,16 +269,27 @@ export async function runJob(job, cfg) {
     let slides = [];                 // 슬라이드쇼용 사진 목록 [{file, credit}]
     const bgMode = bgImage ? 'custom' : (req.background || cfg.images?.defaultMode || 'slideshow');
     const imgLog = (m, lv) => log(job, m, lv);
+    // 분위기 기획: 곡 제목·가사·스타일로 검색어를 짜고(LLM), 후보는 분위기 기준으로 선별. 키가 없으면 프리셋 검색어 사용.
+    let bgPlan = null, bgRank = null;
+    if (llmOn && bgMode !== 'custom' && bgMode !== 'gradient') {
+      try {
+        bgPlan = await planBackgroundQueries({ preset, instrumental, lang, cfg, tracks: collected.map(c => ({ title: c.title, lyrics: instrumental ? '' : lyricLines(c.lyrics).slice(0, 6).join(' / ') })) });
+        fs.writeFileSync(path.join(job.dir, 'background_plan.json'), JSON.stringify(bgPlan, null, 2), 'utf8');
+        log(job, `배경 사진 기획 (${LLM_PROVIDERS[llmProvider(cfg)].label} ${bgPlan.model || llmModel(cfg, true)}): ${bgPlan.mood}`);
+        log(job, `  검색어: ${bgPlan.queries.join(' · ')}${bgPlan.avoid.length ? ` / 제외: ${bgPlan.avoid.join(', ')}` : ''}`);
+        bgRank = (args) => rankBackgrounds({ ...args, mood: bgPlan.mood, cfg });
+      } catch (e) { log(job, `배경 사진 기획 실패(프리셋 검색어 사용): ${e.message.split('\n')[0]}`, 'warn'); }
+    }
     if (bgMode === 'slideshow') {
       const want = Math.max(2, Math.min(30, Number(req.slideCount) || cfg.images?.slideCount || 8));
       // 사진 수가 많아도 영상 길이보다 길 필요는 없음: 10초 × 장수 ≤ 총 길이 + 여유
       const need = Math.max(2, Math.min(want, Math.ceil(total / (cfg.images?.slideSeconds || 10)) + 1));
-      slides = await collectBackgrounds({ presetId: preset.id, queries: preset.imageQueries, cfg, log: imgLog, count: need, maxFetch: providerName === 'mock' ? 0 : (cfg.images?.maxFetchPerJob ?? 4), allowFetch: providerName !== 'mock' });
+      slides = await collectBackgrounds({ presetId: preset.id, queries: preset.imageQueries, cfg, log: imgLog, count: need, maxFetch: providerName === 'mock' ? 0 : (cfg.images?.maxFetchPerJob ?? 4), allowFetch: providerName !== 'mock', plan: bgPlan, rank: bgRank });
       if (slides.length >= 2) log(job, `슬라이드쇼 사진 ${slides.length}장 (${slides.map(s => (s.credit?.title || '').slice(0, 18)).join(' / ')})`);
       else if (slides.length === 1) { log(job, '사진이 1장뿐이라 한 장 고정 배경으로 진행합니다', 'warn'); bgImage = slides[0].file; photoCredit = slides[0].credit; slides = []; }
       else log(job, '사진을 구하지 못해 자동 생성 그라데이션 배경을 씁니다', 'warn');
     } else if (bgMode === 'photo') {
-      const found = await findBackground({ presetId: preset.id, queries: preset.imageQueries, cfg, log: imgLog, preferPool: providerName === 'mock' });
+      const found = await findBackground({ presetId: preset.id, queries: preset.imageQueries, cfg, log: imgLog, preferPool: providerName === 'mock', plan: bgPlan, rank: bgRank });
       if (found) { bgImage = found.file; photoCredit = found.credit; }
       else log(job, '사진을 구하지 못해 자동 생성 그라데이션 배경을 씁니다', 'warn');
     } else if (bgMode === 'custom') {
