@@ -10,6 +10,7 @@ import { shutdownSequence } from './shutdown.js';
 import { checkUpdate, applyUpdate } from './update.js';
 import { TrebloProvider } from './providers/treblo.js';
 import { LocalProvider } from './providers/local.js';
+import { LyriaProvider, LYRIA_USD_PER_SONG, LYRIA_MODELS } from './providers/lyria.js';
 
 const cfg0 = loadConfig();
 const PORT = cfg0.port;
@@ -115,6 +116,12 @@ app.post('/api/config', (req, res) => {
     else if (!/^[\x21-\x7E]{20,300}$/.test(k)) return res.status(400).json({ error: 'Claude API 키 형식이 아닙니다 (sk-ant-… 형태의 영문·숫자)' });
     else patch.anthropic.apiKey = k;
   }
+  if (patch.lyria && typeof patch.lyria.apiKey === 'string') {
+    const k = patch.lyria.apiKey.trim();
+    if (!k || k.includes('****')) delete patch.lyria.apiKey;
+    else if (!/^[\x21-\x7E]{20,300}$/.test(k)) return res.status(400).json({ error: 'Gemini API 키 형식이 아닙니다 (AIza… 형태의 영문·숫자). aistudio.google.com 에서 발급한 키만 붙여 넣으세요.' });
+    else patch.lyria.apiKey = k;
+  }
   if (patch.treblo && typeof patch.treblo.apiKey === 'string') {
     const key = patch.treblo.apiKey.trim();
     if (!key || key.includes('****')) delete patch.treblo.apiKey; // 빈 값·마스킹된 값은 저장하지 않음
@@ -140,8 +147,56 @@ app.post('/api/backgrounds/:preset/fetch', async (req, res) => {
   res.json(r ? { ok: true, file: path.basename(r.file), credit: r.credit } : { ok: false, error: '사진을 구하지 못했습니다' });
 });
 app.use('/assets', express.static(DIRS.assets));
+// ── 작곡 AI API 키 관리 (설정 모달)
+const KEY_PROVIDERS = {
+  treblo: { label: 'Treblo', env: 'TREBLO_API_KEY', pattern: /^[\x21-\x7E]{8,300}$/, models: ['v3', 'v2'], maxConc: 10, hint: 'treblo.com/developers 에서 발급한 키만 붙여 넣으세요.' },
+  lyria: { label: 'Lyria(Gemini)', env: 'GEMINI_API_KEY', pattern: /^[\x21-\x7E]{20,300}$/, models: LYRIA_MODELS, maxConc: 6, hint: 'aistudio.google.com 에서 발급한 AIza… 형태의 키만 붙여 넣으세요.' },
+};
+function keyStatus(cfg) {
+  const out = {};
+  for (const [id, m] of Object.entries(KEY_PROVIDERS)) {
+    const k = cfg[id]?.apiKey || '';
+    out[id] = { set: Boolean(k), masked: k ? k.slice(0, 4) + '****' + k.slice(-4) : '', fromEnv: Boolean(process.env[m.env]), model: cfg[id]?.model, concurrency: cfg[id]?.concurrency };
+  }
+  return out;
+}
+app.get('/api/keys', (req, res) => res.json(keyStatus(loadConfig())));
+app.put('/api/keys/:provider', (req, res) => {
+  const id = req.params.provider, m = KEY_PROVIDERS[id];
+  if (!m) return res.status(404).json({ error: '알 수 없는 소스' });
+  const b = req.body || {}; const patch = {};
+  if (typeof b.apiKey === 'string' && b.apiKey.trim()) {
+    const k = b.apiKey.trim();
+    if (k.includes('****')) return res.status(400).json({ error: '마스킹된 키는 저장할 수 없습니다. 새 키를 입력하세요.' });
+    if (!m.pattern.test(k)) return res.status(400).json({ error: `${m.label} API 키 형식이 아닙니다 (길이 ${k.length}, 한글·공백 등 포함). ${m.hint}` });
+    patch.apiKey = k;
+  }
+  if (typeof b.model === 'string' && m.models.includes(b.model)) patch.model = b.model;
+  if (Number.isFinite(Number(b.concurrency)) && Number(b.concurrency) >= 1) patch.concurrency = Math.min(m.maxConc, Math.floor(Number(b.concurrency)));
+  if (!Object.keys(patch).length) return res.status(400).json({ error: '저장할 값이 없습니다' });
+  res.json(keyStatus(saveConfig({ [id]: patch })));
+});
+app.delete('/api/keys/:provider', (req, res) => {
+  const id = req.params.provider, m = KEY_PROVIDERS[id];
+  if (!m) return res.status(404).json({ error: '알 수 없는 소스' });
+  const cfg = saveConfig({ [id]: { apiKey: '' } });
+  if (process.env[m.env]) return res.status(400).json({ error: `config.json 의 키는 지웠지만 환경변수 ${m.env} 가 설정되어 있어 계속 사용됩니다.`, ...keyStatus(cfg) });
+  res.json(keyStatus(cfg));
+});
+app.get('/api/keys/:provider/check', async (req, res) => {
+  const id = req.params.provider; const cfg = loadConfig();
+  try {
+    if (id === 'treblo') { const b = await new TrebloProvider(cfg.treblo).balance(); return res.json({ ok: true, summary: `크레딧 구독 ${(b.num_credits || 0).toLocaleString()} + 종량제 ${(b.num_credits_payg || 0).toLocaleString()} (곡당 100)`, balance: b }); }
+    if (id === 'lyria') { const r = await new LyriaProvider(cfg.lyria).check(); return res.json({ ok: true, summary: `연결 정상: ${r.model}${r.displayName ? ' (' + r.displayName + ')' : ''}`, ...r }); }
+    res.status(404).json({ error: '알 수 없는 소스' });
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
 app.get('/api/treblo/balance', async (req, res) => {
   try { const tp = new TrebloProvider(loadConfig().treblo); res.json(await tp.balance()); }
+  catch (e) { res.status(400).json({ error: e.message }); }
+});
+app.get('/api/lyria/check', async (req, res) => {
+  try { const lp = new LyriaProvider(loadConfig().lyria); res.json(await lp.check()); }
   catch (e) { res.status(400).json({ error: e.message }); }
 });
 app.get('/api/local/files', (req, res) => {
@@ -153,7 +208,7 @@ app.post('/api/plan', (req, res) => {
   const p = presets.find(x => x.id === req.body?.preset);
   if (!p) return res.status(400).json({ error: '프리셋 없음' });
   const plan = planTracks(p, req.body || {});
-  res.json({ ...plan, credits: plan.specs.length * 100, estMinutes: Math.round(plan.specs.length * ((p.length_range?.[0] || 150) + (p.length_range?.[1] || 240)) / 2 / 60) });
+  res.json({ ...plan, credits: plan.specs.length * 100, lyriaUsd: Math.round(plan.specs.length * LYRIA_USD_PER_SONG * 100) / 100, estMinutes: Math.round(plan.specs.length * ((p.length_range?.[0] || 150) + (p.length_range?.[1] || 240)) / 2 / 60) });
 });
 
 // ── 작업
@@ -178,6 +233,12 @@ app.post('/api/jobs', (req, res) => {
   const cfg = loadConfig();
   const provider = body.dryRun ? 'mock' : (body.provider || cfg.provider);
   if (provider === 'treblo' && !cfg.treblo.apiKey) return res.status(400).json({ error: 'Treblo API 키가 없습니다. 설정에서 입력하거나 소스를 "로컬 폴더"로 바꾸세요.' });
+  if (provider === 'lyria') {
+    if (!cfg.lyria.apiKey) return res.status(400).json({ error: 'Lyria(Gemini) API 키가 없습니다. 설정에서 입력하세요.' });
+    const p = loadPresets().find(x => x.id === body.preset);
+    if (!p) return res.status(400).json({ error: '프리셋 없음' });
+    if (!planTracks(p, body).instrumental) return res.status(400).json({ error: 'Lyria 소스는 연주곡 프리셋에서만 쓸 수 있습니다. 연주곡 프리셋을 고르거나 보컬 옵션을 "연주곡"으로 바꾸세요. (Lyria 는 가사 타이밍 데이터를 주지 않아 가사 자막을 만들 수 없음)' });
+  }
   const job = createJob({ ...body, provider });
   setImmediate(() => runJob(job, cfg));
   res.json(summarize(job));

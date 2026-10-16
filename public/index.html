@@ -13,6 +13,7 @@
   <div class="grow"></div>
   <a class="powered" href="https://treblo.com" target="_blank" rel="noopener">Powered by Treblo</a>
   <span id="credits" class="chip" title="Treblo 크레딧 잔액 (곡당 100)">크레딧 –</span>
+  <button id="btnSettings" class="btn" title="작곡 AI(Treblo·Lyria) API 키 등록·관리">설정</button>
   <button id="btnUpdate" class="btn">업데이트</button>
   <a class="btn" href="/manual" target="_blank">설명서</a>
   <button id="btnQuit" class="btn danger">종료</button>
@@ -26,6 +27,7 @@
       <div class="row"><label>소스</label>
         <select name="provider" id="provider">
           <option value="treblo">Treblo API (자동 생성)</option>
+          <option value="lyria">Google Lyria (자동 생성 · 연주곡 전용 · 곡당 $0.08)</option>
           <option value="local">로컬 폴더 input/ (직접 만든 곡)</option>
           <option value="mock">테스트(합성음, 크레딧 0)</option>
         </select></div>
@@ -61,13 +63,11 @@
     </form>
 
     <details id="settings">
-      <summary>설정 (API 키 · 렌더링)</summary>
+      <summary>기타 설정 (렌더링 · 사진 · 유튜브 · Claude 키)</summary>
       <form id="cfgForm">
-        <div class="row"><label>Treblo API 키</label><input name="treblo.apiKey" id="apiKey" type="password" placeholder="treblo.com/developers 에서 발급"></div>
         <div class="row3">
-          <div><label>동시 생성 수</label><input type="number" name="treblo.concurrency" min="1" max="10" value="4"></div>
-          <div><label>모델</label><select name="treblo.model"><option value="v3">v3 (2~4분 곡)</option><option value="v2">v2 (1분 35초)</option></select></div>
           <div><label>포트(재시작 필요)</label><input type="number" name="port" value="5177"></div>
+          <div style="grid-column: span 2"><label>작곡 AI API 키</label><div class="dim" style="padding-top:3px">Treblo·Lyria 키와 모델은 상단 <b>[설정]</b> 버튼에서 등록·관리합니다.</div></div>
         </div>
         <div class="row3">
           <div><label>인코더</label><select name="render.encoder"><option value="auto">자동(QSV→x264)</option><option value="libx264">libx264</option><option value="h264_qsv">h264_qsv</option></select></div>
@@ -94,7 +94,7 @@
         </div>
         <div class="row"><label>채널명(설명 하단)</label><input name="youtube.channelName" placeholder="© 채널명"></div>
         <div class="row"><label>해시태그</label><input name="youtube.hashtags" value="#playlist #aimusic"></div>
-        <div class="actions"><button type="submit" class="btn">설정 저장</button><button type="button" id="btnBalance" class="btn">크레딧 확인</button><span id="cfgMsg" class="dim"></span></div>
+        <div class="actions"><button type="submit" class="btn">설정 저장</button><span id="cfgMsg" class="dim"></span></div>
       </form>
     </details>
   </section>
@@ -151,6 +151,36 @@
     <div class="mhead"><b id="mTitle"></b><div class="grow"></div><button id="mClose" class="btn small">닫기</button></div>
     <div id="mBody" class="mbody"></div>
     <div id="mActions" class="actions"></div>
+  </div>
+</div>
+<!-- 설정: 작곡 AI API 키 관리 모달 -->
+<div id="kmodal" class="modal" hidden>
+  <div class="box km">
+    <div class="mhead"><b>설정 · 작곡 AI API 키</b><div class="grow"></div><button id="kmClose" class="btn small">닫기</button></div>
+    <div id="kmMsg" class="desc dim" style="margin:0 0 6px"></div>
+    <div id="kmBody" class="mbody">
+      <div class="kcard" data-p="treblo">
+        <div class="khead"><b>Treblo API</b><span class="dim">보컬·연주곡 모두 · 곡당 100크레딧 · 가사 자막 지원</span><div class="grow"></div><span class="chip" data-r="status">–</span></div>
+        <div class="row"><label>API 키</label><input type="password" data-r="key" autocomplete="off" placeholder="treblo.com/developers 에서 발급"><button type="button" class="btn small" data-act="toggle">보기</button></div>
+        <div class="row3">
+          <div><label>모델</label><select data-r="model"><option value="v3">v3 (2~4분 곡)</option><option value="v2">v2 (1분 35초)</option></select></div>
+          <div><label>동시 생성 수</label><input type="number" data-r="concurrency" min="1" max="10"></div>
+          <div><label>발급</label><a href="https://treblo.com/developers" target="_blank" rel="noopener">treblo.com/developers ↗</a></div>
+        </div>
+        <div class="actions"><button type="button" class="btn primary small" data-act="save">저장</button><button type="button" class="btn small" data-act="check">크레딧 확인</button><button type="button" class="btn danger small" data-act="delete">키 삭제</button><span class="dim" data-r="msg"></span></div>
+      </div>
+      <div class="kcard" data-p="lyria">
+        <div class="khead"><b>Google Lyria (Gemini API)</b><span class="dim">연주곡 전용 · 곡당 $0.08 · 무료 티어 없음</span><div class="grow"></div><span class="chip" data-r="status">–</span></div>
+        <div class="row"><label>API 키</label><input type="password" data-r="key" autocomplete="off" placeholder="AIza… (aistudio.google.com, 결제 연결된 프로젝트)"><button type="button" class="btn small" data-act="toggle">보기</button></div>
+        <div class="row3">
+          <div><label>모델</label><select data-r="model"><option value="lyria-3.5">Lyria 3.5 (기본)</option><option value="lyria-3-pro-preview">Lyria 3 Pro Preview</option></select></div>
+          <div><label>동시 생성 수</label><input type="number" data-r="concurrency" min="1" max="6"></div>
+          <div><label>발급</label><a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey ↗</a></div>
+        </div>
+        <div class="actions"><button type="button" class="btn primary small" data-act="save">저장</button><button type="button" class="btn small" data-act="check">키 확인</button><button type="button" class="btn danger small" data-act="delete">키 삭제</button><span class="dim" data-r="msg"></span></div>
+      </div>
+    </div>
+    <div class="dim" style="margin-top:4px">키는 이 PC의 <code>config.json</code>에만 저장됩니다(git 제외). 환경변수(<code>TREBLO_API_KEY</code>, <code>GEMINI_API_KEY</code>)로 지정된 키는 여기서 지울 수 없습니다. 저장된 키는 앞뒤 4자만 표시됩니다.</div>
   </div>
 </div>
 <!-- 프리셋 설명·편집 모달 -->

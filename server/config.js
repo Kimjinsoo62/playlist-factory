@@ -3,7 +3,7 @@ import { CONFIG_FILE } from './paths.js';
 
 const DEFAULTS = {
   port: 5177,
-  provider: 'treblo',            // 'treblo' | 'local'
+  provider: 'treblo',            // 'treblo' | 'lyria' | 'local'
   treblo: {
     apiKey: '',
     baseUrl: 'https://api.treblo.com/v1',
@@ -12,6 +12,13 @@ const DEFAULTS = {
     pollIntervalMs: 5000,
     outputFormat: 'mp3',
     outputBitRate: 320,
+  },
+  lyria: {
+    apiKey: '',                    // Gemini API 키 (aistudio.google.com, 결제 연결 필요). 연주곡 전용 소스
+    baseUrl: 'https://generativelanguage.googleapis.com/v1beta',
+    model: 'lyria-3.5',            // 'lyria-3.5' | 'lyria-3-pro-preview' (둘 다 곡당 $0.08)
+    concurrency: 2,
+    pollIntervalMs: 5000,
   },
   render: {
     width: 1920,
@@ -63,6 +70,7 @@ export function loadConfig() {
   try { saved = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8')); } catch {}
   const cfg = deepMerge(DEFAULTS, saved);
   if (process.env.TREBLO_API_KEY) cfg.treblo.apiKey = process.env.TREBLO_API_KEY;
+  if (process.env.GEMINI_API_KEY) cfg.lyria.apiKey = process.env.GEMINI_API_KEY;
   if (process.env.PORT) cfg.port = Number(process.env.PORT);
   return cfg;
 }
@@ -78,6 +86,8 @@ export function maskConfig(cfg) {
   const c = JSON.parse(JSON.stringify(cfg));
   if (c.treblo?.apiKey) c.treblo.apiKey = c.treblo.apiKey.slice(0, 4) + '****' + c.treblo.apiKey.slice(-4);
   c.hasApiKey = Boolean(cfg.treblo?.apiKey);
+  if (c.lyria?.apiKey) c.lyria.apiKey = c.lyria.apiKey.slice(0, 4) + '****' + c.lyria.apiKey.slice(-4);
+  c.hasLyriaKey = Boolean(cfg.lyria?.apiKey);
   if (c.images?.pexelsKey) c.images.pexelsKey = '****';
   c.hasAnthropicKey = Boolean(cfg.anthropic?.apiKey || process.env.ANTHROPIC_API_KEY);
   if (c.anthropic?.apiKey) c.anthropic.apiKey = '****';

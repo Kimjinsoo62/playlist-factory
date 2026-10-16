@@ -40,12 +40,13 @@ async function init() {
   const cfg = await api('/api/config');
   fillForm($('#cfgForm'), cfg);
   $('#provider').value = cfg.provider || 'treblo';
-  if (!cfg.hasApiKey) { $('#settings').open = true; $('#cfgMsg').textContent = 'Treblo API 키를 입력하거나 소스를 로컬/테스트로 바꾸세요.'; }
-  else refreshBalance();
+  if (!cfg.hasApiKey && !cfg.hasLyriaKey) openKeyModal('작곡 AI API 키가 없습니다. Treblo 또는 Lyria 키를 등록하세요. 로컬 폴더·테스트 소스는 키 없이 쓸 수 있습니다.');
+  if (cfg.hasApiKey) refreshBalance();
   providerChanged();
   jobs = await api('/api/jobs'); renderJobs();
   connectSSE();
   if (location.hash === '#preset') openPresetModal($('#preset').value);   // 링크로 바로 열기
+  if (location.hash === '#keys') openKeyModal();                           // 링크로 설정(키) 모달 바로 열기
 }
 function updatePresetUI() {
   const p = presets.find(x => x.id === $('#preset').value); if (!p) return;
@@ -59,6 +60,8 @@ async function estimate() {
     const prov = $('#provider').value;
     $('#estimate').textContent = prov === 'treblo'
       ? `예상: ${e.specs.length}곡 · 크레딧 ${e.credits} · 영상 약 ${e.estMinutes}분 · ${e.instrumental ? '연주곡' : '보컬 (' + e.lang + ')'}`
+      : prov === 'lyria'
+      ? (e.instrumental ? `예상: ${e.specs.length}곡 · 약 $${e.lyriaUsd.toFixed(2)} (곡당 $0.08, Google 결제 계정에 청구) · 영상 약 ${e.estMinutes}분 · 연주곡` : `⚠ Lyria 소스는 연주곡 전용입니다. 연주곡 프리셋을 고르거나 보컬 옵션을 "연주곡"으로 바꾸세요. (가사 타이밍 데이터가 없어 가사 자막을 만들 수 없음)`)
       : prov === 'local' ? `input 폴더의 파일 중 앞에서 ${e.specs.length}개를 사용합니다.` : `테스트: ${e.specs.length}곡 × ${body.mockSeconds || 20}초 합성음, 크레딧 0`;
   } catch {}
 }
@@ -66,6 +69,8 @@ async function estimate() {
 $('#provider').addEventListener('change', providerChanged);
 async function providerChanged() {
   const prov = $('#provider').value;
+  // Lyria 는 연주곡 전용: 보컬 옵션이 '프리셋 기본'이고 프리셋이 보컬곡이면 연주곡으로 자동 전환
+  if (prov === 'lyria') { const p = presets.find(x => x.id === $('#preset').value); if (p && !p.instrumental && $('#instrumental').value === '') $('#instrumental').value = 'true'; }
   $('#mockSeconds').parentElement.style.visibility = prov === 'mock' ? 'visible' : 'hidden';
   const lf = $('#localFiles');
   if (prov === 'local') {
@@ -94,6 +99,10 @@ $('#form').onsubmit = async (e) => {
   if (body.provider === 'treblo') {
     const est = await api('/api/plan', { method: 'POST', body }).catch(() => null);
     if (est && !confirm(`Treblo API로 ${est.specs.length}곡을 생성합니다.\n크레딧 ${est.credits} 이 사용됩니다. 계속할까요?`)) return;
+  } else if (body.provider === 'lyria') {
+    const est = await api('/api/plan', { method: 'POST', body }).catch(() => null);
+    if (est && !est.instrumental) { alert('Lyria 소스는 연주곡 전용입니다. 연주곡 프리셋을 고르거나 보컬 옵션을 "연주곡"으로 바꾸세요.'); return; }
+    if (est && !confirm(`Google Lyria로 ${est.specs.length}곡(연주곡)을 생성합니다.\n약 $${est.lyriaUsd.toFixed(2)} (곡당 $0.08)이 Google 결제 계정에 청구됩니다. 계속할까요?`)) return;
   }
   $('#btnRun').disabled = true;
   try { const j = await api('/api/jobs', { method: 'POST', body }); select(j.id); }
@@ -109,7 +118,6 @@ function fillForm(form, cfg) {
     if (!el.name) continue;
     const v = el.name.split('.').reduce((o, k) => o?.[k], cfg);
     if (v === undefined || v === null) continue;
-    if (el.name === 'treblo.apiKey') { el.placeholder = cfg.hasApiKey ? `저장됨 (${v})` : el.placeholder; continue; }
     if (el.name === 'images.pexelsKey') { if (v) el.placeholder = '저장됨'; continue; }
     if (el.name === 'anthropic.apiKey') { if (cfg.hasAnthropicKey) el.placeholder = '저장됨 (****)'; continue; }
     el.value = String(v);
@@ -121,7 +129,7 @@ $('#cfgForm').onsubmit = async (e) => {
   for (const el of $('#cfgForm').elements) {
     if (!el.name) continue;
     let v = el.value;
-    if ((el.name === 'treblo.apiKey' || el.name === 'images.pexelsKey' || el.name === 'anthropic.apiKey') && !v) continue;
+    if ((el.name === 'treblo.apiKey' || el.name === 'lyria.apiKey' || el.name === 'images.pexelsKey' || el.name === 'anthropic.apiKey') && !v) continue;
     if (el.type === 'number') v = Number(v);
     if (v === 'true') v = true; if (v === 'false') v = false;
     const keys = el.name.split('.'); let o = patch;
@@ -131,7 +139,7 @@ $('#cfgForm').onsubmit = async (e) => {
   patch.provider = $('#provider').value === 'mock' ? 'treblo' : $('#provider').value;
   let cfg;
   try { cfg = await api('/api/config', { method: 'POST', body: patch }); } catch (err) { alert(err.message); return; }
-  fillForm($('#cfgForm'), cfg); $('#apiKey').value = '';
+  fillForm($('#cfgForm'), cfg);
   $('#cfgMsg').textContent = '저장됨 ' + new Date().toLocaleTimeString();
   if (cfg.hasApiKey) refreshBalance();
 };
@@ -140,7 +148,63 @@ async function refreshBalance() {
   try { const b = await api('/api/treblo/balance'); el.textContent = `크레딧 ${(b.num_credits || 0).toLocaleString()} + 종량제 ${(b.num_credits_payg || 0).toLocaleString()}`; el.className = 'chip ok'; }
   catch (e) { el.textContent = '크레딧 확인 실패'; el.className = 'chip err'; el.title = e.message; }
 }
-$('#btnBalance').onclick = refreshBalance;
+
+// ── 설정 모달: 작곡 AI API 키 관리 (Treblo · Lyria)
+$('#btnSettings').onclick = () => openKeyModal();
+$('#kmClose').onclick = () => $('#kmodal').hidden = true;
+$('#kmodal').addEventListener('click', (e) => { if (e.target === $('#kmodal')) $('#kmodal').hidden = true; });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('#kmodal').hidden) $('#kmodal').hidden = true; });
+async function openKeyModal(msg = '') {
+  $('#kmMsg').textContent = msg;
+  for (const c of document.querySelectorAll('#kmBody .kcard')) { c.querySelector('[data-r=key]').value = ''; c.querySelector('[data-r=msg]').textContent = ''; }
+  $('#kmodal').hidden = false;
+  await refreshKeys();
+}
+async function refreshKeys() {
+  let ks; try { ks = await api('/api/keys'); } catch (e) { $('#kmMsg').textContent = e.message; return; }
+  for (const c of document.querySelectorAll('#kmBody .kcard')) {
+    const k = ks[c.dataset.p]; if (!k) continue;
+    const st = c.querySelector('[data-r=status]');
+    st.textContent = k.set ? `저장됨 ${k.masked}${k.fromEnv ? ' (환경변수)' : ''}` : '키 없음';
+    st.className = 'chip ' + (k.set ? 'ok' : 'err');
+    c.querySelector('[data-r=key]').placeholder = k.set ? `저장됨 (${k.masked}) — 바꾸려면 새 키 입력` : c.querySelector('[data-r=key]').placeholder;
+    if (k.model) c.querySelector('[data-r=model]').value = k.model;
+    if (k.concurrency) c.querySelector('[data-r=concurrency]').value = k.concurrency;
+    c.querySelector('[data-act=delete]').disabled = !k.set || k.fromEnv;
+    c.querySelector('[data-act=check]').disabled = !k.set;
+  }
+}
+$('#kmBody').addEventListener('click', async (e) => {
+  const btn = e.target.closest('[data-act]'); if (!btn) return;
+  const card = btn.closest('.kcard'); const p = card.dataset.p; const msg = card.querySelector('[data-r=msg]'); const keyEl = card.querySelector('[data-r=key]');
+  const act = btn.dataset.act;
+  if (act === 'toggle') { keyEl.type = keyEl.type === 'password' ? 'text' : 'password'; btn.textContent = keyEl.type === 'password' ? '보기' : '숨기기'; return; }
+  btn.disabled = true;
+  try {
+    if (act === 'save') {
+      const body = { model: card.querySelector('[data-r=model]').value, concurrency: Number(card.querySelector('[data-r=concurrency]').value) || undefined };
+      const k = keyEl.value.trim(); if (k) body.apiKey = k;
+      msg.textContent = '저장 중…';
+      await api(`/api/keys/${p}`, { method: 'PUT', body });
+      keyEl.value = ''; keyEl.type = 'password'; card.querySelector('[data-act=toggle]').textContent = '보기';
+      msg.textContent = (k ? '키 저장됨 ' : '설정 저장됨 ') + new Date().toLocaleTimeString();
+      $('#kmMsg').textContent = '';
+      if (p === 'treblo') refreshBalance();
+    } else if (act === 'check') {
+      msg.textContent = '확인 중…';
+      const r = await api(`/api/keys/${p}/check`);
+      msg.textContent = '✔ ' + r.summary;
+      if (p === 'treblo') refreshBalance();
+    } else if (act === 'delete') {
+      if (!confirm(`${p === 'treblo' ? 'Treblo' : 'Lyria'} API 키를 config.json 에서 지울까요?`)) return;
+      await api(`/api/keys/${p}`, { method: 'DELETE' });
+      msg.textContent = '키 삭제됨';
+      if (p === 'treblo') { $('#credits').textContent = '크레딧 –'; $('#credits').className = 'chip'; }
+    }
+    await refreshKeys();
+  } catch (err) { msg.textContent = '✖ ' + err.message; }
+  finally { btn.disabled = false; }
+});
 
 // ── SSE
 function connectSSE() {

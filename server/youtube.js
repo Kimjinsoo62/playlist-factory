@@ -19,8 +19,9 @@ export function buildYoutubeMeta({ preset, tracks, total, request, cfg, photoCre
     ...chapters, '',
     cfg.youtube?.hashtags || '',
     (preset.hashtags || []).join(' '), '',
-    cfg.youtube?.footer || 'Music generated with Treblo (https://treblo.com)',
-    '이 플레이리스트의 음악은 AI(Treblo)로 생성되었습니다.',
+    ...(request.provider === 'lyria'
+      ? ['Music generated with Google Lyria (Gemini API, https://deepmind.google/models/lyria/)', '이 플레이리스트의 음악은 AI(Google Lyria)로 생성되었습니다.']
+      : [cfg.youtube?.footer || 'Music generated with Treblo (https://treblo.com)', '이 플레이리스트의 음악은 AI(Treblo)로 생성되었습니다.']),
   ];
   const credits = photoCredits.length ? photoCredits : (photoCredit ? [photoCredit] : []);
   if (credits.length) { lines.push(''); lines.push(credits.length > 1 ? 'Background photos:' : ''); for (const c of credits) lines.push((credits.length > 1 ? '- ' : '') + creditLine(c).replace(/^Background photo: /, credits.length > 1 ? '' : 'Background photo: ')); }

@@ -5,6 +5,7 @@ import { DIRS } from './paths.js';
 import { log, setStep, setStepProgress, finish, fail, persist } from './jobs.js';
 import { TrebloProvider, extractAlignment } from './providers/treblo.js';
 import { LocalProvider } from './providers/local.js';
+import { LyriaProvider, extractText, stripAudio } from './providers/lyria.js';
 import * as ff from './media/ffmpeg.js';
 import { buildAss, lyricLines, alignLinesToWords, distributeLines } from './media/subtitles.js';
 import { buildYoutubeMeta } from './youtube.js';
@@ -101,7 +102,7 @@ export async function runJob(job, cfg) {
     persist(job);
 
     // 2. 생성/수집
-    setStep(job, 2, providerName === 'treblo' ? '곡 생성(Treblo API, 병렬)' : providerName === 'local' ? '로컬 트랙 수집' : '테스트 트랙 합성');
+    setStep(job, 2, providerName === 'treblo' ? '곡 생성(Treblo API, 병렬)' : providerName === 'lyria' ? '곡 생성(Google Lyria, 병렬)' : providerName === 'local' ? '로컬 트랙 수집' : '테스트 트랙 합성');
     let done = 0;
     const bump = (msg) => { done++; setStepProgress(job, (done / specs.length) * 100, msg); };
     let collected;
@@ -146,6 +147,43 @@ export async function runJob(job, cfg) {
           }
         }
       });
+    } else if (providerName === 'lyria') {
+      // Lyria 는 가사 타이밍(정렬) 데이터를 주지 않아 보컬곡 자막을 만들 수 없다 → 연주곡만 허용
+      if (!instrumental) throw new Error('Lyria 소스는 연주곡 프리셋(또는 보컬 옵션 "연주곡")에서만 사용할 수 있습니다. 보컬곡은 Treblo 소스를 쓰세요.');
+      const lp = new LyriaProvider(cfg.lyria);
+      lp.onWarn = (m) => log(job, m, 'warn');
+      // 사전 점검(과금 없음): 키·권한 오류(400/401/403)만 즉시 중단, 그 외(404 등 경로 차이)는 경고만 남기고 생성 요청에서 판단
+      try { const chk = await lp.check(); log(job, `Lyria 모델 ${chk.model} (${chk.displayName || '-'}) · 예상 비용 약 $${(specs.length * 0.08).toFixed(2)} (곡당 $0.08, 결제 계정에 청구)`); }
+      catch (e) { if ([400, 401, 403].includes(e.status)) throw new Error(`Lyria(Gemini) API 연결 실패: ${e.message}`); log(job, `Lyria 모델 조회 실패(계속 진행): ${e.message}`, 'warn'); }
+      const ac = new AbortController();
+      const cancelTick = setInterval(() => { if (job.cancelRequested) ac.abort(); }, 1000);
+      try {
+      collected = await runPool(specs, cfg.lyria.concurrency || 2, async (spec) => {
+        check();
+        const t = job.tracks[spec.index - 1];
+        for (let attempt = 1; attempt <= 2; attempt++) {
+          try {
+            t.status = 'generating'; persist(job);
+            const started = await lp.startGeneration(spec, { signal: ac.signal });
+            t.taskId = started.id;
+            log(job, `#${spec.index} 생성 요청 → ${started.id || '(동기)'} (${spec.title})`);
+            let lastStatus = '';
+            const it = await lp.waitFor(started, {
+              shouldCancel: () => job.cancelRequested, signal: ac.signal,
+              onStatus: (s) => { if (s !== lastStatus) { lastStatus = s; t.remote = s; setStepProgress(job, (done / specs.length) * 100, `#${spec.index} ${s}`); } },
+            });
+            const file = await lp.saveAudio(it, path.join(tracksDir, pad(spec.index)), { signal: ac.signal });
+            fs.writeFileSync(path.join(tracksDir, `${pad(spec.index)}_generation.json`), JSON.stringify({ provider: 'lyria', model: lp.model, prompt: started.prompt, text: extractText(it), interaction: stripAudio(it) }, null, 2), 'utf8');
+            t.status = 'done'; t.file = file; persist(job);
+            bump(`#${spec.index} 완료`);
+            return { ...spec, file, lyrics: '', words: null };
+          } catch (e) {
+            if (job.cancelRequested || attempt === 2 || /취소됨/.test(e.message)) { t.status = 'failed'; t.error = e.message; persist(job); throw e; }
+            log(job, `#${spec.index} 실패, 재시도: ${e.message}`, 'warn');
+          }
+        }
+      });
+      } finally { clearInterval(cancelTick); }
     } else if (providerName === 'local') {
       const lp = new LocalProvider(DIRS.input);
       const files = lp.listFiles();
