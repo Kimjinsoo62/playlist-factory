@@ -92,21 +92,38 @@ function formData() {
   return o;
 }
 
+// ── 로그 창 (별도 브라우저 창). 이름을 고정해 두 번 열어도 같은 창을 재사용한다.
+let logWinRef = null;
+function openLogWindow(jobId) {
+  const url = jobId && jobId !== 'latest' ? `/log.html?job=${encodeURIComponent(jobId)}` : '/log.html';
+  const w = Math.min(1000, screen.availWidth - 40), h = Math.min(640, screen.availHeight - 80);
+  const left = Math.max(0, screen.availWidth - w - 20), top = Math.max(0, screen.availHeight - h - 40);
+  const win = window.open(url, 'playlist-log', `popup=yes,width=${w},height=${h},left=${left},top=${top},resizable=yes,scrollbars=no`);
+  if (win) { logWinRef = win; try { win.focus(); } catch {} $('#btnLog').classList.remove('pulse'); }
+  else $('#btnLog').classList.add('pulse');   // 팝업 차단: 버튼을 깜빡여 직접 열도록 안내
+  return win;
+}
+$('#btnLog').onclick = () => openLogWindow(selected || 'latest');
+
 // ── 작업 시작
 $('#form').onsubmit = async (e) => {
   e.preventDefault();
   const body = formData();
+  const logWin = openLogWindow('latest');   // 클릭 직후(동기)에 열어야 팝업 차단을 피한다. 작업이 만들어지면 그 로그를 따라간다
   if (body.provider === 'treblo') {
     const est = await api('/api/plan', { method: 'POST', body }).catch(() => null);
-    if (est && !confirm(`Treblo API로 ${est.specs.length}곡을 생성합니다.\n크레딧 ${est.credits} 이 사용됩니다. 계속할까요?`)) return;
+    if (est && !confirm(`Treblo API로 ${est.specs.length}곡을 생성합니다.\n크레딧 ${est.credits} 이 사용됩니다. 계속할까요?`)) { logWin?.close(); return; }
   } else if (body.provider === 'lyria') {
     const est = await api('/api/plan', { method: 'POST', body }).catch(() => null);
-    if (est && !est.instrumental) { alert('Lyria 소스는 연주곡 전용입니다. 연주곡 프리셋을 고르거나 보컬 옵션을 "연주곡"으로 바꾸세요.'); return; }
-    if (est && !confirm(`Google Lyria로 ${est.specs.length}곡(연주곡)을 생성합니다.\n약 $${est.lyriaUsd.toFixed(2)} (곡당 $0.08)이 Google 결제 계정에 청구됩니다. 계속할까요?`)) return;
+    if (est && !est.instrumental) { logWin?.close(); alert('Lyria 소스는 연주곡 전용입니다. 연주곡 프리셋을 고르거나 보컬 옵션을 "연주곡"으로 바꾸세요.'); return; }
+    if (est && !confirm(`Google Lyria로 ${est.specs.length}곡(연주곡)을 생성합니다.\n약 $${est.lyriaUsd.toFixed(2)} (곡당 $0.08)이 Google 결제 계정에 청구됩니다. 계속할까요?`)) { logWin?.close(); return; }
   }
   $('#btnRun').disabled = true;
-  try { const j = await api('/api/jobs', { method: 'POST', body }); select(j.id); }
-  catch (err) { alert(err.message); }
+  try {
+    const j = await api('/api/jobs', { method: 'POST', body }); select(j.id);
+    try { if (logWin && !logWin.closed) { logWin.location.replace(`/log.html?job=${encodeURIComponent(j.id)}&follow=1`); logWin.focus(); } } catch {}
+  }
+  catch (err) { logWin?.close(); alert(err.message); }
   finally { $('#btnRun').disabled = false; }
 };
 $('#btnOpenInput').onclick = () => api('/api/open', { method: 'POST', body: { path: 'input' } }).catch(e => alert(e.message));
@@ -253,6 +270,8 @@ function connectSSE() {
   es.addEventListener('job', (e) => {
     const ev = JSON.parse(e.data); const j = ev.data;
     const i = jobs.findIndex(x => x.id === j.id); if (i >= 0) jobs[i] = j; else if (!j.hidden || $('#showHidden').checked) jobs.unshift(j);
+    if (i < 0 && (j.status === 'running' || j.status === 'queued') && !(logWinRef && !logWinRef.closed)) $('#btnLog').classList.add('pulse');   // 로그 창이 없으면 버튼 깜빡임 (MCP 등 외부에서 시작된 작업)
+    if (j.status !== 'running' && j.status !== 'queued') $('#btnLog').classList.remove('pulse');
     renderJobs(); if (selected === j.id) renderDetail(j);
   });
   es.addEventListener('reset', () => reloadJobs());
@@ -487,6 +506,7 @@ async function applyUpdate() {
 // ── 종료
 $('#btnQuit').onclick = () => { if (confirm('앱을 종료할까요?\n캐시 삭제 → 서버 종료 → 포트 정리 → 명령 창 닫기 → 브라우저 닫기 순서로 진행됩니다.')) shutdown(); };
 async function shutdown() {
+  try { if (logWinRef && !logWinRef.closed) logWinRef.close(); } catch {}   // 로그 창(팝업)은 서버 쪽 창 닫기가 못 잡으므로 여기서 닫는다
   $('#modal').hidden = true;
   const ov = $('#overlay'); ov.hidden = false;
   const ol = $('#ovLog'); ol.textContent = '종료 요청 전송…\n';

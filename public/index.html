@@ -100,6 +100,7 @@
     <h2>작업 <span id="jobCount" class="dim"></span><span class="grow"></span>
       <label class="inline dim" title="초기화로 숨긴 작업을 다시 표시"><input type="checkbox" id="showHidden"> 숨긴 작업 보기</label>
       <button id="btnReset" class="btn small" title="끝난 작업을 목록에서 지웁니다. output 폴더의 파일은 그대로 남습니다.">초기화</button>
+      <button id="btnLog" class="btn small" title="진행 로그를 새 브라우저 창으로 봅니다. 작업을 시작하면 자동으로 열립니다.">로그 창</button>
     </h2>
     <div id="jobs" class="jobs"></div>
     <div id="detail" class="detail" hidden>
@@ -135,7 +136,7 @@
   </section>
 
   <!-- 우: 로그 -->
-  <section class="col right">
+  <section class="col right" hidden>   <!-- 로그는 별도 창(log.html)에 표시. 이 요소는 스크립트 호환용으로만 남김 -->
     <h2>로그 <button id="btnClearLog" class="btn small">지우기</button></h2>
     <pre id="log" class="log"></pre>
   </section>

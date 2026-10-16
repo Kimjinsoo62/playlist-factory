@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>플레이리스트 팩토리 - 로그</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  body { display: flex; flex-direction: column; padding: 6px; gap: 4px; }
+  #hdr { height: auto; min-height: 26px; flex-wrap: wrap; border: 1px solid var(--line); border-radius: 4px; padding: 3px 8px; }
+  #hdr b { font-size: 8.5pt; }
+  .bars { display: grid; grid-template-columns: 56px 1fr 56px 1fr; gap: 4px 6px; align-items: center; padding: 2px 8px; }
+  .bar { position: relative; height: 12px; background: var(--panel2); border: 1px solid var(--line); border-radius: 3px; overflow: hidden; }
+  .bar .fill { height: 100%; width: 0; background: var(--accent); transition: width .3s; }
+  .bar .fill.alt { background: var(--accent2); }
+  .bar .bartxt { position: absolute; inset: 0; text-align: center; font-size: 7pt; line-height: 12px; color: #fff; }
+  .log { font-size: 8pt; }
+  label.inline { display: inline-flex; align-items: center; gap: 3px; color: var(--dim); }
+</style>
+</head>
+<body>
+<header id="hdr">
+  <b id="title">로그</b>
+  <span id="status" class="chip">–</span>
+  <span id="jobId" class="dim"></span>
+  <div class="grow"></div>
+  <label class="inline" title="새 작업이 시작되면 자동으로 그 작업의 로그로 바꿉니다"><input type="checkbox" id="follow" checked> 최신 작업 따라가기</label>
+  <button id="btnClear" class="btn small">지우기</button>
+  <button id="btnMain" class="btn small" title="메인 창으로">메인 창</button>
+  <button id="btnClose" class="btn small danger">닫기</button>
+</header>
+<div class="bars">
+  <span class="dim">전체</span><div class="bar"><div id="pOverall" class="fill"></div><span id="pOverallTxt" class="bartxt"></span></div>
+  <span class="dim" id="stepName">단계</span><div class="bar"><div id="pStep" class="fill alt"></div><span id="pStepTxt" class="bartxt"></span></div>
+</div>
+<pre id="log" class="log"></pre>
+<script src="log.js"></script>
+</body>
+</html>
