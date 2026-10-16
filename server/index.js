@@ -73,6 +73,23 @@ app.post('/api/presets', async (req, res) => {
     const bad = (b.negative_tags || []).filter(t => !isKnownTag(t));
     if (bad.length) return res.status(400).json({ error: `Treblo 태그 사전에 없는 태그: ${bad.join(', ')}` });
     const name = b.name.trim();
+    // 영어 프롬프트가 비어 있으면 메인 LLM 으로 자동 생성 (장르·악기·템포가 담긴 프롬프트 + 제외 태그·주제·배경 검색어). 실패하면 한국어 설명만으로 저장.
+    let generated = null, generateError = null;
+    if (!b.prompt?.trim() && b.koDescription?.trim() && b.autoGenerate !== false) {
+      const { generatePresetFromKorean, hasLlmKey, describeError } = await import('./llm.js');
+      const cfg = loadConfig();
+      if (hasLlmKey(cfg)) {
+        try {
+          generated = await generatePresetFromKorean({ koDescription: b.koDescription, name, instrumental: Boolean(b.instrumental), wantTopics: true, cfg });
+          b.prompt = generated.prompt;
+          if (!b.description?.trim() && generated.description) b.description = generated.description;
+          if (!(b.negative_tags || []).length) b.negative_tags = generated.negative_tags;
+          if (!(b.imageQueries || []).length) b.imageQueries = generated.imageQueries;
+          const t = b.topics || {}; if (!(t.ko || []).length && generated.topics.ko.length) b.topics = generated.topics;
+          console.log(`[AI 프롬프트] 새 프리셋 ${id}: ${generated.model} in=${generated.usage?.input} out=${generated.usage?.output}`);
+        } catch (e) { generateError = describeError(e); console.warn(`[AI 프롬프트] 새 프리셋 ${id} 자동 생성 실패: ${generateError}`); }
+      } else generateError = '메인 LLM 키 없음';
+    }
     const topics = { ko: [], en: [], ja: [], ...(b.topics || {}) };
     for (const l of Object.keys(topics)) topics[l] = (topics[l] || []).map(s => String(s).trim()).filter(Boolean);
     if (!topics.ko.length) topics.ko = ['첫 번째 이야기', '밤의 끝에서', '천천히 흐르는 시간', '창밖의 계절', '다시 만난 오후', '조용한 약속'];
@@ -90,7 +107,7 @@ app.post('/api/presets', async (req, res) => {
       createdAt: new Date().toISOString(),
     };
     fs.writeFileSync(file, JSON.stringify(p, null, 2) + '\n', 'utf8');
-    res.json(p);
+    res.json({ ...p, _generated: Boolean(generated), _generateError: generateError, _model: generated?.model });
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
 app.post('/api/presets/:id/copy', (req, res) => {

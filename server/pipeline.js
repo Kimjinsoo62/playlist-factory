@@ -55,6 +55,8 @@ export function planTracks(preset, request) {
       else prompt = prompt ? `${prompt} Detailed style notes (written in Korean, follow them closely): ${ko}` : `Music style (described in Korean, follow it closely): ${ko}`;
     }
     if (!prompt) prompt = preset.description || preset.name;
+    // 영어 프롬프트가 없는 프리셋: 이름이 곧 장르인 경우가 많으므로(예: 칸트리뮤직) 앞에 붙여 장르를 분명히 한다
+    if (!(preset.prompt || '').trim()) prompt = `Genre/style: ${request.presetNameEn || preset.name}. ${prompt}`;
     if (!instrumental) prompt += ` ${LANG[lang].instr} Theme of this song: "${topic}".`;
     else prompt += ` Instrumental only, no vocals. Mood: "${topic}".`;
     if (request.extraPromptEn || request.extraPrompt) prompt += ` ${request.extraPromptEn || request.extraPrompt}`;
@@ -107,11 +109,12 @@ export async function runJob(job, cfg) {
       const ko = (req.koDescription ?? preset.koDescription ?? '').trim();
       if (ko && (req.useKoDescription ?? preset.useKoDescription ?? true) && HANGUL.test(ko)) items.push(['koDescriptionEn', ko]);
       if (req.extraPrompt && HANGUL.test(req.extraPrompt)) items.push(['extraPromptEn', String(req.extraPrompt)]);
+      if (!(preset.prompt || '').trim() && HANGUL.test(preset.name || '')) items.push(['presetNameEn', preset.name]);
       if (items.length) {
         try {
           const r = await translateToEnglish(items.map(i => i[1]), { cfg });
           items.forEach((it, i) => { req[it[0]] = r.texts[i]; });
-          log(job, `한국어 요청 → 영어 번역 (${LLM_PROVIDERS[llmProvider(cfg)].label} ${r.model || llmModel(cfg, true)}): ${items.map(i => i[0] === 'koDescriptionEn' ? '상세 설명' : '추가 프롬프트').join(', ')}`);
+          log(job, `한국어 요청 → 영어 번역 (${LLM_PROVIDERS[llmProvider(cfg)].label} ${r.model || llmModel(cfg, true)}): ${items.map(i => ({ koDescriptionEn: '상세 설명', extraPromptEn: '추가 프롬프트', presetNameEn: '프리셋 이름(장르)' })[i[0]]).join(', ')}`);
           fs.writeFileSync(path.join(job.dir, 'translation.json'), JSON.stringify(Object.fromEntries(items.map((it, i) => [it[0], { ko: it[1], en: r.texts[i] }])), null, 2), 'utf8');
         } catch (e) { log(job, `번역 실패(한국어 그대로 전달): ${e.message.split('\n')[0]}`, 'warn'); }
       }

@@ -36,7 +36,8 @@ async function init() {
   presets = await api('/api/presets');
   const sel = $('#preset');
   sel.innerHTML = presets.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
-  sel.onchange = updatePresetUI; updatePresetUI();
+  try { const last = localStorage.getItem('pf.preset'); if (last && presets.some(p => p.id === last)) sel.value = last; } catch {}   // 새로고침해도 마지막 프리셋 유지
+  sel.onchange = () => { try { localStorage.setItem('pf.preset', sel.value); } catch {} updatePresetUI(); }; updatePresetUI();
   const cfg = await api('/api/config');
   fillForm($('#cfgForm'), cfg);
   applyActive(cfg.provider || 'treblo');
@@ -426,7 +427,7 @@ $('#pmGen').onclick = async () => {
   if (!ko) return alert('한국어 상세 설명을 먼저 적어 주세요.');
   if (f.prompt.value.trim() && !confirm('이미 영어 프롬프트가 있습니다. 새로 생성한 내용으로 바꿀까요?')) return;
   const wantTopics = $('#pmGenTopics').checked;
-  const btn = $('#pmGen'); btn.disabled = true; $('#pmGenMsg').textContent = 'Claude가 프롬프트를 쓰는 중… (10~30초)';
+  const btn = $('#pmGen'); btn.disabled = true; $('#pmGenMsg').textContent = '메인 LLM이 프롬프트를 쓰는 중… (10~30초)';
   try {
     const r = await api('/api/presets/generate', { method: 'POST', body: { koDescription: ko, name: f.name.value.trim(), instrumental: f.instrumental.value === 'true', wantTopics } });
     f.prompt.value = r.prompt;
@@ -452,8 +453,11 @@ pmf().onsubmit = async (e) => {
       if (!/^[a-z0-9][a-z0-9-]{1,40}$/.test(body.id)) throw new Error('프리셋 id는 영문 소문자·숫자·하이픈 2~41자');
       const created = await api('/api/presets', { method: 'POST', body });
       await refreshPresetSelect(created.id);
+      try { localStorage.setItem('pf.preset', created.id); } catch {}
       openPresetModal(created.id);
-      $('#pmMsg').textContent = `새 프리셋 "${created.name}" 저장됨. 이제 선택되어 있습니다.`;
+      $('#pmMsg').textContent = created._generated
+        ? `새 프리셋 "${created.name}" 저장됨 · 메인 LLM(${created._model})이 영어 프롬프트·주제·배경 검색어를 자동 생성했습니다. 아래 영어 프롬프트를 확인하세요. 이제 선택되어 있습니다.`
+        : `새 프리셋 "${created.name}" 저장됨. 영어 프롬프트가 비어 있어 한국어 설명이 그대로 전달됩니다${created._generateError ? ` (자동 생성 실패: ${created._generateError})` : ''}. ✨ 버튼으로 영어 프롬프트를 만들어 저장하는 것을 권장합니다.`;
       return;
     }
     const saved = await api('/api/presets/' + pmPreset.id, { method: 'PUT', body: pmBody() });

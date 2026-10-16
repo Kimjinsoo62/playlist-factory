@@ -220,7 +220,7 @@
       <div class="row" id="pmIdRow" hidden><label>프리셋 id</label><input name="id" placeholder="영문 소문자·숫자·하이픈 (예: my-citypop)" pattern="[a-z0-9][a-z0-9-]{1,40}"></div>
       <div class="row"><label>이름</label><input name="name" placeholder="예: 새벽 감성 피아노"></div>
       <div class="row"><label>한 줄 설명</label><input name="description"></div>
-      <div class="row top"><label>한국어 상세 설명<br><span class="dim">곡 생성에 사용됨</span></label><textarea name="koDescription" rows="4" placeholder="분위기, 악기, 템포(BPM), 보컬 톤, 참고 장르를 한국어로 자세히 적으세요. 이 내용이 영어 프롬프트 뒤에 붙어 Treblo에 전달됩니다."></textarea></div>
+      <div class="row top"><label>한국어 상세 설명<br><span class="dim">곡 생성에 사용됨</span></label><div class="grow"><textarea name="koDescription" rows="4" placeholder="장르(예: 컨트리, 트로트), 악기, 템포(BPM), 보컬 톤, 분위기를 한국어로 자세히 적으세요. 풍경·장면 묘사만 쓰면 어떤 음악인지 AI가 알 수 없습니다. 이 내용은 영어로 번역되어 작곡 AI에 전달됩니다."></textarea><div class="dim" style="margin-top:2px">⚠ 반드시 <b>음악 장르·악기·템포</b>를 적으세요. 새 프리셋을 저장하면 메인 LLM이 이 설명과 이름으로 영어 프롬프트·주제·배경 검색어를 자동으로 만듭니다.</div></div></div>
       <div class="row"><label></label>
         <button type="button" id="pmGen" class="btn primary small">✨ AI로 영어 프롬프트 자동 생성</button>
         <label class="inline"><input type="checkbox" id="pmGenTopics" checked> 곡 주제·제외 태그·배경 검색어도 함께</label>
