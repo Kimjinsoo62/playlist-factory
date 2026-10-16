@@ -1,0 +1,56 @@
+{
+  "id": "my-2xrir",
+  "name": "한국 트로트",
+  "description": "한국 트로트",
+  "koDescription": "한국의 트로트음악 이별과 슬픔을 노래함",
+  "useKoDescription": true,
+  "prompt": "",
+  "instrumental": false,
+  "negative_tags": [],
+  "length_range": [
+    150,
+    240
+  ],
+  "thumbnailStyle": "neon",
+  "topics": {
+    "ko": [],
+    "en": [
+      "첫 번째 이야기",
+      "밤의 끝에서",
+      "천천히 흐르는 시간",
+      "창밖의 계절",
+      "다시 만난 오후",
+      "조용한 약속"
+    ],
+    "ja": [
+      "첫 번째 이야기",
+      "밤의 끝에서",
+      "천천히 흐르는 시간",
+      "창밖의 계절",
+      "다시 만난 오후",
+      "조용한 약속"
+    ]
+  },
+  "titleTemplate": {
+    "ko": "[Playlist] 한국 트로트 {n}곡 · {dur}",
+    "en": "[Playlist] 한국 트로트 {n} songs · {dur}",
+    "ja": "[Playlist] 한국 트로트 {n}曲 · {dur}"
+  },
+  "youtubeIntro": {
+    "ko": "한국 트로트"
+  },
+  "hashtags": [
+    "#playlist",
+    "#aimusic"
+  ],
+  "keywords": [
+    "한국 트로트",
+    "playlist"
+  ],
+  "imageQueries": [
+    "abstract background",
+    "night city lights",
+    "nature landscape calm"
+  ],
+  "createdAt": "2026-10-16T14:52:41.158Z"
+}

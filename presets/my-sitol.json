@@ -1,0 +1,56 @@
+{
+  "id": "my-sitol",
+  "name": "칸트리뮤직",
+  "description": "미국서부의 농장",
+  "koDescription": "미국 서부의 황량한 벌판과 옥수수밭 그리고마차가다니고 농장에 서 모닥불을 피우고 식사를 하는 농부의 삶을 보여준다",
+  "useKoDescription": true,
+  "prompt": "Country pop music from the 1970s and 1980s, depicting rural life in the American West: barren open plains, cornfields, horse-drawn wagons, and farmers sharing a meal around a campfire on the farm. Warm acoustic guitar, steel guitar, nostalgic mood.",
+  "instrumental": false,
+  "negative_tags": [],
+  "length_range": [
+    150,
+    240
+  ],
+  "thumbnailStyle": "night",
+  "topics": {
+    "ko": [],
+    "en": [
+      "첫 번째 이야기",
+      "밤의 끝에서",
+      "천천히 흐르는 시간",
+      "창밖의 계절",
+      "다시 만난 오후",
+      "조용한 약속"
+    ],
+    "ja": [
+      "첫 번째 이야기",
+      "밤의 끝에서",
+      "천천히 흐르는 시간",
+      "창밖의 계절",
+      "다시 만난 오후",
+      "조용한 약속"
+    ]
+  },
+  "titleTemplate": {
+    "ko": "[Playlist] 칸트리뮤직 {n}곡 · {dur}",
+    "en": "[Playlist] 칸트리뮤직 {n} songs · {dur}",
+    "ja": "[Playlist] 칸트리뮤직 {n}曲 · {dur}"
+  },
+  "youtubeIntro": {
+    "ko": "미국서부의 농장"
+  },
+  "hashtags": [
+    "#playlist",
+    "#aimusic"
+  ],
+  "keywords": [
+    "칸트리뮤직",
+    "playlist"
+  ],
+  "imageQueries": [
+    "abstract background",
+    "night city lights",
+    "nature landscape calm"
+  ],
+  "createdAt": "2026-10-15T17:07:15.657Z"
+}
