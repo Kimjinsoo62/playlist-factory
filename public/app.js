@@ -99,33 +99,45 @@ function openLogWindow(jobId) {
   const w = Math.min(1000, screen.availWidth - 40), h = Math.min(640, screen.availHeight - 80);
   const left = Math.max(0, screen.availWidth - w - 20), top = Math.max(0, screen.availHeight - h - 40);
   const win = window.open(url, 'playlist-log', `popup=yes,width=${w},height=${h},left=${left},top=${top},resizable=yes,scrollbars=no`);
-  if (win) { logWinRef = win; try { win.focus(); } catch {} $('#btnLog').classList.remove('pulse'); }
-  else $('#btnLog').classList.add('pulse');   // 팝업 차단: 버튼을 깜빡여 직접 열도록 안내
+  if (win) { logWinRef = win; try { win.focus(); } catch {} $('#btnLog').classList.remove('pulse'); $('#popupWarn').hidden = true; }
+  else { $('#btnLog').classList.add('pulse'); $('#popupWarn').hidden = false; }   // 팝업 차단: 안내 띄우고 버튼을 깜빡여 직접 열도록
   return win;
 }
 $('#btnLog').onclick = () => openLogWindow(selected || 'latest');
+$('#btnLogOpen').onclick = () => openLogWindow(selected || 'latest');
 
 // ── 작업 시작
 $('#form').onsubmit = async (e) => {
   e.preventDefault();
   const body = formData();
-  const logWin = openLogWindow('latest');   // 클릭 직후(동기)에 열어야 팝업 차단을 피한다. 작업이 만들어지면 그 로그를 따라간다
-  if (body.provider === 'treblo') {
+  // 비용이 드는 소스는 화면 안 모달로 확인한다. 브라우저 기본 confirm() 은 메인 창을 앞으로 끌어와 먼저 연 로그 창이 뒤로 숨는다.
+  if (body.provider === 'treblo' || body.provider === 'lyria') {
     const est = await api('/api/plan', { method: 'POST', body }).catch(() => null);
-    if (est && !confirm(`Treblo API로 ${est.specs.length}곡을 생성합니다.\n크레딧 ${est.credits} 이 사용됩니다. 계속할까요?`)) { logWin?.close(); return; }
-  } else if (body.provider === 'lyria') {
-    const est = await api('/api/plan', { method: 'POST', body }).catch(() => null);
-    if (est && !est.instrumental) { logWin?.close(); alert('Lyria 소스는 연주곡 전용입니다. 연주곡 프리셋을 고르거나 보컬 옵션을 "연주곡"으로 바꾸세요.'); return; }
-    if (est && !confirm(`Google Lyria로 ${est.specs.length}곡(연주곡)을 생성합니다.\n약 $${est.lyriaUsd.toFixed(2)} (곡당 $0.08)이 Google 결제 계정에 청구됩니다. 계속할까요?`)) { logWin?.close(); return; }
+    if (body.provider === 'lyria' && est && !est.instrumental) { alert('Lyria 소스는 연주곡 전용입니다. 연주곡 프리셋을 고르거나 보컬 옵션을 "연주곡"으로 바꾸세요.'); return; }
+    if (est) {
+      const text = body.provider === 'treblo'
+        ? `Treblo API로 <b>${est.specs.length}곡</b>을 생성합니다. 크레딧 <b>${est.credits}</b>이 사용됩니다.`
+        : `Google Lyria로 <b>${est.specs.length}곡</b>(연주곡)을 생성합니다. 약 <b>$${est.lyriaUsd.toFixed(2)}</b> (곡당 $0.08)이 Google 결제 계정에 청구됩니다.`;
+      modal('생성 확인', `<p>${text}</p><p class="dim">[계속]을 누르면 로그 창이 새 창으로 열리고 작업이 시작됩니다.</p>`, [
+        { label: '계속', cls: 'primary', onClick: () => { $('#modal').hidden = true; startJob(body); } },
+        { label: '취소', onClick: () => $('#modal').hidden = true },
+      ]);
+      return;
+    }
   }
+  startJob(body);
+};
+// 작업 시작: 반드시 사용자 클릭 핸들러 안에서 동기로 호출해야 로그 창(팝업)이 차단되지 않고 맨 앞에 뜬다
+async function startJob(body) {
+  const logWin = openLogWindow('latest');
   $('#btnRun').disabled = true;
   try {
     const j = await api('/api/jobs', { method: 'POST', body }); select(j.id);
     try { if (logWin && !logWin.closed) { logWin.location.replace(`/log.html?job=${encodeURIComponent(j.id)}&follow=1`); logWin.focus(); } } catch {}
   }
-  catch (err) { logWin?.close(); alert(err.message); }
+  catch (err) { try { logWin?.close(); } catch {} alert(err.message); }
   finally { $('#btnRun').disabled = false; }
-};
+}
 $('#btnOpenInput').onclick = () => api('/api/open', { method: 'POST', body: { path: 'input' } }).catch(e => alert(e.message));
 $('#btnOpenOutput').onclick = () => api('/api/open', { method: 'POST', body: { path: 'output' } }).catch(e => alert(e.message));
 

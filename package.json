@@ -1,6 +1,6 @@
 {
   "name": "playlist-factory",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "AI 음악 플레이리스트 팩토리 (Treblo API + ffmpeg)",
   "type": "module",
