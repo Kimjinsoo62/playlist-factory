@@ -39,12 +39,12 @@ async function init() {
   sel.onchange = updatePresetUI; updatePresetUI();
   const cfg = await api('/api/config');
   fillForm($('#cfgForm'), cfg);
-  $('#provider').value = cfg.provider || 'treblo';
+  applyActive(cfg.provider || 'treblo');
   if (!cfg.hasApiKey && !cfg.hasLyriaKey) openKeyModal('작곡 AI API 키가 없습니다. Treblo 또는 Lyria 키를 등록하세요. 로컬 폴더·테스트 소스는 키 없이 쓸 수 있습니다.');
   if (cfg.hasApiKey) refreshBalance();
   providerChanged();
   jobs = await api('/api/jobs'); renderJobs();
-  connectSSE();
+  if (!location.search.includes('nosse')) connectSSE();   // ?nosse=1: 화면 캡처 테스트용(실시간 갱신 끔)
   if (location.hash === '#preset') openPresetModal($('#preset').value);   // 링크로 바로 열기
   if (location.hash === '#keys') openKeyModal();                           // 링크로 설정(키) 모달 바로 열기
 }
@@ -136,7 +136,6 @@ $('#cfgForm').onsubmit = async (e) => {
     keys.slice(0, -1).forEach(k => o = (o[k] ??= {}));
     o[keys.at(-1)] = v;
   }
-  patch.provider = $('#provider').value === 'mock' ? 'treblo' : $('#provider').value;
   let cfg;
   try { cfg = await api('/api/config', { method: 'POST', body: patch }); } catch (err) { alert(err.message); return; }
   fillForm($('#cfgForm'), cfg);
@@ -160,10 +159,30 @@ async function openKeyModal(msg = '') {
   $('#kmodal').hidden = false;
   await refreshKeys();
 }
+// 활성 작곡 AI 반영: 소스 목록에서 대기 소스는 선택 불가, 선택돼 있었으면 활성 소스로 바꿈
+function applyActive(active) {
+  const sel = $('#provider'); let changed = false;
+  for (const o of sel.options) {
+    if (!o.dataset.label) continue;
+    const standby = o.value !== active;
+    o.disabled = standby; o.textContent = o.dataset.label + (standby ? '  — 대기 (설정에서 활성화)' : '');
+    if (standby && sel.value === o.value) { sel.value = active; changed = true; }
+  }
+  if (changed) providerChanged();
+}
 async function refreshKeys() {
   let ks; try { ks = await api('/api/keys'); } catch (e) { $('#kmMsg').textContent = e.message; return; }
+  const active = Object.keys(ks).find(p => ks[p].active) || 'treblo';
+  applyActive(active);
   for (const c of document.querySelectorAll('#kmBody .kcard')) {
     const k = ks[c.dataset.p]; if (!k) continue;
+    const ac = c.querySelector('[data-r=active]');
+    ac.textContent = k.active ? '● 활성' : '○ 대기'; ac.className = 'chip ' + (k.active ? 'ok' : '');
+    c.classList.toggle('active', Boolean(k.active));
+    c.querySelector('[data-act=activate]').hidden = Boolean(k.active);
+    c.querySelector('[data-act=activate]').disabled = !k.set;
+    c.querySelector('[data-act=activate]').title = k.set ? '이 소스를 활성화하고 다른 소스는 대기로 둡니다' : '키를 먼저 저장하세요';
+    c.querySelector('[data-act=standby]').hidden = !k.active;
     const st = c.querySelector('[data-r=status]');
     st.textContent = k.set ? `저장됨 ${k.masked}${k.fromEnv ? ' (환경변수)' : ''}` : '키 없음';
     st.className = 'chip ' + (k.set ? 'ok' : 'err');
@@ -195,6 +214,13 @@ $('#kmBody').addEventListener('click', async (e) => {
       const r = await api(`/api/keys/${p}/check`);
       msg.textContent = '✔ ' + r.summary;
       if (p === 'treblo') refreshBalance();
+    } else if (act === 'activate') {
+      await api(`/api/keys/${p}/activate`, { method: 'POST' });
+      msg.textContent = '활성화됨 — 새 작업의 기본 소스';
+      $('#provider').value = p; providerChanged();
+    } else if (act === 'standby') {
+      await api(`/api/keys/${p}/standby`, { method: 'POST' });
+      msg.textContent = '대기로 전환됨';
     } else if (act === 'delete') {
       if (!confirm(`${p === 'treblo' ? 'Treblo' : 'Lyria'} API 키를 config.json 에서 지울까요?`)) return;
       await api(`/api/keys/${p}`, { method: 'DELETE' });

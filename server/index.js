@@ -156,10 +156,12 @@ function keyStatus(cfg) {
   const out = {};
   for (const [id, m] of Object.entries(KEY_PROVIDERS)) {
     const k = cfg[id]?.apiKey || '';
-    out[id] = { set: Boolean(k), masked: k ? k.slice(0, 4) + '****' + k.slice(-4) : '', fromEnv: Boolean(process.env[m.env]), model: cfg[id]?.model, concurrency: cfg[id]?.concurrency };
+    out[id] = { set: Boolean(k), masked: k ? k.slice(0, 4) + '****' + k.slice(-4) : '', fromEnv: Boolean(process.env[m.env]), model: cfg[id]?.model, concurrency: cfg[id]?.concurrency, active: activeProvider(cfg) === id };
   }
   return out;
 }
+/** 활성 작곡 AI: config.provider (treblo | lyria). 작곡 AI 가 아닌 값이 들어 있으면 treblo 로 간주 */
+function activeProvider(cfg) { return KEY_PROVIDERS[cfg.provider] ? cfg.provider : 'treblo'; }
 app.get('/api/keys', (req, res) => res.json(keyStatus(loadConfig())));
 app.put('/api/keys/:provider', (req, res) => {
   const id = req.params.provider, m = KEY_PROVIDERS[id];
@@ -182,6 +184,23 @@ app.delete('/api/keys/:provider', (req, res) => {
   const cfg = saveConfig({ [id]: { apiKey: '' } });
   if (process.env[m.env]) return res.status(400).json({ error: `config.json 의 키는 지웠지만 환경변수 ${m.env} 가 설정되어 있어 계속 사용됩니다.`, ...keyStatus(cfg) });
   res.json(keyStatus(cfg));
+});
+// 활성화/대기: 작곡 AI 는 한 번에 하나만 활성. 대기 소스로는 작업을 시작할 수 없다.
+app.post('/api/keys/:provider/activate', (req, res) => {
+  const id = req.params.provider, m = KEY_PROVIDERS[id];
+  if (!m) return res.status(404).json({ error: '알 수 없는 소스' });
+  const cfg = loadConfig();
+  if (!cfg[id]?.apiKey) return res.status(400).json({ error: `${m.label} API 키가 없어 활성화할 수 없습니다. 먼저 키를 저장하세요.` });
+  res.json(keyStatus(saveConfig({ provider: id })));
+});
+app.post('/api/keys/:provider/standby', (req, res) => {
+  const id = req.params.provider, m = KEY_PROVIDERS[id];
+  if (!m) return res.status(404).json({ error: '알 수 없는 소스' });
+  const cfg = loadConfig();
+  if (activeProvider(cfg) !== id) return res.json(keyStatus(cfg));          // 이미 대기
+  const other = Object.keys(KEY_PROVIDERS).find(p => p !== id && cfg[p]?.apiKey);
+  if (!other) return res.status(400).json({ error: `다른 작곡 AI 키가 없어 ${m.label} 를 대기로 둘 수 없습니다. 작곡 AI 는 최소 하나가 활성이어야 합니다.` });
+  res.json(keyStatus(saveConfig({ provider: other })));
 });
 app.get('/api/keys/:provider/check', async (req, res) => {
   const id = req.params.provider; const cfg = loadConfig();
@@ -232,6 +251,7 @@ app.post('/api/jobs', (req, res) => {
   if (!body.preset) return res.status(400).json({ error: 'preset 필요' });
   const cfg = loadConfig();
   const provider = body.dryRun ? 'mock' : (body.provider || cfg.provider);
+  if (KEY_PROVIDERS[provider] && activeProvider(cfg) !== provider) return res.status(400).json({ error: `${KEY_PROVIDERS[provider].label} 소스는 대기 상태입니다. 상단 [설정]에서 활성화한 뒤 사용하세요. (현재 활성: ${KEY_PROVIDERS[activeProvider(cfg)].label})` });
   if (provider === 'treblo' && !cfg.treblo.apiKey) return res.status(400).json({ error: 'Treblo API 키가 없습니다. 설정에서 입력하거나 소스를 "로컬 폴더"로 바꾸세요.' });
   if (provider === 'lyria') {
     if (!cfg.lyria.apiKey) return res.status(400).json({ error: 'Lyria(Gemini) API 키가 없습니다. 설정에서 입력하세요.' });

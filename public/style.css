@@ -92,6 +92,9 @@ summary { cursor: pointer; color: var(--dim); }
 .kcard .row input[type=password], .kcard .row input[type=text] { flex: 1; font-family: Consolas, monospace; }
 .kcard .row3 a { display: inline-block; padding-top: 3px; }
 .kcard .actions { margin: 4px 0 0; }
+.kcard .actions .sep { width: 1px; height: 16px; background: var(--line); margin: 0 4px; }
+.kcard .btn.act { border-color: var(--accent2); color: var(--accent2); font-weight: bold; }
+.kcard.active { border-color: var(--accent2); }
 .pm { display: flex; flex-direction: column; min-height: 0; flex: 1; overflow-y: auto; padding-right: 4px; }
 .pm .actions { position: sticky; bottom: 0; background: var(--panel); border-top: 1px solid var(--line); padding: 6px 0 2px; margin-top: 6px; z-index: 1; }
 .pm .actions .btn.primary { padding: 4px 16px; }

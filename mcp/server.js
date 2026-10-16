@@ -39,7 +39,7 @@ server.tool('create_playlist', '플레이리스트 영상 생성 작업을 시�
   count: z.number().int().min(1).max(40).default(6).describe('곡 수'),
   language: z.enum(['ko', 'en', 'ja']).default('ko').describe('가사 언어'),
   instrumental: z.boolean().optional().describe('연주곡 여부(생략 시 프리셋 기본값)'),
-  provider: z.enum(['treblo', 'lyria', 'local', 'mock']).default('treblo').describe('treblo=Treblo API 자동 생성(보컬·연주곡), lyria=Google Lyria 자동 생성(연주곡 프리셋 전용, 가사 자막 불가), local=input 폴더의 파일 사용, mock=크레딧 없는 테스트'),
+  provider: z.enum(['treblo', 'lyria', 'local', 'mock']).optional().describe('생략하면 설정에서 활성화한 작곡 AI 를 사용. treblo=Treblo API 자동 생성(보컬·연주곡), lyria=Google Lyria 자동 생성(연주곡 프리셋 전용, 가사 자막 불가; 설정에서 활성 상태여야 함), local=input 폴더의 파일 사용, mock=크레딧 없는 테스트'),
   title: z.string().optional().describe('유튜브 영상 제목(생략 시 자동)'),
   thumbnailStyle: z.enum(['night', 'warm', 'mono', 'neon', 'paper', 'forest', 'ocean']).optional(),
   thumbnailText: z.string().optional(),

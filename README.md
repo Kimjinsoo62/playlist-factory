@@ -26,7 +26,7 @@ START.bat
 
 1. `install.bat`: Node 패키지(express, MCP SDK)와 Pillow를 설치하고 ffmpeg 유무를 확인한다.
 2. `START.bat`: 서버를 띄우고 브라우저를 연다. 의존성이 없으면 install.bat을 자동으로 호출한다. 콘솔에 LAN 주소가 표시되어 같은 네트워크의 다른 PC에서도 접속할 수 있다.
-3. 앱 상단 **[설정]** 버튼을 눌러 작곡 AI API 키 모달에서 Treblo API 키를 등록한다(Lyria 키도 같은 곳). 키는 https://treblo.com/developers 에서 발급하며 `config.json`에만 저장된다(git 제외). 모달에서 키 확인·삭제, 모델, 동시 생성 수를 관리한다.
+3. 앱 상단 **[설정]** 버튼을 눌러 작곡 AI API 키 모달에서 Treblo API 키를 등록한다(Lyria 키도 같은 곳). 키는 https://treblo.com/developers 에서 발급하며 `config.json`에만 저장된다(git 제외). 모달에서 키 확인·삭제, 모델, 동시 생성 수를 관리한다. 키가 둘 다 있으면 **● 활성화 / ○ 대기** 버튼으로 하나만 활성으로 쓴다(활성 소스 = `config.provider`, 대기 소스는 소스 목록에서 선택 불가·작업 거부).
 4. 소스를 "테스트(합성음)"로 두고 **▶ 자동 생성 시작**을 눌러 전체 과정을 먼저 확인한 뒤, "Treblo API"로 바꿔 실제 곡을 만든다.
 
 업데이트는 앱 상단 **[업데이트]** 버튼(git fetch → 승인 → git pull) 또는 `git pull`로 한다. package.json이 바뀌면 install.bat을 다시 실행한다.

@@ -65,10 +65,15 @@ function deepMerge(a, b) {
   return out;
 }
 
-export function loadConfig() {
+/** config.json 내용 + 기본값 (환경변수 미적용). 저장의 기준이 된다. */
+function fileConfig() {
   let saved = {};
   try { saved = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8')); } catch {}
-  const cfg = deepMerge(DEFAULTS, saved);
+  return deepMerge(DEFAULTS, saved);
+}
+
+export function loadConfig() {
+  const cfg = fileConfig();
   if (process.env.TREBLO_API_KEY) cfg.treblo.apiKey = process.env.TREBLO_API_KEY;
   if (process.env.GEMINI_API_KEY) cfg.lyria.apiKey = process.env.GEMINI_API_KEY;
   if (process.env.PORT) cfg.port = Number(process.env.PORT);
@@ -76,10 +81,10 @@ export function loadConfig() {
 }
 
 export function saveConfig(patch) {
-  const current = loadConfig();
-  const next = deepMerge(current, patch);
+  // 환경변수로 덮어쓴 값(API 키, 포트)이 파일에 기록되지 않도록 파일 내용을 기준으로 병합한다
+  const next = deepMerge(fileConfig(), patch);
   fs.writeFileSync(CONFIG_FILE, JSON.stringify(next, null, 2), 'utf8');
-  return next;
+  return loadConfig();
 }
 
 export function maskConfig(cfg) {
