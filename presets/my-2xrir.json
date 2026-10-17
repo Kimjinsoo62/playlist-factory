@@ -58,8 +58,8 @@
   },
   "titleTemplate": {
     "ko": "[Playlist] 한국 트로트 {n}곡 · {dur}",
-    "en": "[Playlist] 한국 트로트 {n} songs · {dur}",
-    "ja": "[Playlist] 한국 트로트 {n}曲 · {dur}"
+    "en": "[Playlist] Korean Trot {n} songs · {dur}",
+    "ja": "[Playlist] 韓国トロット {n}曲 · {dur}"
   },
   "youtubeIntro": {
     "ko": "한국 트로트"
