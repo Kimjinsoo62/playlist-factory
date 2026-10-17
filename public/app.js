@@ -297,7 +297,7 @@ function renderJobs() {
   $('#jobCount').textContent = jobs.length ? `(${jobs.length})` : '';
   $('#jobs').innerHTML = jobs.map(j => `
     <div class="job ${j.id === selected ? 'sel' : ''}" data-id="${j.id}" style="${j.hidden ? 'opacity:.55' : ''}">
-      <span class="dim">${j.id.slice(0, 8)} ${j.id.slice(8, 12)}${j.hidden ? ' 숨김' : ''}</span>
+      <span class="dim">${jobStamp(j.id)}${j.hidden ? ' 숨김' : ''}</span>
       <span>${presetName(j.request?.preset)} · ${j.request?.count || j.tracks?.length || ''}곡 <div class="mini"><i style="width:${j.progress || 0}%"></i></div></span>
       <span class="chip ${chipClass(j.status)}">${statusText(j.status)}</span>
       <span class="dim">${j.progress || 0}%</span>
@@ -305,6 +305,8 @@ function renderJobs() {
   $('#jobs').querySelectorAll('.job').forEach(el => el.onclick = () => select(el.dataset.id));
 }
 const presetName = (id) => presets.find(p => p.id === id)?.name || id || '';
+/** 작업 id 에서 날짜·시각: 새 형식 20261018_0030_프리셋_6곡 / 옛 형식 20261017145919_1j70 */
+const jobStamp = (id) => { const m = /^(\d{4})(\d{2})(\d{2})_?(\d{2})(\d{2})/.exec(id); return m ? `${m[1]}-${m[2]}-${m[3]} ${m[4]}:${m[5]}` : id.slice(0, 12); };
 const chipClass = (s) => ({ running: 'run', done: 'ok', failed: 'err', cancelled: 'warn', queued: '' })[s] || '';
 const statusText = (s) => ({ running: '진행 중', done: '완료', failed: '실패', cancelled: '취소', queued: '대기' })[s] || s;
 async function select(id) { selected = id; renderJobs(); logEl.textContent = ''; await loadDetail(id); }

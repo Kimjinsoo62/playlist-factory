@@ -13,8 +13,26 @@ function ts() {
   return d.toTimeString().slice(0, 8);
 }
 
+/** 프리셋 이름을 폴더명에 쓸 수 있게 정리: 금지 문자 제거, 공백 제거, 30자 제한 */
+function presetLabel(presetId) {
+  let name = '';
+  try { name = JSON.parse(fs.readFileSync(path.join(DIRS.presets, presetId + '.json'), 'utf8')).name || ''; } catch {}
+  name = String(name || presetId || 'playlist').replace(/[<>:"/\\|?*\x00-\x1f]/g, '').replace(/\s+/g, '').replace(/\.+$/, '').slice(0, 30);
+  return name || 'playlist';
+}
+/** 작업 id = 폴더명: YYYYMMDD_HHMM_프리셋명_N곡 (로컬 시각). 같은 이름이 있으면 _2, _3 … */
+export function makeJobId(request) {
+  const d = new Date(), p = (n) => String(n).padStart(2, '0');
+  const stamp = `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}`;
+  const n = Math.max(1, Math.min(40, Number(request?.count) || 6));
+  const base = `${stamp}_${presetLabel(request?.preset)}_${n}곡`;
+  let id = base;
+  for (let i = 2; jobs.has(id) || fs.existsSync(path.join(DIRS.output, id)); i++) id = `${base}_${i}`;
+  return id;
+}
+
 export function createJob(request) {
-  const id = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 14) + '_' + Math.random().toString(36).slice(2, 6);
+  const id = makeJobId(request);
   const dir = path.join(DIRS.output, id);
   fs.mkdirSync(path.join(dir, 'tracks'), { recursive: true });
   const job = {

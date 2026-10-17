@@ -33,7 +33,7 @@ python scripts/contact-sheet.py out.jpg     # 배경 풀 전체를 한 장으로
 
 `public/app.js` (바닐라 JS, 빌드 없음, 다크/라이트 테마는 `public/theme.js`가 `<head>`에서 적용) → `server/index.js` REST → `jobs.js`의 `createJob` → `pipeline.js`의 `runJob` (setImmediate로 비동기 실행) → 진행 상황은 `jobs.js`의 `bus` EventEmitter → `GET /api/events` SSE → 메인 창과 별도 로그 창(`public/log.html`).
 
-- 작업 상태는 메모리 Map + `output/<id>/job.json`(summarize) + `job.log`에 영속. 서버 재시작 시 `loadPastJobs`가 job.json을 다시 읽고, running/queued였던 작업은 failed로 바꾼다. 로그는 디스크의 job.log에서 복원.
+- 작업 id = 출력 폴더명 `YYYYMMDD_HHMM_프리셋명_N곡`(`makeJobId`, 한글 포함·충돌 시 `_2`). 작업 상태는 메모리 Map + `output/<id>/job.json`(summarize) + `job.log`에 영속. 서버 재시작 시 `loadPastJobs`가 job.json을 다시 읽고, running/queued였던 작업은 failed로 바꾼다. 로그는 디스크의 job.log에서 복원.
 - 라우트 묶음: `/api/presets*` (CRUD·복제·LLM 생성), `/api/keys*` (키 저장·활성/대기·연결 확인·모델 목록), `/api/jobs*`, `/api/plan`, `/api/backgrounds*`, `/api/update/*`, `/api/shutdown`.
 
 ### 파이프라인 9단계 (`server/pipeline.js`)
