@@ -95,7 +95,7 @@ app.post('/api/presets', async (req, res) => {
     for (const l of ['ko', 'en', 'ja']) if (!topics[l].length) topics[l] = DEFAULT_TOPICS[l];   // 언어별 기본 주제 (영어 곡에 한국어 제목이 붙지 않도록)
     const p = {
       id, name, description: (b.description || '').trim() || name,
-      koDescription: (b.koDescription || '').trim(), useKoDescription: b.useKoDescription !== false,
+      koDescription: (b.koDescription || '').trim(), useKoDescription: generated ? false : b.useKoDescription !== false,   // 자동 생성 프롬프트는 설명의 번역이라 둘 다 보내면 중복
       prompt: (b.prompt || '').trim(), instrumental: Boolean(b.instrumental),
       negative_tags: b.negative_tags || [], length_range: Array.isArray(b.length_range) && b.length_range.length === 2 ? b.length_range : [150, 240],
       thumbnailStyle: b.thumbnailStyle || 'night', topics,

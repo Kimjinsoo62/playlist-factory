@@ -3,7 +3,7 @@
   "name": "칸트리뮤직",
   "description": "미국서부의 농장",
   "koDescription": "미국 서부의 황량한 벌판과 옥수수밭 그리고마차가다니고 농장에 서 모닥불을 피우고 식사를 하는 농부의 삶을 보여준다",
-  "useKoDescription": true,
+  "useKoDescription": false,
   "prompt": "Country pop music from the 1970s and 1980s, depicting rural life in the American West: barren open plains, cornfields, horse-drawn wagons, and farmers sharing a meal around a campfire on the farm. Warm acoustic guitar, steel guitar, nostalgic mood.",
   "instrumental": false,
   "negative_tags": [],

@@ -43,6 +43,19 @@ export function loadPresets() {
 export function getPreset(id) { return loadPresets().find(p => p.id === id); }
 
 function pick(arr, i) { return arr?.length ? arr[i % arr.length] : null; }
+const VOCAL_WORDS = /\b(vocals?|vocalists?|singers?|sung|sing(ing|-along)?|crooner|harmon(y|ies)|choir|falsetto|rap(per|ping)?|lyrics)\b/i;
+/** 보컬 프리셋을 연주곡으로 돌릴 때: 보컬을 묘사한 문장을 빼고 앞에 연주곡 지시를 붙인다. 끝에 "no vocals"만 덧붙이면 앞의 보컬 묘사와 모순된 프롬프트가 되어 악기 질감만 남은 엉뚱한 장르(예: 올드팝 → 재즈)가 나온다. */
+export function instrumentalize(prompt) {
+  // 문장 → 쉼표 절 단위로 나눠 보컬을 말하는 절만 뺀다 (프리셋 프롬프트는 대개 쉼표로 이어진 한 문장)
+  const sentences = String(prompt).split(/(?<=[.!?])\s+/).map(s => {
+    const end = (s.match(/[.!?]$/) || [''])[0];
+    const clauses = s.replace(/[.!?]$/, '').split(/,\s*/).filter(c => !VOCAL_WORDS.test(c));
+    const rest = clauses.join(', ');
+    return rest.length >= 15 ? rest + end : '';   // "Smooth" 처럼 수식어 한 토막만 남은 문장은 버린다
+  }).filter(Boolean);
+  const body = sentences.length ? sentences.join(' ') : String(prompt).trim();
+  return `Instrumental only, no vocals, no singing. Instrumental arrangement of: ${body}`;
+}
 function shuffle(arr, seed) {
   const a = [...(arr || [])]; let s = seed || 1;
   for (let i = a.length - 1; i > 0; i--) { s = (s * 9301 + 49297) % 233280; const j = Math.floor((s / 233280) * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
@@ -54,7 +67,11 @@ export function planTracks(preset, request) {
   const n = Math.max(1, Math.min(40, Number(request.count) || 6));
   const lang = LANG[request.language] ? request.language : 'ko';
   const instrumental = request.instrumental ?? Boolean(preset.instrumental);
-  const topics = shuffle(topicsFor(preset, lang), Date.now() % 1000);
+  const seed = Date.now() % 1000;
+  const topics = shuffle(topicsFor(preset, lang), seed);
+  // 연주곡의 분위기 문구는 영어 주제로 전달(같은 순서로 섞어 제목과 짝을 맞춤). 제목·자막은 선택한 언어의 주제를 그대로 쓴다.
+  const enList = topicsFor(preset, 'en');
+  const topicsEn = lang !== 'en' && (preset.topics?.en || []).length && enList.length === topics.length ? shuffle(enList, seed) : null;   // 프리셋 자신의 영어 주제가 있을 때만 짝 맞춤(기본 주제와 섞이지 않게)
   const specs = [];
   for (let i = 0; i < n; i++) {
     const topic = pick(topics, i) || `Track ${i + 1}`;
@@ -70,7 +87,11 @@ export function planTracks(preset, request) {
     // 영어 프롬프트가 없는 프리셋: 이름이 곧 장르인 경우가 많으므로(예: 칸트리뮤직) 앞에 붙여 장르를 분명히 한다
     if (!(preset.prompt || '').trim()) prompt = `Genre/style: ${request.presetNameEn || preset.name}. ${prompt}`;
     if (!instrumental) prompt += ` ${LANG[lang].instr} Theme of this song: "${topic}".`;
-    else prompt += ` Instrumental only, no vocals. Mood: "${topic}".`;
+    else {
+      if (!preset.instrumental) prompt = instrumentalize(prompt);   // 보컬 프리셋을 연주곡으로: 보컬 묘사 제거
+      else if (!/instrumental/i.test(prompt)) prompt += ' Instrumental only, no vocals.';
+      prompt += ` Mood: "${pick(topicsEn, i) || topic}".`;
+    }
     if (request.extraPromptEn || request.extraPrompt) prompt += ` ${request.extraPromptEn || request.extraPrompt}`;
     specs.push({
       index: i + 1, title: topic, prompt, instrumental,

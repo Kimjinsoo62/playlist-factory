@@ -59,11 +59,13 @@ async function estimate() {
   try {
     const e = await api('/api/plan', { method: 'POST', body });
     const prov = $('#provider').value;
-    $('#estimate').textContent = prov === 'treblo'
+    const p = presets.find(x => x.id === body.preset);
+    const forced = p && !p.instrumental && e.instrumental ? '\u26a0 보컬 프리셋을 연주곡으로 만듭니다(프롬프트에서 보컬 묘사를 뺌). 프리셋 본래의 보컬 결과를 보려면 Treblo를 활성화하고 보컬 옵션을 "프리셋 기본"으로 두세요.\n' : '';
+    $('#estimate').textContent = forced + (prov === 'treblo'
       ? `예상: ${e.specs.length}곡 · 크레딧 ${e.credits} · 영상 약 ${e.estMinutes}분 · ${e.instrumental ? '연주곡' : '보컬 (' + e.lang + ')'}`
       : prov === 'lyria'
       ? (e.instrumental ? `예상: ${e.specs.length}곡 · 약 $${e.lyriaUsd.toFixed(2)} (곡당 $0.08, Google 결제 계정에 청구) · 영상 약 ${e.estMinutes}분 · 연주곡` : `⚠ Lyria 소스는 연주곡 전용입니다. 연주곡 프리셋을 고르거나 보컬 옵션을 "연주곡"으로 바꾸세요. (가사 타이밍 데이터가 없어 가사 자막을 만들 수 없음)`)
-      : prov === 'local' ? `input 폴더의 파일 중 앞에서 ${e.specs.length}개를 사용합니다.` : `테스트: ${e.specs.length}곡 × ${body.mockSeconds || 20}초 합성음, 크레딧 0`;
+      : prov === 'local' ? `input 폴더의 파일 중 앞에서 ${e.specs.length}개를 사용합니다.` : `테스트: ${e.specs.length}곡 × ${body.mockSeconds || 20}초 합성음, 크레딧 0`);
   } catch {}
 }
 ['#count', '#language', '#instrumental', '#mockSeconds'].forEach(s => $(s).addEventListener('change', estimate));
@@ -431,6 +433,7 @@ $('#pmGen').onclick = async () => {
   try {
     const r = await api('/api/presets/generate', { method: 'POST', body: { koDescription: ko, name: f.name.value.trim(), instrumental: f.instrumental.value === 'true', wantTopics } });
     f.prompt.value = r.prompt;
+    f.useKoDescription.checked = false;   // 생성된 프롬프트가 설명의 번역이므로 둘 다 보내면 같은 내용이 두 번 들어간다
     if (r.description && !f.description.value.trim()) f.description.value = r.description;
     if (wantTopics) {
       if (r.negative_tags?.length && !f.negative_tags.value.trim()) f.negative_tags.value = r.negative_tags.join(', ');

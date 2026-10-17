@@ -3,8 +3,20 @@
   "name": "올드팝 클래식",
   "description": "1960~80년대 올드팝. 따뜻한 스트링과 피아노, 감미로운 보컬, 라디오 황금기의 추억.",
   "instrumental": false,
-  "prompt": "Classic 1960s-1980s Western old pop ballad in the style of golden-oldies AM radio hits, slow to mid-tempo 70-95 BPM. Warm acoustic piano and gently strummed acoustic guitar, lush orchestral string section with sweeping violin lines, soft brushed drums, round electric bass, occasional tasteful saxophone or muted trumpet fills. Smooth, heartfelt crooner-style lead vocal with rich vibrato and layered oooh-aaah backing harmonies, big emotional key-change chorus. Vintage analog tape warmth, plate reverb, nostalgic romantic mood of a late-night oldies radio show.",
+  "prompt": "1970s soft rock and adult contemporary pop ballad, a classic oldies AM radio hit from the 1960s-1980s golden age of pop music. Slow to mid-tempo 70-95 BPM with a gentle full drum-kit backbeat, round electric bass, warm acoustic piano and Wurlitzer electric piano, strummed acoustic guitar, lush Motown and Wall-of-Sound style orchestral strings with sweeping violin lines, soft horn section swells. Smooth and heartfelt crooner-style lead vocal with rich vibrato and layered oooh-aaah backing harmonies, a big emotional key-change chorus with a memorable sing-along pop hook. Vintage analog warmth, the nostalgic romantic mood of a classic love song.",
+  "tags": [
+    "1970s",
+    "oldies",
+    "soft rock",
+    "adult contemporary",
+    "easy listening",
+    "ballad",
+    "pop"
+  ],
   "negative_tags": [
+    "jazz",
+    "lounge",
+    "smooth jazz",
     "trap",
     "edm",
     "heavy metal",
@@ -91,6 +103,6 @@
     "old photographs",
     "sunset vintage car"
   ],
-  "koDescription": "1960~80년대 서양 올드팝 발라드. 황금기 AM 라디오 히트곡 느낌의 느리거나 중간 템포(70~95 BPM). 따뜻한 어쿠스틱 피아노와 부드럽게 스트러밍하는 어쿠스틱 기타, 바이올린이 흐르는 풍성한 오케스트라 스트링, 브러시 드럼, 둥근 일렉 베이스, 가끔 색소폰이나 약음 트럼펫. 비브라토가 풍부한 감미로운 크루너 스타일 남성 또는 여성 보컬에 우~ 아~ 백킹 화음, 조옮김하는 감동적인 후렴. 빈티지 아날로그 테이프 질감과 플레이트 리버브, 심야 올디스 라디오의 낭만적이고 향수 어린 분위기.",
-  "useKoDescription": true
+  "koDescription": "1970년대 소프트록·어덜트 컨템포러리 팝 발라드. 1960~80년대 팝 황금기의 AM 라디오 히트곡 느낌. 느리거나 중간 템포(70~95 BPM)에 부드러운 백비트의 풀 드럼, 둥근 일렉 베이스, 따뜻한 어쿠스틱 피아노와 월리처 일렉 피아노, 스트러밍 어쿠스틱 기타, 모타운·월오브사운드식 풍성한 오케스트라 스트링, 잔잔한 혼 섹션. 비브라토 풍부한 감미로운 크루너 스타일 리드 보컬에 우~아~ 백킹 화음, 조옮김하는 큰 후렴과 따라 부르기 쉬운 팝 훅. 빈티지 아날로그 질감, 클래식 러브송의 낭만적이고 향수 어린 분위기. (재즈·라운지 느낌은 피한다)",
+  "useKoDescription": false
 }
