@@ -75,9 +75,13 @@ ffmpeg·ffprobe·python은 모두 `media/ffmpeg.js`의 `children` Set을 거친�
 
 [종료] → `server/shutdown.js` (캐시 → 자식 프로세스 → 포트 → 이 경로의 cmd 창 → 앱 제목의 브라우저 창). [업데이트] → `server/update.js` (fetch → 커밋 목록 → `pull --ff-only`, package.json 변경 시 install 안내). LAN 주소 → `server/lan.js`, `/api/info`. 설명서 → `사용설명서.html`을 `/manual`로 서빙. 기능이 바뀌면 설명서를 같이 고친다.
 
+### 유튜브 업로드 (`server/youtubeUpload.js`)
+
+Google OAuth(데스크톱 앱 클라이언트, `http://localhost:PORT/api/youtube/oauth/callback` 리디렉션) → YouTube Data API v3 재개 가능 업로드(8MB 청크, 308 재개) → 썸네일. 토큰은 `config.youtube.oauth`에만 있고 `maskConfig`가 API 응답에서 제거한다. 라우트는 `/api/youtube/*`. `prepare()`(동기 검증) → `upload()`(비동기)로 나뉘며 진행 상황은 `job.youtube`로 job.json과 SSE `job` 이벤트에 실린다. 실패해도 작업 상태(done)는 바꾸지 않는다. 자동 업로드는 pipeline.js의 `finish` 뒤에서 mock 제외로 실행. 실제 Google API 경로는 자동 테스트가 없다.
+
 ### MCP (`mcp/server.js`)
 
-실행 중인 웹 서버의 REST를 호출하는 얇은 클라이언트. 도구: list_presets, plan_playlist, create_playlist, get_job, wait_job, list_jobs, get_youtube_text, credits. 파이프라인 로직은 넣지 않는다.
+실행 중인 웹 서버의 REST를 호출하는 얇은 클라이언트. 도구: list_presets, plan_playlist, create_playlist, get_job, wait_job, list_jobs, get_youtube_text, credits, upload_youtube. 파이프라인 로직은 넣지 않는다.
 
 ## 주의
 

@@ -405,6 +405,17 @@ export async function runJob(job, cfg) {
       total, title: meta.title, chapters: meta.chapters, trackCount: collected.length,
       tracks: collected.map(c => ({ index: c.index, title: c.title, offset: c.offset, duration: c.duration, file: rel(job, c.file) })),
     });
+    // 10. (선택) 유튜브 자동 업로드: 테스트(합성음) 작업은 제외, 실패해도 작업 상태(done)는 유지
+    if (cfg.youtube?.autoUpload) {
+      if (providerName === 'mock') log(job, '자동 업로드: 테스트(합성음) 작업은 유튜브에 올리지 않습니다');
+      else {
+        try {
+          const yt = await import('./youtubeUpload.js');
+          if (!yt.status(cfg).connected) log(job, '자동 업로드가 켜져 있지만 Google 계정이 연결되지 않아 건너뜁니다 (왼쪽 "유튜브 업로드")', 'warn');
+          else { log(job, `자동 업로드 시작 (${cfg.youtube.defaultPrivacy || 'private'})`); const p = yt.prepare(job, { privacy: cfg.youtube.defaultPrivacy, thumbnail: cfg.youtube.uploadThumbnail !== false, syntheticMedia: cfg.youtube.syntheticMedia !== false }); yt.upload(job, p, cfg).catch(() => {}); }
+        } catch (e) { log(job, `자동 업로드 준비 실패: ${e.message}`, 'warn'); }
+      }
+    }
   } catch (e) {
     fail(job, e);
   }

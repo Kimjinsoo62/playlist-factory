@@ -82,5 +82,14 @@ server.tool('get_youtube_text', '완료된 작업의 유튜브 제목·설명·�
 
 server.tool('credits', 'Treblo 크레딧 잔액을 확인한다.', {}, async () => text(await api('/api/treblo/balance')));
 
+server.tool('upload_youtube', '완료된 작업의 영상(playlist.mp4)을 연결된 유튜브 채널에 업로드한다. 앱 화면에서 Google 계정이 먼저 연결돼 있어야 한다. 기본 비공개. 진행 상황·결과 링크는 get_job 의 youtube 필드로 확인한다. 업로드 1건 = API 할당량 1,600(하루 기본 10,000).', {
+  jobId: z.string(),
+  privacy: z.enum(['private', 'unlisted', 'public']).default('private'),
+  title: z.string().max(100).optional().describe('생략하면 youtube.json 의 제목'),
+  description: z.string().max(5000).optional(),
+  publishAt: z.string().optional().describe('예약 공개 시각(ISO 8601). 지정하면 비공개로 올라가 그 시각에 공개'),
+  thumbnail: z.boolean().default(true),
+}, async (args) => text(await api('/api/youtube/upload', { method: 'POST', body: args })));
+
 const transport = new StdioServerTransport();
 await server.connect(transport);

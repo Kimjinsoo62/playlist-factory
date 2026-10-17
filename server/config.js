@@ -53,6 +53,9 @@ const DEFAULTS = {
     channelName: '',
     hashtags: '#playlist #aimusic',
     footer: 'Music generated with Treblo (https://treblo.com)',
+    // 업로드(YouTube Data API v3): Google Cloud OAuth 클라이언트(데스크톱 앱). 토큰(oauth)은 /api/youtube/* 로만 다루고 /api/config 응답에서는 제거된다
+    clientId: '', clientSecret: '', oauth: null, channelTitle: '', channelId: '', connectedAt: '',
+    autoUpload: false, defaultPrivacy: 'private', uploadThumbnail: true, syntheticMedia: true,
   },
 };
 
@@ -98,5 +101,6 @@ export function maskConfig(cfg) {
   if (c.images?.pexelsKey) c.images.pexelsKey = '****';
   c.hasAnthropicKey = Boolean(cfg.anthropic?.apiKey || process.env.ANTHROPIC_API_KEY);
   for (const id of ['anthropic', 'openai', 'gemini']) if (c[id]?.apiKey) c[id].apiKey = '****';
+  if (c.youtube) { c.youtube.connected = Boolean(cfg.youtube?.oauth?.refresh_token); delete c.youtube.oauth; if (c.youtube.clientSecret) c.youtube.clientSecret = '****'; }
   return c;
 }

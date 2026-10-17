@@ -332,6 +332,7 @@ function renderDetail(j) {
     $('#lnkVideo').href = base + res.video; $('#lnkAudio').href = base + res.audio; $('#lnkThumb').href = base + res.thumbnail; $('#lnkYt').href = base + res.youtube;
     $('#lnkLyrics').hidden = !res.lyrics; if (res.lyrics) $('#lnkLyrics').href = base + res.lyrics;
     fetch(base + 'youtube.txt').then(r => r.text()).then(t => $('#ytText').textContent = t);
+    renderYtState(j);
   } else { $('#result').hidden = true; }
   if (j.error && j.status !== 'running') $('#ytText').textContent = '';
 }
@@ -487,6 +488,78 @@ $('#pmDelete').onclick = async () => {
     $('#preset').innerHTML = presets.map(x => `<option value="${x.id}">${x.name}</option>`).join('');
     updatePresetUI(); $('#pmodal').hidden = true;
   } catch (err) { $('#pmMsg').textContent = '오류: ' + err.message; }
+};
+
+// ── 유튜브 업로드 (왼쪽 패널 + 모달). 진행 상황은 job.youtube 로 'job' 이벤트에 실려 온다
+let ytStatus = null, ymJobId = null;
+const PRIV_KO = { private: '비공개', unlisted: '일부 공개', public: '공개' };
+async function refreshYt() {
+  try { ytStatus = await api('/api/youtube/status'); } catch { return; }
+  const y = ytStatus, st = $('#ytState');
+  st.textContent = y.connected ? `연결됨 · ${y.channelTitle || '채널'}` : y.configured ? '연결 필요' : '설정 필요'; st.className = 'chip ' + (y.connected ? 'ok' : 'warn');
+  $('#ytChannel').textContent = y.connected ? `${y.channelTitle || '(채널명 없음)'} 채널` : y.configured ? '저장됨 → 연결 버튼을 누르세요' : '연결 안 됨 (아래 ID·비밀 저장 후 연결)';
+  $('#ytDisconnect').hidden = !y.connected; $('#ytConnect').disabled = !y.configured; $('#ytConnect').textContent = y.connected ? '다시 연결' : 'Google 계정 연결';
+  const f = $('#ytForm'); f.defaultPrivacy.value = y.defaultPrivacy; f.uploadThumbnail.value = String(y.uploadThumbnail); f.syntheticMedia.value = String(y.syntheticMedia); f.autoUpload.checked = y.autoUpload;
+  f.clientId.placeholder = y.clientId || 'xxxx.apps.googleusercontent.com (Google Cloud > OAuth 클라이언트 · 데스크톱 앱)'; f.clientSecret.placeholder = y.configured ? '저장됨 (****)' : 'GOCSPX-…';
+}
+$('#ytForm').onsubmit = async (e) => {
+  e.preventDefault(); const f = $('#ytForm');
+  const body = { defaultPrivacy: f.defaultPrivacy.value, uploadThumbnail: f.uploadThumbnail.value === 'true', syntheticMedia: f.syntheticMedia.value === 'true', autoUpload: f.autoUpload.checked };
+  if (f.clientId.value.trim()) body.clientId = f.clientId.value.trim();
+  if (f.clientSecret.value.trim()) body.clientSecret = f.clientSecret.value.trim();
+  try { await api('/api/youtube/settings', { method: 'POST', body }); f.clientId.value = ''; f.clientSecret.value = ''; $('#ytMsg').textContent = '저장됨 ' + new Date().toLocaleTimeString(); refreshYt(); }
+  catch (err) { $('#ytMsg').textContent = '오류: ' + err.message; }
+};
+$('#ytConnect').onclick = async () => {
+  if (!['localhost', '127.0.0.1'].includes(location.hostname)) return alert('Google 계정 연결은 서버 PC의 브라우저에서 http://localhost:' + (info?.port || '') + ' 로 접속해 진행하세요. (Google 이 localhost 로만 돌려보냅니다)');
+  let r; try { r = await api('/api/youtube/auth/url'); } catch (e) { return alert(e.message); }
+  const w = window.open(r.url, 'playlist-google-auth', 'popup=yes,width=560,height=720');
+  if (!w) return alert('브라우저가 팝업을 막았습니다. 팝업을 허용한 뒤 다시 누르세요.');
+  $('#ytMsg').textContent = 'Google 로그인 창에서 계정을 고르고 권한을 허용하세요…';
+  const started = Date.now(); const before = ytStatus?.connectedAt || '';
+  const tick = setInterval(async () => {
+    await refreshYt();
+    if (ytStatus?.connected && ytStatus.connectedAt !== before) { clearInterval(tick); $('#ytMsg').textContent = `연결됨: ${ytStatus.channelTitle || ytStatus.channelId}`; try { w.close(); } catch {} }
+    else if (Date.now() - started > 5 * 60_000 || w.closed) { clearInterval(tick); if (!ytStatus?.connected) $('#ytMsg').textContent = '연결되지 않았습니다. 다시 시도하세요.'; }
+  }, 2500);
+};
+$('#ytDisconnect').onclick = async () => { if (!confirm('Google 계정 연결을 해제할까요? (저장된 토큰 삭제)')) return; await api('/api/youtube/disconnect', { method: 'POST' }).catch(e => alert(e.message)); refreshYt(); };
+function renderYtState(j) {
+  const y = j.youtube; const a = $('#lnkYtVideo'), s = $('#ytJobState');
+  if (y?.url) { a.hidden = false; a.href = y.url; a.textContent = `▶ YouTube (${PRIV_KO[y.privacy] || ''}${y.publishAt ? ' · 예약' : ''})`; } else a.hidden = true;
+  if (y?.status === 'uploading') { s.hidden = false; s.className = 'chip run'; s.textContent = `유튜브 업로드 ${y.pct || 0}%`; }
+  else if (y?.status === 'failed') { s.hidden = false; s.className = 'chip err'; s.textContent = '유튜브 업로드 실패'; s.title = y.error || ''; }
+  else s.hidden = true;
+  if (ymJobId === j.id && y) renderYmProgress(y);
+}
+function renderYmProgress(y) {
+  $('#ymBar').style.width = (y.pct || 0) + '%'; $('#ymPct').textContent = y.status === 'uploading' ? `${y.pct || 0}%` : '';
+  $('#ymStatus').textContent = { uploading: '업로드 중', done: '완료', failed: '실패' }[y.status] || '대기';
+  $('#ymUpload').disabled = y.status === 'uploading';
+  $('#ymResult').innerHTML = y.status === 'done' ? `완료: <a href="${y.url}" target="_blank">${y.url}</a> (${PRIV_KO[y.privacy] || ''}${y.publishAt ? `, ${new Date(y.publishAt).toLocaleString()} 공개 예약` : ''})${y.thumbnailSet === false ? ' · ⚠ 썸네일은 설정되지 않았습니다(채널 전화 인증 필요)' : ''}` : y.status === 'failed' ? `<span style="color:var(--err)">실패: ${y.error || ''}</span>` : '';
+}
+$('#ytUploadBtn').onclick = async () => {
+  const j = jobs.find(x => x.id === selected);
+  if (!j) return alert('먼저 작업 목록에서 업로드할 작업을 선택하세요.');
+  if (j.status !== 'done') return alert('완료된 작업만 업로드할 수 있습니다.');
+  if (!ytStatus?.connected) return alert('먼저 Google 계정을 연결하세요.');
+  let meta = {}; try { meta = await (await fetch(`/output/${j.id}/youtube.json`)).json(); } catch {}
+  const f = $('#ymForm'); ymJobId = j.id;
+  $('#ymJob').textContent = `${presetName(j.request?.preset)} · ${j.id}`;
+  f.title.value = (j.youtube?.title || meta.title || j.result?.title || '').slice(0, 100); f.description.value = meta.description || ''; f.tags.value = (meta.tags || []).join(', ');
+  f.privacy.value = ytStatus.defaultPrivacy || 'private'; f.publishAt.value = ''; f.thumbnail.checked = ytStatus.uploadThumbnail !== false; f.syntheticMedia.checked = ytStatus.syntheticMedia !== false;
+  renderYmProgress(j.youtube || { status: '', pct: 0 });
+  if (j.youtube?.url) $('#ymResult').innerHTML += ' <span class="dim">(이미 업로드된 작업입니다. 다시 올리면 새 영상이 하나 더 생깁니다)</span>';
+  $('#ymodal').hidden = false;
+};
+$('#ymClose').onclick = () => { $('#ymodal').hidden = true; ymJobId = null; };
+$('#ymForm').onsubmit = async (e) => {
+  e.preventDefault(); const f = $('#ymForm');
+  const body = { jobId: ymJobId, title: f.title.value.trim(), description: f.description.value, tags: f.tags.value.split(',').map(s => s.trim()).filter(Boolean), privacy: f.privacy.value, thumbnail: f.thumbnail.checked, syntheticMedia: f.syntheticMedia.checked };
+  if (f.publishAt.value) { const d = new Date(f.publishAt.value); if (Number.isNaN(d.getTime())) return alert('예약 시각이 올바르지 않습니다.'); body.publishAt = d.toISOString(); }
+  if (body.privacy === 'public' && !body.publishAt && !confirm('바로 공개로 업로드합니다. 계속할까요?')) return;
+  try { $('#ymUpload').disabled = true; $('#ymStatus').textContent = '시작 중'; $('#ymResult').textContent = ''; await api('/api/youtube/upload', { method: 'POST', body }); }
+  catch (err) { $('#ymUpload').disabled = false; $('#ymStatus').textContent = '실패'; $('#ymResult').innerHTML = `<span style="color:var(--err)">${err.message}</span>`; }
 };
 
 // ── 모달

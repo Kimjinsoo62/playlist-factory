@@ -105,7 +105,7 @@ export function persist(job) {
   try { fs.writeFileSync(path.join(job.dir, 'job.json'), JSON.stringify(summarize(job), null, 2), 'utf8'); } catch {}
 }
 
-function emit(job, type, data) {
+export function emit(job, type, data) {
   bus.emit('event', { type, jobId: job.id, data });
 }
 

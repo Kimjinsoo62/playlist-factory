@@ -12,6 +12,7 @@ import { TrebloProvider } from './providers/treblo.js';
 import { LocalProvider } from './providers/local.js';
 import { LyriaProvider, LYRIA_USD_PER_SONG, LYRIA_MODELS } from './providers/lyria.js';
 import { LLM_PROVIDERS, llmProvider, llmKey, checkLlmKey, listLlmModels, describeError as describeLlmError } from './llm.js';
+import * as yt from './youtubeUpload.js';
 
 const cfg0 = loadConfig();
 const PORT = cfg0.port;
@@ -318,6 +319,32 @@ app.post('/api/open', (req, res) => {
   const j = getJob(req.body?.id); const target = j ? j.dir : (req.body?.path === 'input' ? DIRS.input : DIRS.output);
   import('node:child_process').then(cp => cp.spawn('explorer', [target], { detached: true, stdio: 'ignore' }).unref());
   res.json({ ok: true, target });
+});
+
+// ── 유튜브 업로드 (Google OAuth 데스크톱 앱 클라이언트 → localhost 리디렉션 → YouTube Data API v3)
+app.get('/api/youtube/status', (req, res) => res.json(yt.status(loadConfig())));
+app.post('/api/youtube/settings', (req, res) => {
+  const b = req.body || {}; const patch = {};
+  if (typeof b.clientId === 'string' && b.clientId.trim()) { const v = b.clientId.trim(); if (!/^[\w.\-]{10,200}$/.test(v)) return res.status(400).json({ error: '클라이언트 ID 형식이 아닙니다 (…apps.googleusercontent.com)' }); patch.clientId = v; }
+  if (typeof b.clientSecret === 'string' && b.clientSecret.trim() && !b.clientSecret.includes('****')) { const v = b.clientSecret.trim(); if (!/^[\x21-\x7E]{10,200}$/.test(v)) return res.status(400).json({ error: '클라이언트 비밀 형식이 아닙니다' }); patch.clientSecret = v; }
+  for (const k of ['autoUpload', 'uploadThumbnail', 'syntheticMedia']) if (typeof b[k] === 'boolean') patch[k] = b[k];
+  if (['private', 'unlisted', 'public'].includes(b.defaultPrivacy)) patch.defaultPrivacy = b.defaultPrivacy;
+  if (!Object.keys(patch).length) return res.status(400).json({ error: '저장할 값이 없습니다' });
+  res.json(yt.status(saveConfig({ youtube: patch })));
+});
+app.get('/api/youtube/auth/url', (req, res) => { try { res.json({ url: yt.authUrl(loadConfig()) }); } catch (e) { res.status(400).json({ error: e.message }); } });
+app.get('/api/youtube/oauth/callback', async (req, res) => {
+  try { const r = await yt.handleCallback(req.query); console.log(`[유튜브] Google 계정 연결됨: ${r.channelTitle || r.channelId}`); res.send(yt.callbackPage(true, 'Google 계정 연결 완료', `채널: ${r.channelTitle || r.channelId || '(이름 없음)'}`)); }
+  catch (e) { console.warn('[유튜브] 연결 실패:', e.message); res.status(400).send(yt.callbackPage(false, 'Google 계정 연결 실패', e.message)); }
+});
+app.post('/api/youtube/disconnect', (req, res) => { yt.disconnect(); res.json(yt.status(loadConfig())); });
+app.post('/api/youtube/upload', (req, res) => {
+  const j = getJob(req.body?.jobId); if (!j) return res.status(404).json({ error: '작업 없음' });
+  const cfg = loadConfig();
+  if (!yt.status(cfg).connected) return res.status(400).json({ error: 'Google 계정이 연결되어 있지 않습니다. 왼쪽 "유튜브 업로드"에서 [Google 계정 연결]을 누르세요.' });
+  let p; try { p = yt.prepare(j, req.body || {}); } catch (e) { return res.status(400).json({ error: e.message }); }
+  yt.upload(j, p, cfg).catch(() => {});   // 진행·결과는 job.youtube + SSE 로 전달
+  res.json({ ok: true, jobId: j.id, title: p.title, privacy: p.privacy, publishAt: p.publishAt });
 });
 
 // ── SSE 진행 상황
