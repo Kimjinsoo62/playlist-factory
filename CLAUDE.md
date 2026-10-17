@@ -31,14 +31,14 @@ python scripts/contact-sheet.py out.jpg     # 배경 풀 전체를 한 장으로
 
 ### 요청 흐름
 
-`public/app.js` (바닐라 JS, 빌드 없음) → `server/index.js` REST → `jobs.js`의 `createJob` → `pipeline.js`의 `runJob` (setImmediate로 비동기 실행) → 진행 상황은 `jobs.js`의 `bus` EventEmitter → `GET /api/events` SSE → 메인 창과 별도 로그 창(`public/log.html`).
+`public/app.js` (바닐라 JS, 빌드 없음, 다크/라이트 테마는 `public/theme.js`가 `<head>`에서 적용) → `server/index.js` REST → `jobs.js`의 `createJob` → `pipeline.js`의 `runJob` (setImmediate로 비동기 실행) → 진행 상황은 `jobs.js`의 `bus` EventEmitter → `GET /api/events` SSE → 메인 창과 별도 로그 창(`public/log.html`).
 
 - 작업 상태는 메모리 Map + `output/<id>/job.json`(summarize) + `job.log`에 영속. 서버 재시작 시 `loadPastJobs`가 job.json을 다시 읽고, running/queued였던 작업은 failed로 바꾼다. 로그는 디스크의 job.log에서 복원.
 - 라우트 묶음: `/api/presets*` (CRUD·복제·LLM 생성), `/api/keys*` (키 저장·활성/대기·연결 확인·모델 목록), `/api/jobs*`, `/api/plan`, `/api/backgrounds*`, `/api/update/*`, `/api/shutdown`.
 
 ### 파이프라인 9단계 (`server/pipeline.js`)
 
-계획(한글 요청 → LLM 영어 번역) → 곡 생성/수집 → 라우드니스 정규화 → 결합 → ASS 자막 → 배경 사진·썸네일(`scripts/thumbnail.py`) → ffmpeg 렌더링(슬라이드쇼 배경 선택) → 유튜브 메타(`youtube.js`) → mp3·정리. `planTracks`가 프리셋+언어+곡 수를 생성 스펙으로 바꾸며 `/api/plan`(비용 견적)과 공유된다.
+계획(한글 요청 → LLM 영어 번역) → 곡 생성/수집 → 라우드니스 정규화 → 결합 → ASS 자막 → 배경 사진·썸네일(`scripts/thumbnail.py`) → ffmpeg 렌더링(슬라이드쇼 배경 선택) → 유튜브 메타(`youtube.js`) → mp3·정리. `planTracks`가 프리셋+언어+곡 수를 생성 스펙으로 바꾸며 `/api/plan`(비용 견적)과 공유된다. 보컬 프리셋을 연주곡으로 돌리면 `instrumentalize`가 보컬 문장을 지우고 앞에 연주곡 지시를 붙인다. 영어 프롬프트가 있는 프리셋은 `useKoDescription: false`가 기본이다(설명은 프롬프트의 한국어 원문이라 둘 다 보내면 중복).
 
 ### 음원 소스 (`server/providers/`)
 
