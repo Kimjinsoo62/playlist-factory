@@ -164,7 +164,8 @@
 <h3><span class="btn red">종료</span></h3>
 <p>캐시 삭제 → 작업 프로세스(ffmpeg·python) 종료 → 포트 정리 → 이 프로젝트의 명령 창 닫기 → 브라우저 창 닫기 → 서버 종료 순서로 진행합니다. 브라우저가 자동으로 닫히지 않으면 탭을 직접 닫으세요. 서버 API: <code>POST /api/shutdown</code></p>
 <h3><span class="btn gray">업데이트</span></h3>
-<p>GitHub 원격 저장소를 확인(<code>git fetch</code>)해 새 커밋이 있으면 목록을 팝업으로 보여 줍니다. <b>지금 업데이트</b>를 누르면 <code>git pull</code>로 갱신하고 "업데이트 완료, 앱을 재시작하세요" 팝업이 뜹니다. package.json이 바뀐 경우 install.bat 재실행 안내가 함께 표시됩니다. 원격 저장소가 없으면 프로젝트 폴더에서 다음을 실행하세요.</p>
+<p>앱을 켤 때 자동으로 GitHub 를 한 번 확인해 새 커밋이 있으면 버튼이 <b>업데이트 N</b>(녹색)으로 바뀌고 로그에도 한 줄 남습니다. 버튼에 마우스를 올리면 최근 변경 제목이 보입니다. 오프라인이면 조용히 넘어갑니다.</p>
+<p>버튼을 누르면 GitHub 원격 저장소를 확인(<code>git fetch</code>)해 새 커밋이 있으면 목록을 팝업으로 보여 줍니다. <b>지금 업데이트</b>를 누르면 <code>git pull</code>로 갱신하고 "업데이트 완료, 앱을 재시작하세요" 팝업이 뜹니다. package.json이 바뀐 경우 install.bat 재실행 안내가 함께 표시됩니다. 원격 저장소가 없으면 프로젝트 폴더에서 다음을 실행하세요.</p>
 <pre>git remote add origin https://github.com/계정/저장소.git
 git push -u origin main</pre>
 

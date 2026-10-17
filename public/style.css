@@ -43,6 +43,7 @@ h2 { font-size: 8pt; margin: 0 0 4px; padding: 0 0 3px; border-bottom: 1px solid
 
 #main { height: calc(100% - 30px); display: grid; grid-template-columns: 400px 1fr; gap: 6px; padding: 6px; }
 .btn.pulse { animation: pulse 1.2s ease-in-out infinite; border-color: var(--accent2); color: var(--accent2); }
+.btn.update-new { border-color: var(--accent2); color: var(--accent2); font-weight: bold; animation: pulse 1.6s ease-in-out 3; }   /* 새 버전 있음: 강조 + 처음 몇 번만 깜빡임 */
 .popupwarn { margin: 4px 0; padding: 5px 8px; border: 1px solid var(--warn); border-radius: 3px; color: var(--warn); background: rgba(224,165,51,.08); }
 .popupwarn .btn { margin-left: 4px; }
 @keyframes pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(56,199,160,.0); } 50% { box-shadow: 0 0 0 4px rgba(56,199,160,.25); } }

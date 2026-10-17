@@ -45,6 +45,7 @@ async function init() {
   if (cfg.hasApiKey) refreshBalance();
   providerChanged();
   refreshYt();
+  checkUpdateBadge();   // 앱을 켤 때 GitHub 에 새 커밋이 있는지 확인해 [업데이트] 버튼에 표시
   jobs = await api('/api/jobs'); renderJobs();
   const qj = new URLSearchParams(location.search).get('job'); if (qj && jobs.some(j => j.id === qj)) select(qj);   // ?job=작업id 로 바로 선택(링크·캡처용)
   if (!location.search.includes('nosse')) connectSSE();   // ?nosse=1: 화면 캡처 테스트용(실시간 갱신 끔)
@@ -574,6 +575,15 @@ function modal(title, html, actions = []) {
 $('#mClose').onclick = () => $('#modal').hidden = true;
 
 // ── 업데이트
+/** 시작 시 자동 확인: 새 커밋이 있으면 버튼을 '업데이트 N' 로 바꾸고 강조. 실패(오프라인 등)는 조용히 넘긴다 */
+async function checkUpdateBadge() {
+  const b = $('#btnUpdate');
+  try {
+    const r = await api('/api/update/check');
+    if (r.ok && r.behind > 0) { b.textContent = `업데이트 ${r.behind}`; b.classList.add('update-new'); b.title = `새 버전 ${r.behind}개: ${r.commits.slice(0, 3).map(c => c.subject).join(' / ')}${r.behind > 3 ? ' …' : ''}`; logLine('--', 'warn', `GitHub 에 새 버전 ${r.behind}개가 있습니다. 상단 [업데이트] 버튼으로 받으세요.`); }
+    else { b.textContent = '업데이트'; b.classList.remove('update-new'); b.title = r.ok ? `최신 버전 (${r.current})` : (r.error || ''); }
+  } catch (e) { b.title = '업데이트 확인 실패: ' + e.message; }
+}
 $('#btnUpdate').onclick = async () => {
   modal('업데이트 확인', '<div class="dim">원격 저장소를 확인하는 중(git fetch)…</div>');
   const r = await api('/api/update/check').catch(e => ({ ok: false, error: e.message }));
@@ -589,6 +599,7 @@ async function applyUpdate() {
   modal('업데이트 적용 중', '<div class="bar" style="height:14px"><div class="fill" style="width:40%;animation:none"></div></div><pre id="updLog">git pull --ff-only …</pre>');
   try {
     const r = await api('/api/update/apply', { method: 'POST' });
+    $('#btnUpdate').textContent = '업데이트'; $('#btnUpdate').classList.remove('update-new');
     modal('업데이트 완료', `<p><b>업데이트 완료, 앱을 재시작하세요.</b> (${r.before} → ${r.after})</p>${r.needInstall ? '<p>⚠ 의존성이 바뀌었습니다. 재시작 전에 <code>install.bat</code> 을 먼저 실행하세요.</p>' : ''}<pre>${(r.log || []).join('\n')}\n${r.changed.join('\n')}</pre>`, [
       { label: '지금 종료(재시작 준비)', cls: 'danger', onClick: shutdown },
       { label: '닫기', onClick: () => $('#modal').hidden = true },
