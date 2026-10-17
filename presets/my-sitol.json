@@ -58,8 +58,8 @@
   },
   "titleTemplate": {
     "ko": "[Playlist] 칸트리뮤직 {n}곡 · {dur}",
-    "en": "[Playlist] 칸트리뮤직 {n} songs · {dur}",
-    "ja": "[Playlist] 칸트리뮤직 {n}曲 · {dur}"
+    "en": "[Playlist] Country Music {n} songs · {dur}",
+    "ja": "[Playlist] カントリーミュージック {n}曲 · {dur}"
   },
   "youtubeIntro": {
     "ko": "미국서부의 농장"
