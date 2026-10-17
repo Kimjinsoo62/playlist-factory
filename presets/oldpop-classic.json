@@ -1,0 +1,96 @@
+{
+  "id": "oldpop-classic",
+  "name": "올드팝 클래식",
+  "description": "1960~80년대 올드팝. 따뜻한 스트링과 피아노, 감미로운 보컬, 라디오 황금기의 추억.",
+  "instrumental": false,
+  "prompt": "Classic 1960s-1980s Western old pop ballad in the style of golden-oldies AM radio hits, slow to mid-tempo 70-95 BPM. Warm acoustic piano and gently strummed acoustic guitar, lush orchestral string section with sweeping violin lines, soft brushed drums, round electric bass, occasional tasteful saxophone or muted trumpet fills. Smooth, heartfelt crooner-style lead vocal with rich vibrato and layered oooh-aaah backing harmonies, big emotional key-change chorus. Vintage analog tape warmth, plate reverb, nostalgic romantic mood of a late-night oldies radio show.",
+  "negative_tags": [
+    "trap",
+    "edm",
+    "heavy metal",
+    "hip hop",
+    "lo-fi"
+  ],
+  "length_range": [
+    180,
+    240
+  ],
+  "thumbnailStyle": "warm",
+  "topics": {
+    "ko": [
+      "라디오 황금기",
+      "비 오는 날의 카페",
+      "첫사랑의 편지",
+      "달빛 아래 춤을",
+      "낡은 레코드판",
+      "바람에 실린 노래",
+      "그 시절 우리 거리",
+      "별이 빛나는 밤에",
+      "마지막 키스",
+      "오래된 사진 속 미소",
+      "일요일 아침의 노래",
+      "돌아오지 않는 여름"
+    ],
+    "en": [
+      "Golden Days of Radio",
+      "Rainy Day Café",
+      "Letter to My First Love",
+      "Dancing in the Moonlight",
+      "An Old Vinyl Record",
+      "A Song on the Wind",
+      "Our Street Back Then",
+      "On a Starry Night",
+      "One Last Kiss",
+      "Smile in an Old Photograph",
+      "Sunday Morning Song",
+      "The Summer That Never Returned"
+    ],
+    "ja": [
+      "ラジオの黄金時代",
+      "雨の日のカフェ",
+      "初恋への手紙",
+      "月明かりの下で踊ろう",
+      "古いレコード盤",
+      "風にのせた歌",
+      "あの頃の僕らの街",
+      "星降る夜に",
+      "最後のキス",
+      "古い写真の中の微笑み",
+      "日曜の朝の歌",
+      "戻らない夏"
+    ]
+  },
+  "titleTemplate": {
+    "ko": "[Playlist] 추억의 올드팝 🎙️ {n}곡 · {dur}",
+    "en": "[Playlist] Classic Old Pop Ballads 🎙️ {n} songs · {dur}",
+    "ja": "[Playlist] 懐かしのオールドポップ 🎙️ {n}曲 · {dur}"
+  },
+  "youtubeIntro": {
+    "ko": "따뜻한 스트링과 피아노, 감미로운 보컬. 라디오 황금기의 올드팝 감성.",
+    "en": "Warm strings, piano and heartfelt vocals. Old pop ballads from the golden age of radio.",
+    "ja": "温かいストリングスとピアノ、甘い歌声。ラジオ黄金期のオールドポップ。"
+  },
+  "hashtags": [
+    "#oldpop",
+    "#올드팝",
+    "#oldies",
+    "#playlist"
+  ],
+  "keywords": [
+    "old pop playlist",
+    "올드팝",
+    "oldies ballads",
+    "60s 70s 80s pop",
+    "추억의 팝송"
+  ],
+  "imageQueries": [
+    "vintage radio",
+    "old vinyl record",
+    "retro cafe window",
+    "vintage microphone",
+    "old photographs",
+    "sunset vintage car"
+  ],
+  "koDescription": "1960~80년대 서양 올드팝 발라드. 황금기 AM 라디오 히트곡 느낌의 느리거나 중간 템포(70~95 BPM). 따뜻한 어쿠스틱 피아노와 부드럽게 스트러밍하는 어쿠스틱 기타, 바이올린이 흐르는 풍성한 오케스트라 스트링, 브러시 드럼, 둥근 일렉 베이스, 가끔 색소폰이나 약음 트럼펫. 비브라토가 풍부한 감미로운 크루너 스타일 남성 또는 여성 보컬에 우~ 아~ 백킹 화음, 조옮김하는 감동적인 후렴. 빈티지 아날로그 테이프 질감과 플레이트 리버브, 심야 올디스 라디오의 낭만적이고 향수 어린 분위기.",
+  "useKoDescription": true
+}
