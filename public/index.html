@@ -24,7 +24,11 @@
 <main id="main">
   <!-- 좌: 새 작업 -->
   <section class="col left">
-    <h2>새 플레이리스트</h2>
+    <h2>새 플레이리스트<span class="grow"></span>
+      <button type="submit" form="form" id="btnRun" class="btn primary">▶ 자동 생성 시작</button>
+      <button type="button" id="btnOpenInput" class="btn">input 폴더</button>
+      <button type="button" id="btnOpenOutput" class="btn">output 폴더</button>
+    </h2>
     <form id="form" autocomplete="off">
       <div class="row"><label>소스</label>
         <select name="provider" id="provider">
@@ -57,11 +61,6 @@
       <div class="row"><label>추가 프롬프트(선택)</label><input name="extraPrompt" id="extraPrompt" placeholder="예: female vocal, saxophone solo"></div>
       <div id="estimate" class="estimate dim"></div>
       <div id="localFiles" class="desc dim" hidden></div>
-      <div class="actions">
-        <button type="submit" id="btnRun" class="btn primary">▶ 자동 생성 시작</button>
-        <button type="button" id="btnOpenInput" class="btn">input 폴더</button>
-        <button type="button" id="btnOpenOutput" class="btn">output 폴더</button>
-      </div>
     </form>
 
     <details id="settings">
