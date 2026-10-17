@@ -44,7 +44,9 @@ async function init() {
   if (!cfg.hasApiKey && !cfg.hasLyriaKey) openKeyModal('작곡 AI API 키가 없습니다. Treblo 또는 Lyria 키를 등록하세요. 로컬 폴더·테스트 소스는 키 없이 쓸 수 있습니다.');
   if (cfg.hasApiKey) refreshBalance();
   providerChanged();
+  refreshYt();
   jobs = await api('/api/jobs'); renderJobs();
+  const qj = new URLSearchParams(location.search).get('job'); if (qj && jobs.some(j => j.id === qj)) select(qj);   // ?job=작업id 로 바로 선택(링크·캡처용)
   if (!location.search.includes('nosse')) connectSSE();   // ?nosse=1: 화면 캡처 테스트용(실시간 갱신 끔)
   if (location.hash === '#preset') openPresetModal($('#preset').value);   // 링크로 바로 열기
   if (location.hash === '#keys') openKeyModal();                           // 링크로 설정(키) 모달 바로 열기
@@ -97,19 +99,18 @@ function formData() {
   return o;
 }
 
-// ── 로그 창 (별도 브라우저 창). 이름을 고정해 두 번 열어도 같은 창을 재사용한다.
+// ── 로그 새 창(선택). 기본은 작업 칸 아래 인라인 로그이며, 이 창은 두 번째 모니터용. 이름을 고정해 두 번 열어도 같은 창을 재사용한다.
 let logWinRef = null;
 function openLogWindow(jobId) {
   const url = jobId && jobId !== 'latest' ? `/log.html?job=${encodeURIComponent(jobId)}` : '/log.html';
   const w = Math.min(1000, screen.availWidth - 40), h = Math.min(640, screen.availHeight - 80);
   const left = Math.max(0, screen.availWidth - w - 20), top = Math.max(0, screen.availHeight - h - 40);
   const win = window.open(url, 'playlist-log', `popup=yes,width=${w},height=${h},left=${left},top=${top},resizable=yes,scrollbars=no`);
-  if (win) { logWinRef = win; try { win.focus(); } catch {} $('#btnLog').classList.remove('pulse'); $('#popupWarn').hidden = true; }
-  else { $('#btnLog').classList.add('pulse'); $('#popupWarn').hidden = false; }   // 팝업 차단: 안내 띄우고 버튼을 깜빡여 직접 열도록
+  if (win) { logWinRef = win; try { win.focus(); } catch {} }
+  else alert('브라우저가 팝업을 막았습니다. 주소창의 팝업 차단 아이콘에서 허용하세요. (로그는 이 화면 아래에도 표시됩니다)');
   return win;
 }
 $('#btnLog').onclick = () => openLogWindow(selected || 'latest');
-$('#btnLogOpen').onclick = () => openLogWindow(selected || 'latest');
 
 // ── 작업 시작
 $('#form').onsubmit = async (e) => {
@@ -123,7 +124,7 @@ $('#form').onsubmit = async (e) => {
       const text = body.provider === 'treblo'
         ? `Treblo API로 <b>${est.specs.length}곡</b>을 생성합니다. 크레딧 <b>${est.credits}</b>이 사용됩니다.`
         : `Google Lyria로 <b>${est.specs.length}곡</b>(연주곡)을 생성합니다. 약 <b>$${est.lyriaUsd.toFixed(2)}</b> (곡당 $0.08)이 Google 결제 계정에 청구됩니다.`;
-      modal('생성 확인', `<p>${text}</p><p class="dim">[계속]을 누르면 로그 창이 새 창으로 열리고 작업이 시작됩니다.</p>`, [
+      modal('생성 확인', `<p>${text}</p><p class="dim">[계속]을 누르면 작업이 시작되고 진행 로그가 작업 칸 아래에 표시됩니다.</p>`, [
         { label: '계속', cls: 'primary', onClick: () => { $('#modal').hidden = true; startJob(body); } },
         { label: '취소', onClick: () => $('#modal').hidden = true },
       ]);
@@ -132,15 +133,10 @@ $('#form').onsubmit = async (e) => {
   }
   startJob(body);
 };
-// 작업 시작: 반드시 사용자 클릭 핸들러 안에서 동기로 호출해야 로그 창(팝업)이 차단되지 않고 맨 앞에 뜬다
 async function startJob(body) {
-  const logWin = openLogWindow('latest');
   $('#btnRun').disabled = true;
-  try {
-    const j = await api('/api/jobs', { method: 'POST', body }); select(j.id);
-    try { if (logWin && !logWin.closed) { logWin.location.replace(`/log.html?job=${encodeURIComponent(j.id)}&follow=1`); logWin.focus(); } } catch {}
-  }
-  catch (err) { try { logWin?.close(); } catch {} alert(err.message); }
+  try { const j = await api('/api/jobs', { method: 'POST', body }); select(j.id); }
+  catch (err) { alert(err.message); }
   finally { $('#btnRun').disabled = false; }
 }
 $('#btnOpenInput').onclick = () => api('/api/open', { method: 'POST', body: { path: 'input' } }).catch(e => alert(e.message));
@@ -287,8 +283,7 @@ function connectSSE() {
   es.addEventListener('job', (e) => {
     const ev = JSON.parse(e.data); const j = ev.data;
     const i = jobs.findIndex(x => x.id === j.id); if (i >= 0) jobs[i] = j; else if (!j.hidden || $('#showHidden').checked) jobs.unshift(j);
-    if (i < 0 && (j.status === 'running' || j.status === 'queued') && !(logWinRef && !logWinRef.closed)) $('#btnLog').classList.add('pulse');   // 로그 창이 없으면 버튼 깜빡임 (MCP 등 외부에서 시작된 작업)
-    if (j.status !== 'running' && j.status !== 'queued') $('#btnLog').classList.remove('pulse');
+    if (i < 0 && (j.status === 'running' || j.status === 'queued') && !selected) select(j.id);   // 외부(MCP)에서 시작된 작업: 아무것도 선택돼 있지 않으면 바로 따라감
     renderJobs(); if (selected === j.id) renderDetail(j);
   });
   es.addEventListener('reset', () => reloadJobs());

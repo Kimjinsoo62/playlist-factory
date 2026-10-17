@@ -56,7 +56,6 @@
       <div class="row"><label>배경 이미지(선택)</label><input name="backgroundImage" id="backgroundImage" placeholder="예: C:\사진\bg.jpg  (지정하면 위 설정 무시)"></div>
       <div class="row"><label>추가 프롬프트(선택)</label><input name="extraPrompt" id="extraPrompt" placeholder="예: female vocal, saxophone solo"></div>
       <div id="estimate" class="estimate dim"></div>
-      <div id="popupWarn" class="popupwarn" hidden>⚠ 브라우저가 로그 창(팝업)을 막았습니다. 주소창 오른쪽의 팝업 차단 아이콘에서 "항상 허용"을 누르거나, <button type="button" id="btnLogOpen" class="btn small primary">로그 창 열기</button></div>
       <div id="localFiles" class="desc dim" hidden></div>
       <div class="actions">
         <button type="submit" id="btnRun" class="btn primary">▶ 자동 생성 시작</button>
@@ -103,7 +102,8 @@
     <h2>작업 <span id="jobCount" class="dim"></span><span class="grow"></span>
       <label class="inline dim" title="초기화로 숨긴 작업을 다시 표시"><input type="checkbox" id="showHidden"> 숨긴 작업 보기</label>
       <button id="btnReset" class="btn small" title="끝난 작업을 목록에서 지웁니다. output 폴더의 파일은 그대로 남습니다.">초기화</button>
-      <button id="btnLog" class="btn small" title="진행 로그를 새 브라우저 창으로 봅니다. 작업을 시작하면 자동으로 열립니다.">로그 창</button>
+      <button id="btnClearLog" class="btn small" title="아래 로그 표시를 비웁니다 (job.log 파일은 유지)">로그 지우기</button>
+      <button id="btnLog" class="btn small" title="로그를 별도 브라우저 창에도 띄웁니다 (선택, 두 번째 모니터용)">로그 새 창</button>
     </h2>
     <div id="jobs" class="jobs"></div>
     <div id="detail" class="detail" hidden>
@@ -130,17 +130,15 @@
               <a id="lnkYt" class="btn small" target="_blank">youtube.txt</a>
               <a id="lnkLyrics" class="btn small" target="_blank">가사</a>
               <button id="btnCopyYt" class="btn small">제목·설명 복사</button>
+              <a id="lnkYtVideo" class="btn small" target="_blank" hidden>▶ YouTube</a>
+              <span id="ytJobState" class="chip" hidden></span>
             </div>
             <pre id="ytText" class="yt"></pre>
           </div>
         </div>
       </div>
     </div>
-  </section>
-
-  <!-- 우: 로그 -->
-  <section class="col right" hidden>   <!-- 로그는 별도 창(log.html)에 표시. 이 요소는 스크립트 호환용으로만 남김 -->
-    <h2>로그 <button id="btnClearLog" class="btn small">지우기</button></h2>
+    <!-- 처리 로그: 선택한 작업의 로그를 여기에 표시 (별도 창은 선택) -->
     <pre id="log" class="log"></pre>
   </section>
 </main>
