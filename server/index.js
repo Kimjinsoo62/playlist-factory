@@ -5,7 +5,7 @@ import { DIRS, APP_TITLE } from './paths.js';
 import { loadConfig, saveConfig, maskConfig } from './config.js';
 import { lanAddresses } from './lan.js';
 import { bus, createJob, getJob, removeJob, listJobs, summarize, loadPastJobs, log, hideFinishedJobs, unhideJobs } from './jobs.js';
-import { runJob, loadPresets, planTracks } from './pipeline.js';
+import { runJob, loadPresets, planTracks, DEFAULT_TOPICS } from './pipeline.js';
 import { shutdownSequence } from './shutdown.js';
 import { checkUpdate, applyUpdate } from './update.js';
 import { TrebloProvider } from './providers/treblo.js';
@@ -92,8 +92,7 @@ app.post('/api/presets', async (req, res) => {
     }
     const topics = { ko: [], en: [], ja: [], ...(b.topics || {}) };
     for (const l of Object.keys(topics)) topics[l] = (topics[l] || []).map(s => String(s).trim()).filter(Boolean);
-    if (!topics.ko.length) topics.ko = ['첫 번째 이야기', '밤의 끝에서', '천천히 흐르는 시간', '창밖의 계절', '다시 만난 오후', '조용한 약속'];
-    if (!topics.en.length) topics.en = topics.ko; if (!topics.ja.length) topics.ja = topics.ko;
+    for (const l of ['ko', 'en', 'ja']) if (!topics[l].length) topics[l] = DEFAULT_TOPICS[l];   // 언어별 기본 주제 (영어 곡에 한국어 제목이 붙지 않도록)
     const p = {
       id, name, description: (b.description || '').trim() || name,
       koDescription: (b.koDescription || '').trim(), useKoDescription: b.useKoDescription !== false,

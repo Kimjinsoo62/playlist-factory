@@ -8,7 +8,7 @@ import { LocalProvider } from './providers/local.js';
 import { LyriaProvider, extractText, stripAudio } from './providers/lyria.js';
 import * as ff from './media/ffmpeg.js';
 import { buildAss, lyricLines, alignLinesToWords, distributeLines } from './media/subtitles.js';
-import { buildYoutubeMeta } from './youtube.js';
+import { buildYoutubeMeta, trackCount } from './youtube.js';
 import { findBackground, collectBackgrounds } from './images.js';
 import { hasLlmKey, llmModel, llmProvider, LLM_PROVIDERS, translateToEnglish, planBackgroundQueries, rankBackgrounds } from './llm.js';
 
@@ -19,6 +19,18 @@ const LANG = {
   en: { name: 'English', instr: 'Sung in English with English lyrics.' },
   ja: { name: '日本語', instr: 'Sung in Japanese with Japanese lyrics (日本語の歌詞).' },
 };
+/** 프리셋에 주제가 없을 때 쓰는 언어별 기본 곡 주제. 영어·일본어 곡에 한국어 제목이 붙지 않도록 언어마다 따로 둔다. */
+export const DEFAULT_TOPICS = {
+  ko: ['첫 번째 이야기', '밤의 끝에서', '천천히 흐르는 시간', '창밖의 계절', '다시 만난 오후', '조용한 약속'],
+  en: ['The First Story', 'At the End of the Night', 'Slow Passing Hours', 'Seasons Past the Window', 'An Afternoon Reunited', 'A Quiet Promise'],
+  ja: ['最初の物語', '夜の終わりに', 'ゆっくり流れる時間', '窓の外の季節', 'また会えた午後', '静かな約束'],
+};
+/** 언어에 맞는 주제 목록. 영어·일본어인데 한글 주제뿐이면(옛 프리셋에 복사돼 있던 한국어 기본값) 그 언어의 기본 주제를 쓴다. */
+export function topicsFor(preset, lang) {
+  const own = (preset.topics?.[lang] || []).map(s => String(s).trim()).filter(Boolean);
+  const usable = lang === 'ko' ? own : own.filter(s => !HANGUL.test(s));
+  return usable.length ? usable : DEFAULT_TOPICS[lang] || DEFAULT_TOPICS.ko;
+}
 
 export function loadPresets() {
   const out = [];
@@ -42,7 +54,7 @@ export function planTracks(preset, request) {
   const n = Math.max(1, Math.min(40, Number(request.count) || 6));
   const lang = LANG[request.language] ? request.language : 'ko';
   const instrumental = request.instrumental ?? Boolean(preset.instrumental);
-  const topics = shuffle(preset.topics?.[lang] || preset.topics?.ko || [], Date.now() % 1000);
+  const topics = shuffle(topicsFor(preset, lang), Date.now() % 1000);
   const specs = [];
   for (let i = 0; i < n; i++) {
     const topic = pick(topics, i) || `Track ${i + 1}`;
@@ -304,7 +316,7 @@ export async function runJob(job, cfg) {
     const spec = {
       style: req.thumbnailStyle || preset.thumbnailStyle || 'night',
       title: req.thumbnailText || meta.title.replace(/^\[[^\]]*\]\s*/, ''),
-      subtitle: req.thumbnailSub ?? `${collected.length} tracks · ${fmt(total)}`,
+      subtitle: req.thumbnailSub ?? `${trackCount(collected.length, lang)} · ${fmt(total)}`,
       background_image: bgImage,
       slides: slides.map(s => s.file),
       slides_dir: path.join(job.dir, 'slides'),

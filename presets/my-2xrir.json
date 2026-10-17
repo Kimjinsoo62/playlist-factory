@@ -13,22 +13,47 @@
   ],
   "thumbnailStyle": "neon",
   "topics": {
-    "ko": [],
+    "ko": [
+      "이별의 눈물",
+      "떠나간 사람",
+      "무정한 세월",
+      "슬픈 버스정류장",
+      "비 내리는 정거장",
+      "가슴 아픈 고백",
+      "밤차를 타고",
+      "잊혀진 약속",
+      "눈물의 항구",
+      "마지막 인사",
+      "그리운 내 사랑",
+      "추억의 술잔"
+    ],
     "en": [
-      "첫 번째 이야기",
-      "밤의 끝에서",
-      "천천히 흐르는 시간",
-      "창밖의 계절",
-      "다시 만난 오후",
-      "조용한 약속"
+      "Tears of Farewell",
+      "The One Who Left",
+      "Heartless Time",
+      "Sad Bus Stop",
+      "Rainy Station",
+      "Heartfelt Confession",
+      "On the Night Train",
+      "Forgotten Promise",
+      "Port of Tears",
+      "Last Goodbye",
+      "Longing for You",
+      "Glass of Memories"
     ],
     "ja": [
-      "첫 번째 이야기",
-      "밤의 끝에서",
-      "천천히 흐르는 시간",
-      "창밖의 계절",
-      "다시 만난 오후",
-      "조용한 약속"
+      "別れの涙",
+      "去りし人",
+      "無情な月日",
+      "悲しいバス停",
+      "雨の停車場",
+      "切ない告白",
+      "夜行列車に乗って",
+      "忘れられた約束",
+      "涙の港",
+      "最後の挨拶",
+      "恋しい我が愛",
+      "思い出の酒杯"
     ]
   },
   "titleTemplate": {

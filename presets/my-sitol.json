@@ -13,22 +13,47 @@
   ],
   "thumbnailStyle": "night",
   "topics": {
-    "ko": [],
+    "ko": [
+      "모닥불가의 추억",
+      "황금빛 옥수수밭",
+      "마차 달리는 길",
+      "광활한 서부 평원",
+      "농부의 소박한 저녁",
+      "밤하늘 쏟아지는 별",
+      "고향의 낡은 집",
+      "시골길의 노을",
+      "통기타 선율",
+      "잔잔한 저녁 바람",
+      "따뜻한 한 끼",
+      "평화로운 농장"
+    ],
     "en": [
-      "첫 번째 이야기",
-      "밤의 끝에서",
-      "천천히 흐르는 시간",
-      "창밖의 계절",
-      "다시 만난 오후",
-      "조용한 약속"
+      "Campfire Memories",
+      "Golden Cornfields",
+      "Old Wagon Road",
+      "Wide Open Prairie",
+      "Simple Farmer Evening",
+      "Starry Country Night",
+      "Rustic Old Home",
+      "Sunset Country Road",
+      "Acoustic Melodies",
+      "Gentle Evening Breeze",
+      "Warm Shared Meal",
+      "Peaceful Farmstead"
     ],
     "ja": [
-      "첫 번째 이야기",
-      "밤의 끝에서",
-      "천천히 흐르는 시간",
-      "창밖의 계절",
-      "다시 만난 오후",
-      "조용한 약속"
+      "焚き火の思い出",
+      "黄金色のトウモロコシ畑",
+      "馬車の通る道",
+      "広大な西部の平原",
+      "農夫のささやかな夕食",
+      "満天の星空",
+      "懐かしい古い家",
+      "夕焼けの田舎道",
+      "アコースティックの調べ",
+      "穏やかな夕風",
+      "温かい食卓",
+      "和やかな農園"
     ]
   },
   "titleTemplate": {
