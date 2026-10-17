@@ -32,6 +32,7 @@ server.tool('plan_playlist', '플레이리스트를 만들기 전에 곡 수·�
   count: z.number().int().min(1).max(40).default(6),
   language: z.enum(['ko', 'en', 'ja']).default('ko'),
   instrumental: z.boolean().optional(),
+  vocalGender: z.enum(['male', 'female']).optional(),
 }, async (args) => text(await api('/api/plan', { method: 'POST', body: args })));
 
 server.tool('create_playlist', '플레이리스트 영상 생성 작업을 시작한다. 곡 생성(Treblo API, 병렬) → 결합 → 가사 자막 → 썸네일 → 렌더링 → 유튜브 메타데이터까지 자동. 작업 id를 돌려주며 get_job 으로 진행 상황을 확인한다. provider=treblo 는 곡당 100크레딧, provider=lyria(Google Lyria, 연주곡 전용) 는 곡당 약 $0.08 이 든다.', {
@@ -39,6 +40,7 @@ server.tool('create_playlist', '플레이리스트 영상 생성 작업을 시�
   count: z.number().int().min(1).max(40).default(6).describe('곡 수'),
   language: z.enum(['ko', 'en', 'ja']).default('ko').describe('가사 언어'),
   instrumental: z.boolean().optional().describe('연주곡 여부(생략 시 프리셋 기본값)'),
+  vocalGender: z.enum(['male', 'female']).optional().describe('보컬 성별. male=남성, female=여성 (생략 시 프리셋 기본값, 연주곡이면 무시)'),
   provider: z.enum(['treblo', 'lyria', 'local', 'mock']).optional().describe('생략하면 설정에서 활성화한 작곡 AI 를 사용. treblo=Treblo API 자동 생성(보컬·연주곡), lyria=Google Lyria 자동 생성(연주곡 프리셋 전용, 가사 자막 불가; 설정에서 활성 상태여야 함), local=input 폴더의 파일 사용, mock=크레딧 없는 테스트'),
   title: z.string().optional().describe('유튜브 영상 제목(생략 시 자동)'),
   thumbnailStyle: z.enum(['night', 'warm', 'mono', 'neon', 'paper', 'forest', 'ocean']).optional(),

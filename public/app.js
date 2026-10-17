@@ -62,7 +62,7 @@ async function estimate() {
     const p = presets.find(x => x.id === body.preset);
     const forced = p && !p.instrumental && e.instrumental ? '\u26a0 보컬 프리셋을 연주곡으로 만듭니다(프롬프트에서 보컬 묘사를 뺌). 프리셋 본래의 보컬 결과를 보려면 Treblo를 활성화하고 보컬 옵션을 "프리셋 기본"으로 두세요.\n' : '';
     $('#estimate').textContent = forced + (prov === 'treblo'
-      ? `예상: ${e.specs.length}곡 · 크레딧 ${e.credits} · 영상 약 ${e.estMinutes}분 · ${e.instrumental ? '연주곡' : '보컬 (' + e.lang + ')'}`
+      ? `예상: ${e.specs.length}곡 · 크레딧 ${e.credits} · 영상 약 ${e.estMinutes}분 · ${e.instrumental ? '연주곡' : (e.gender === 'male' ? '남성 보컬' : e.gender === 'female' ? '여성 보컬' : '보컬') + ' (' + e.lang + ')'}`
       : prov === 'lyria'
       ? (e.instrumental ? `예상: ${e.specs.length}곡 · 약 $${e.lyriaUsd.toFixed(2)} (곡당 $0.08, Google 결제 계정에 청구) · 영상 약 ${e.estMinutes}분 · 연주곡` : `⚠ Lyria 소스는 연주곡 전용입니다. 연주곡 프리셋을 고르거나 보컬 옵션을 "연주곡"으로 바꾸세요. (가사 타이밍 데이터가 없어 가사 자막을 만들 수 없음)`)
       : prov === 'local' ? `input 폴더의 파일 중 앞에서 ${e.specs.length}개를 사용합니다.` : `테스트: ${e.specs.length}곡 × ${body.mockSeconds || 20}초 합성음, 크레딧 0`);
@@ -88,7 +88,9 @@ function formData() {
   const f = new FormData($('#form')); const o = {};
   for (const [k, v] of f.entries()) o[k] = v;
   o.count = Number(o.count); o.mockSeconds = Number(o.mockSeconds);
-  o.instrumental = o.instrumental === '' ? null : o.instrumental === 'true';
+  const voc = o.instrumental;   // '' | 'false' | 'male' | 'female' | 'true'
+  if (voc === 'male' || voc === 'female') o.vocalGender = voc; else delete o.vocalGender;
+  o.instrumental = voc === '' ? null : voc === 'true';
   o.subtitles = o.subtitles !== 'false';
   if (o.provider === 'mock') { o.dryRun = true; }
   for (const k of ['title', 'thumbnailText', 'backgroundImage', 'extraPrompt', 'thumbnailStyle']) if (!o[k]) delete o[k];
@@ -367,7 +369,7 @@ let pmMode = 'edit';   // 'edit' | 'new'
 $('#btnNewPreset').onclick = () => openPresetModal(null);
 function openPresetModal(id) {
   const p = id ? presets.find(x => x.id === id) : {
-    id: '', name: '', description: '', koDescription: '', useKoDescription: true, prompt: '', instrumental: false,
+    id: '', name: '', description: '', koDescription: '', useKoDescription: true, prompt: '', instrumental: false, vocalGender: '',
     thumbnailStyle: 'night', length_range: [150, 240], tags: [], negative_tags: [], imageQueries: [], topics: { ko: [], en: [], ja: [] },
   };
   if (!p) return;
@@ -380,7 +382,7 @@ function openPresetModal(id) {
   f.id.value = id ? p.id : `my-${Date.now().toString(36).slice(-5)}`;
   f.name.value = p.name || ''; f.description.value = p.description || ''; f.koDescription.value = p.koDescription || '';
   f.useKoDescription.checked = p.useKoDescription !== false; f.prompt.value = p.prompt || '';
-  f.instrumental.value = String(Boolean(p.instrumental)); f.thumbnailStyle.value = p.thumbnailStyle || 'night';
+  f.instrumental.value = p.instrumental ? 'true' : (p.vocalGender === 'male' || p.vocalGender === 'female' ? p.vocalGender : 'false'); f.thumbnailStyle.value = p.thumbnailStyle || 'night';
   f.len0.value = p.length_range?.[0] ?? 150; f.len1.value = p.length_range?.[1] ?? 240;
   f.tags.value = (p.tags || []).join(', '); f.negative_tags.value = (p.negative_tags || []).join(', '); f.imageQueries.value = (p.imageQueries || []).join(', ');
   showTopics('ko'); $('#pmMsg').textContent = ''; $('#pmodal').hidden = false; pmPreview();
@@ -395,7 +397,7 @@ function pmBody() {
   const f = pmf(); showTopics(pmLang);
   return {
     name: f.name.value.trim(), description: f.description.value.trim(), koDescription: f.koDescription.value.trim(), useKoDescription: f.useKoDescription.checked,
-    prompt: f.prompt.value.trim(), instrumental: f.instrumental.value === 'true', thumbnailStyle: f.thumbnailStyle.value,
+    prompt: f.prompt.value.trim(), instrumental: f.instrumental.value === 'true', vocalGender: ['male', 'female'].includes(f.instrumental.value) ? f.instrumental.value : '', thumbnailStyle: f.thumbnailStyle.value,
     length_range: [Number(f.len0.value), Number(f.len1.value)], topics: pmTopics,
     tags: f.tags.value.split(',').map(s => s.trim().toLowerCase()).filter(Boolean),
     negative_tags: f.negative_tags.value.split(',').map(s => s.trim()).filter(Boolean),
@@ -413,7 +415,7 @@ async function pmPreview() {
     return;
   }
   try {
-    const r = await api('/api/plan', { method: 'POST', body: { preset: pmPreset.id, count: 1, language: $('#language').value, koDescription: b.koDescription, useKoDescription: b.useKoDescription } });
+    const r = await api('/api/plan', { method: 'POST', body: { preset: pmPreset.id, count: 1, language: $('#language').value, koDescription: b.koDescription, useKoDescription: b.useKoDescription, instrumental: b.instrumental, vocalGender: b.vocalGender } });
     $('#pmPreview').textContent = r.specs[0].prompt.replace(pmPreset.prompt, b.prompt);
   } catch (e) { $('#pmPreview').textContent = e.message; }
 }

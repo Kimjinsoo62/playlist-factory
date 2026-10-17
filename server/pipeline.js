@@ -13,6 +13,9 @@ import { findBackground, collectBackgrounds } from './images.js';
 import { hasLlmKey, llmModel, llmProvider, LLM_PROVIDERS, translateToEnglish, planBackgroundQueries, rankBackgrounds } from './llm.js';
 
 const HANGUL = /[\uac00-\ud7a3]/;
+const GENDER_TAG = { male: 'male vocalist', female: 'female vocalist' };   // Treblo 태그 사전 상위권 태그
+const GENDER_INSTR = { male: 'Male lead vocal (male singer).', female: 'Female lead vocal (female singer).' };
+const genderOf = (v) => (v === 'male' || v === 'female') ? v : '';
 
 const LANG = {
   ko: { name: '한국어', instr: 'Sung in Korean. All lyrics must be in natural Korean (한국어 가사).' },
@@ -67,6 +70,15 @@ export function planTracks(preset, request) {
   const n = Math.max(1, Math.min(40, Number(request.count) || 6));
   const lang = LANG[request.language] ? request.language : 'ko';
   const instrumental = request.instrumental ?? Boolean(preset.instrumental);
+  const gender = instrumental ? '' : (genderOf(request.vocalGender) || genderOf(preset.vocalGender));   // 작업 지정 > 프리셋 기본 > 미지정
+  // 태그: 성별을 지정하면 해당 vocalist 태그를 앞에 넣고 반대 성별은 제외 태그로
+  let tags = preset.tags?.length ? [...preset.tags] : [];
+  let negative = preset.negative_tags?.length ? [...preset.negative_tags] : [];
+  if (gender) {
+    const want = GENDER_TAG[gender], other = GENDER_TAG[gender === 'male' ? 'female' : 'male'];
+    tags = [want, ...tags.filter(t => t !== want && t !== other)];
+    negative = [...negative.filter(t => t !== want && t !== other), other];
+  }
   const seed = Date.now() % 1000;
   const topics = shuffle(topicsFor(preset, lang), seed);
   // 연주곡의 분위기 문구는 영어 주제로 전달(같은 순서로 섞어 제목과 짝을 맞춤). 제목·자막은 선택한 언어의 주제를 그대로 쓴다.
@@ -86,7 +98,7 @@ export function planTracks(preset, request) {
     if (!prompt) prompt = preset.description || preset.name;
     // 영어 프롬프트가 없는 프리셋: 이름이 곧 장르인 경우가 많으므로(예: 칸트리뮤직) 앞에 붙여 장르를 분명히 한다
     if (!(preset.prompt || '').trim()) prompt = `Genre/style: ${request.presetNameEn || preset.name}. ${prompt}`;
-    if (!instrumental) prompt += ` ${LANG[lang].instr} Theme of this song: "${topic}".`;
+    if (!instrumental) prompt += ` ${LANG[lang].instr}${gender ? ' ' + GENDER_INSTR[gender] : ''} Theme of this song: "${topic}".`;
     else {
       if (!preset.instrumental) prompt = instrumentalize(prompt);   // 보컬 프리셋을 연주곡으로: 보컬 묘사 제거
       else if (!/instrumental/i.test(prompt)) prompt += ' Instrumental only, no vocals.';
@@ -95,13 +107,13 @@ export function planTracks(preset, request) {
     if (request.extraPromptEn || request.extraPrompt) prompt += ` ${request.extraPromptEn || request.extraPrompt}`;
     specs.push({
       index: i + 1, title: topic, prompt, instrumental,
-      tags: preset.tags?.length ? preset.tags : undefined,
-      negative_tags: preset.negative_tags?.length ? preset.negative_tags : undefined,
+      tags: tags.length ? tags : undefined,
+      negative_tags: negative.length ? negative : undefined,
       length_range: preset.length_range || undefined,
       style_scale: preset.style_scale || undefined,
     });
   }
-  return { specs, lang, instrumental };
+  return { specs, lang, instrumental, gender };
 }
 
 async function runPool(items, limit, worker) {
@@ -152,8 +164,8 @@ export async function runJob(job, cfg) {
         } catch (e) { log(job, `번역 실패(한국어 그대로 전달): ${e.message.split('\n')[0]}`, 'warn'); }
       }
     } else if (providerName !== 'mock') log(job, '메인 LLM 키가 없어 한국어 요청을 번역하지 않고 그대로 전달합니다 (상단 [설정]에서 등록 가능)', 'warn');
-    const { specs, lang, instrumental } = planTracks(preset, req);
-    log(job, `프리셋 "${preset.name}" · ${specs.length}곡 · 언어 ${LANG[lang].name} · ${instrumental ? '연주곡' : '보컬'} · 소스 ${providerName}`);
+    const { specs, lang, instrumental, gender } = planTracks(preset, req);
+    log(job, `프리셋 "${preset.name}" · ${specs.length}곡 · 언어 ${LANG[lang].name} · ${instrumental ? '연주곡' : gender === 'male' ? '남성 보컬' : gender === 'female' ? '여성 보컬' : '보컬'} · 소스 ${providerName}`);
     job.tracks = specs.map(s => ({ index: s.index, title: s.title, status: 'pending' }));
     persist(job);
 

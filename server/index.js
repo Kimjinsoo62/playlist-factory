@@ -31,7 +31,7 @@ app.get('/api/info', (req, res) => {
   res.json({ title: APP_TITLE, port: PORT, pid: process.pid, lan: lanAddresses(PORT), root: DIRS.root, inputDir: DIRS.input, outputDir: DIRS.output, version: JSON.parse(fs.readFileSync(path.join(DIRS.root, 'package.json'), 'utf8')).version });
 });
 app.get('/api/presets', (req, res) => res.json(loadPresets()));
-const PRESET_FIELDS = ['name', 'description', 'koDescription', 'useKoDescription', 'prompt', 'instrumental', 'topics', 'negative_tags', 'tags', 'length_range', 'thumbnailStyle', 'imageQueries', 'titleTemplate', 'youtubeIntro', 'hashtags', 'keywords'];
+const PRESET_FIELDS = ['name', 'description', 'koDescription', 'useKoDescription', 'prompt', 'instrumental', 'vocalGender', 'topics', 'negative_tags', 'tags', 'length_range', 'thumbnailStyle', 'imageQueries', 'titleTemplate', 'youtubeIntro', 'hashtags', 'keywords'];
 function presetPath(id) { if (!/^[a-z0-9][a-z0-9-]{1,40}$/.test(id)) throw new Error('프리셋 id는 영문 소문자·숫자·하이픈만'); return path.join(DIRS.presets, id + '.json'); }
 app.put('/api/presets/:id', async (req, res) => {
   try {
@@ -40,6 +40,7 @@ app.put('/api/presets/:id', async (req, res) => {
     const cur = JSON.parse(fs.readFileSync(file, 'utf8'));
     const { isKnownTag } = await import('./providers/treblo.js');
     for (const k of PRESET_FIELDS) if (k in (req.body || {})) cur[k] = req.body[k];
+    cur.vocalGender = ['male', 'female'].includes(cur.vocalGender) ? cur.vocalGender : '';   // '' = 미지정(프리셋 프롬프트대로)
     if (typeof cur.topics === 'object') for (const l of Object.keys(cur.topics)) cur.topics[l] = (cur.topics[l] || []).map(s => String(s).trim()).filter(Boolean);
     for (const k of ['negative_tags', 'tags']) if (Array.isArray(cur[k])) {
       const bad = cur[k].filter(t => !isKnownTag(t));
@@ -97,7 +98,7 @@ app.post('/api/presets', async (req, res) => {
     const p = {
       id, name, description: (b.description || '').trim() || name,
       koDescription: (b.koDescription || '').trim(), useKoDescription: generated ? false : b.useKoDescription !== false,   // 자동 생성 프롬프트는 설명의 번역이라 둘 다 보내면 중복
-      prompt: (b.prompt || '').trim(), instrumental: Boolean(b.instrumental),
+      prompt: (b.prompt || '').trim(), instrumental: Boolean(b.instrumental), vocalGender: ['male', 'female'].includes(b.vocalGender) ? b.vocalGender : '',
       tags: b.tags || [], negative_tags: b.negative_tags || [], length_range: Array.isArray(b.length_range) && b.length_range.length === 2 ? b.length_range : [150, 240],
       thumbnailStyle: b.thumbnailStyle || 'night', topics,
       titleTemplate: { ko: `[Playlist] ${name} {n}곡 · {dur}`, en: `[Playlist] ${name} {n} songs · {dur}`, ja: `[Playlist] ${name} {n}曲 · {dur}` },

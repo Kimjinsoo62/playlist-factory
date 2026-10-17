@@ -38,7 +38,7 @@
       <div class="row3">
         <div><label>곡 수</label><input type="number" name="count" id="count" min="1" max="40" value="6"></div>
         <div><label>가사 언어</label><select name="language" id="language"><option value="ko">한국어</option><option value="en">English</option><option value="ja">日本語</option></select></div>
-        <div><label>보컬</label><select name="instrumental" id="instrumental"><option value="">프리셋 기본</option><option value="false">보컬</option><option value="true">연주곡</option></select></div>
+        <div><label>보컬</label><select name="instrumental" id="instrumental"><option value="">프리셋 기본</option><option value="false">보컬</option><option value="male">남성 보컬</option><option value="female">여성 보컬</option><option value="true">연주곡</option></select></div>
       </div>
       <div class="row3">
         <div><label>가사 자막</label><select name="subtitles" id="subtitles"><option value="true">표시</option><option value="false">숨김</option></select></div>
@@ -230,7 +230,7 @@
       <div class="row"><label>설명 사용</label><label class="inline"><input type="checkbox" name="useKoDescription"> 한국어 상세 설명을 곡 생성 프롬프트에 포함</label></div>
       <div class="row top"><label>영어 프롬프트<br><span class="dim">기본 스타일</span></label><textarea name="prompt" rows="3" placeholder="비워도 됩니다. 비우면 한국어 상세 설명이 그대로 생성 프롬프트로 쓰입니다."></textarea></div>
       <div class="row3">
-        <div><label>보컬</label><select name="instrumental"><option value="false">보컬</option><option value="true">연주곡</option></select></div>
+        <div><label>보컬</label><select name="instrumental"><option value="false">보컬 (성별 미지정)</option><option value="male">남성 보컬</option><option value="female">여성 보컬</option><option value="true">연주곡</option></select></div>
         <div><label>곡 길이(초, 30 배수)</label><div class="pair"><input type="number" name="len0" step="30" min="0" max="270"><input type="number" name="len1" step="30" min="30" max="300"></div></div>
         <div><label>썸네일 스타일</label><select name="thumbnailStyle"><option>night</option><option>warm</option><option>mono</option><option>neon</option><option>paper</option><option>forest</option><option>ocean</option></select></div>
       </div>
