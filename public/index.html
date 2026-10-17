@@ -225,7 +225,7 @@
       <div class="row top"><label>한국어 상세 설명<br><span class="dim">곡 생성에 사용됨</span></label><div class="grow"><textarea name="koDescription" rows="4" placeholder="장르(예: 컨트리, 트로트), 악기, 템포(BPM), 보컬 톤, 분위기를 한국어로 자세히 적으세요. 풍경·장면 묘사만 쓰면 어떤 음악인지 AI가 알 수 없습니다. 이 내용은 영어로 번역되어 작곡 AI에 전달됩니다."></textarea><div class="dim" style="margin-top:2px">⚠ 반드시 <b>음악 장르·악기·템포</b>를 적으세요. 새 프리셋을 저장하면 메인 LLM이 이 설명과 이름으로 영어 프롬프트·주제·배경 검색어를 자동으로 만듭니다.</div></div></div>
       <div class="row"><label></label>
         <button type="button" id="pmGen" class="btn primary small">✨ AI로 영어 프롬프트 자동 생성</button>
-        <label class="inline"><input type="checkbox" id="pmGenTopics" checked> 곡 주제·제외 태그·배경 검색어도 함께</label>
+        <label class="inline"><input type="checkbox" id="pmGenTopics" checked> 곡 주제·태그·제외 태그·배경 검색어도 함께</label>
         <span id="pmGenMsg" class="dim"></span></div>
       <div class="row"><label>설명 사용</label><label class="inline"><input type="checkbox" name="useKoDescription"> 한국어 상세 설명을 곡 생성 프롬프트에 포함</label></div>
       <div class="row top"><label>영어 프롬프트<br><span class="dim">기본 스타일</span></label><textarea name="prompt" rows="3" placeholder="비워도 됩니다. 비우면 한국어 상세 설명이 그대로 생성 프롬프트로 쓰입니다."></textarea></div>
@@ -237,6 +237,7 @@
       <div class="row top"><label>곡 주제·제목<br><span class="dim">한 줄에 하나</span></label>
         <div class="grow"><div class="tabs"><button type="button" class="btn small tab on" data-l="ko">한국어</button><button type="button" class="btn small tab" data-l="en">English</button><button type="button" class="btn small tab" data-l="ja">日本語</button></div>
         <textarea name="topics" rows="4"></textarea></div></div>
+      <div class="row"><label>태그<br><span class="dim">장르 지정</span></label><input name="tags" placeholder="쉼표로 구분, 3~7개. Treblo가 장르를 잡는 가장 강한 신호 (예: 1970s, soft rock, ballad, pop)"></div>
       <div class="row"><label>제외 태그</label><input name="negative_tags" placeholder="쉼표로 구분. Treblo 태그 사전에 있는 값만 (예: edm, metal, rap)"></div>
       <div class="row"><label>배경 사진 검색어</label><input name="imageQueries" placeholder="쉼표로 구분, 영어 2~3단어 (예: rainy window, coffee rain)"></div>
       <div class="row top"><label>최종 프롬프트 미리보기</label><pre id="pmPreview" class="yt grow"></pre></div>

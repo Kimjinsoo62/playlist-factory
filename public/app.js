@@ -368,7 +368,7 @@ $('#btnNewPreset').onclick = () => openPresetModal(null);
 function openPresetModal(id) {
   const p = id ? presets.find(x => x.id === id) : {
     id: '', name: '', description: '', koDescription: '', useKoDescription: true, prompt: '', instrumental: false,
-    thumbnailStyle: 'night', length_range: [150, 240], negative_tags: [], imageQueries: [], topics: { ko: [], en: [], ja: [] },
+    thumbnailStyle: 'night', length_range: [150, 240], tags: [], negative_tags: [], imageQueries: [], topics: { ko: [], en: [], ja: [] },
   };
   if (!p) return;
   pmMode = id ? 'edit' : 'new';
@@ -382,7 +382,7 @@ function openPresetModal(id) {
   f.useKoDescription.checked = p.useKoDescription !== false; f.prompt.value = p.prompt || '';
   f.instrumental.value = String(Boolean(p.instrumental)); f.thumbnailStyle.value = p.thumbnailStyle || 'night';
   f.len0.value = p.length_range?.[0] ?? 150; f.len1.value = p.length_range?.[1] ?? 240;
-  f.negative_tags.value = (p.negative_tags || []).join(', '); f.imageQueries.value = (p.imageQueries || []).join(', ');
+  f.tags.value = (p.tags || []).join(', '); f.negative_tags.value = (p.negative_tags || []).join(', '); f.imageQueries.value = (p.imageQueries || []).join(', ');
   showTopics('ko'); $('#pmMsg').textContent = ''; $('#pmodal').hidden = false; pmPreview();
 }
 function showTopics(l) {
@@ -397,6 +397,7 @@ function pmBody() {
     name: f.name.value.trim(), description: f.description.value.trim(), koDescription: f.koDescription.value.trim(), useKoDescription: f.useKoDescription.checked,
     prompt: f.prompt.value.trim(), instrumental: f.instrumental.value === 'true', thumbnailStyle: f.thumbnailStyle.value,
     length_range: [Number(f.len0.value), Number(f.len1.value)], topics: pmTopics,
+    tags: f.tags.value.split(',').map(s => s.trim().toLowerCase()).filter(Boolean),
     negative_tags: f.negative_tags.value.split(',').map(s => s.trim()).filter(Boolean),
     imageQueries: f.imageQueries.value.split(',').map(s => s.trim()).filter(Boolean),
   };
@@ -436,6 +437,7 @@ $('#pmGen').onclick = async () => {
     f.useKoDescription.checked = false;   // 생성된 프롬프트가 설명의 번역이므로 둘 다 보내면 같은 내용이 두 번 들어간다
     if (r.description && !f.description.value.trim()) f.description.value = r.description;
     if (wantTopics) {
+      if (r.tags?.length && !f.tags.value.trim()) f.tags.value = r.tags.join(', ');
       if (r.negative_tags?.length && !f.negative_tags.value.trim()) f.negative_tags.value = r.negative_tags.join(', ');
       if (r.imageQueries?.length && !f.imageQueries.value.trim()) f.imageQueries.value = r.imageQueries.join(', ');
       showTopics(pmLang);   // 현재 탭 내용을 pmTopics 에 반영
@@ -459,7 +461,7 @@ pmf().onsubmit = async (e) => {
       try { localStorage.setItem('pf.preset', created.id); } catch {}
       openPresetModal(created.id);
       $('#pmMsg').textContent = created._generated
-        ? `새 프리셋 "${created.name}" 저장됨 · 메인 LLM(${created._model})이 영어 프롬프트·주제·배경 검색어를 자동 생성했습니다. 아래 영어 프롬프트를 확인하세요. 이제 선택되어 있습니다.`
+        ? `새 프리셋 "${created.name}" 저장됨 · 메인 LLM(${created._model})이 영어 프롬프트·태그·주제·배경 검색어를 자동 생성했습니다. 아래 영어 프롬프트를 확인하세요. 이제 선택되어 있습니다.`
         : `새 프리셋 "${created.name}" 저장됨. 영어 프롬프트가 비어 있어 한국어 설명이 그대로 전달됩니다${created._generateError ? ` (자동 생성 실패: ${created._generateError})` : ''}. ✨ 버튼으로 영어 프롬프트를 만들어 저장하는 것을 권장합니다.`;
       return;
     }

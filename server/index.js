@@ -70,7 +70,7 @@ app.post('/api/presets', async (req, res) => {
     if (!b.name?.trim()) return res.status(400).json({ error: '이름을 입력하세요' });
     if (!b.koDescription?.trim() && !b.prompt?.trim()) return res.status(400).json({ error: '한국어 상세 설명 또는 영어 프롬프트 중 하나는 필요합니다' });
     const { isKnownTag } = await import('./providers/treblo.js');
-    const bad = (b.negative_tags || []).filter(t => !isKnownTag(t));
+    const bad = [...(b.tags || []), ...(b.negative_tags || [])].filter(t => !isKnownTag(t));
     if (bad.length) return res.status(400).json({ error: `Treblo 태그 사전에 없는 태그: ${bad.join(', ')}` });
     const name = b.name.trim();
     // 영어 프롬프트가 비어 있으면 메인 LLM 으로 자동 생성 (장르·악기·템포가 담긴 프롬프트 + 제외 태그·주제·배경 검색어). 실패하면 한국어 설명만으로 저장.
@@ -83,6 +83,7 @@ app.post('/api/presets', async (req, res) => {
           generated = await generatePresetFromKorean({ koDescription: b.koDescription, name, instrumental: Boolean(b.instrumental), wantTopics: true, cfg });
           b.prompt = generated.prompt;
           if (!b.description?.trim() && generated.description) b.description = generated.description;
+          if (!(b.tags || []).length) b.tags = generated.tags;
           if (!(b.negative_tags || []).length) b.negative_tags = generated.negative_tags;
           if (!(b.imageQueries || []).length) b.imageQueries = generated.imageQueries;
           const t = b.topics || {}; if (!(t.ko || []).length && generated.topics.ko.length) b.topics = generated.topics;
@@ -97,7 +98,7 @@ app.post('/api/presets', async (req, res) => {
       id, name, description: (b.description || '').trim() || name,
       koDescription: (b.koDescription || '').trim(), useKoDescription: generated ? false : b.useKoDescription !== false,   // 자동 생성 프롬프트는 설명의 번역이라 둘 다 보내면 중복
       prompt: (b.prompt || '').trim(), instrumental: Boolean(b.instrumental),
-      negative_tags: b.negative_tags || [], length_range: Array.isArray(b.length_range) && b.length_range.length === 2 ? b.length_range : [150, 240],
+      tags: b.tags || [], negative_tags: b.negative_tags || [], length_range: Array.isArray(b.length_range) && b.length_range.length === 2 ? b.length_range : [150, 240],
       thumbnailStyle: b.thumbnailStyle || 'night', topics,
       titleTemplate: { ko: `[Playlist] ${name} {n}곡 · {dur}`, en: `[Playlist] ${name} {n} songs · {dur}`, ja: `[Playlist] ${name} {n}曲 · {dur}` },
       youtubeIntro: { ko: (b.description || '').trim() || name },

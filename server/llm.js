@@ -138,13 +138,14 @@ Respond with JSON only (no markdown fences) with these keys:
 {
   "prompt": string (the English prompt),
   "description": string (one Korean sentence summarizing the style, ≤ 60 chars),
+  "tags": string[] (3–6 tags that DEFINE this style — genre, sub-genre, era, vocal type — chosen ONLY from the allowed tag list given by the user; lowercase exact spelling; these steer the generator most strongly),
   "negative_tags": string[] (3–5 tags the model should AVOID, chosen ONLY from the allowed tag list given by the user; lowercase exact spelling),
   "imageQueries": string[] (5 English photo search queries of 2–3 words that fit the mood, no people),
   "topics": { "ko": string[12], "en": string[12], "ja": string[12] } (evocative song titles/themes matching the style; each ≤ 18 chars; same ideas across languages)
 }`;
 
 /**
- * @returns {{prompt, description, negative_tags, imageQueries, topics, model, usage}}
+ * @returns {{prompt, description, tags, negative_tags, imageQueries, topics, model, usage}}
  */
 export async function generatePresetFromKorean({ koDescription, name = '', instrumental = false, wantTopics = true, cfg, call = null }) {
   if (!koDescription?.trim()) throw new Error('한국어 설명이 비어 있습니다');
@@ -153,16 +154,18 @@ export async function generatePresetFromKorean({ koDescription, name = '', instr
     `Instrumental: ${instrumental ? 'yes (no vocals)' : 'no (has vocals)'}`,
     `Include topics: ${wantTopics ? 'yes' : 'no (return empty arrays)'}`,
     `Korean style description:\n${koDescription.trim()}`,
-    `Allowed tags for negative_tags (pick only from these): ${topTags().join(', ')}`,
+    `Allowed tags for tags and negative_tags (pick only from these): ${topTags().join(', ')}`,
   ].join('\n\n');
   const r = await callJson({ cfg, system: SYSTEM, user, maxTokens: 4000, cheap: false, call });
   const json = r.json;
   if (!json?.prompt) throw new Error('응답에서 프롬프트를 찾지 못했습니다: ' + JSON.stringify(json).slice(0, 200));
   const neg = (json.negative_tags || []).map(t => String(t).trim().toLowerCase()).filter(t => t && isKnownTag(t)).slice(0, 5);
+  const tags = (json.tags || []).map(t => String(t).trim().toLowerCase()).filter(t => t && isKnownTag(t) && !neg.includes(t)).slice(0, 7);
   const fix = (arr) => Array.isArray(arr) ? arr.map(s => String(s).trim()).filter(Boolean) : [];
   return {
     prompt: String(json.prompt).trim(),
     description: String(json.description || '').trim(),
+    tags,
     negative_tags: neg,
     imageQueries: fix(json.imageQueries).slice(0, 6),
     topics: { ko: fix(json.topics?.ko), en: fix(json.topics?.en), ja: fix(json.topics?.ja) },
