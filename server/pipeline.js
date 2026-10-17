@@ -149,7 +149,7 @@ export async function runJob(job, cfg) {
     // 1. 계획 (+ 한국어 요청을 LLM 으로 영어 번역: 메인 LLM 키가 있을 때만, 테스트 소스는 제외)
     setStep(job, 1, '트랙 계획');
     const llmOn = providerName !== 'mock' && hasLlmKey(cfg);
-    if (llmOn) {
+    if (llmOn && providerName !== 'compile') {
       const items = [];
       const ko = (req.koDescription ?? preset.koDescription ?? '').trim();
       if (ko && (req.useKoDescription ?? preset.useKoDescription ?? true) && HANGUL.test(ko)) items.push(['koDescriptionEn', ko]);
@@ -163,14 +163,14 @@ export async function runJob(job, cfg) {
           fs.writeFileSync(path.join(job.dir, 'translation.json'), JSON.stringify(Object.fromEntries(items.map((it, i) => [it[0], { ko: it[1], en: r.texts[i] }])), null, 2), 'utf8');
         } catch (e) { log(job, `번역 실패(한국어 그대로 전달): ${e.message.split('\n')[0]}`, 'warn'); }
       }
-    } else if (providerName !== 'mock') log(job, '메인 LLM 키가 없어 한국어 요청을 번역하지 않고 그대로 전달합니다 (상단 [설정]에서 등록 가능)', 'warn');
+    } else if (providerName !== 'mock' && providerName !== 'compile') log(job, '메인 LLM 키가 없어 한국어 요청을 번역하지 않고 그대로 전달합니다 (상단 [설정]에서 등록 가능)', 'warn');
     const { specs, lang, instrumental, gender } = planTracks(preset, req);
     log(job, `프리셋 "${preset.name}" · ${specs.length}곡 · 언어 ${LANG[lang].name} · ${instrumental ? '연주곡' : gender === 'male' ? '남성 보컬' : gender === 'female' ? '여성 보컬' : '보컬'} · 소스 ${providerName}`);
     job.tracks = specs.map(s => ({ index: s.index, title: s.title, status: 'pending' }));
     persist(job);
 
     // 2. 생성/수집
-    setStep(job, 2, providerName === 'treblo' ? '곡 생성(Treblo API, 병렬)' : providerName === 'lyria' ? '곡 생성(Google Lyria, 병렬)' : providerName === 'local' ? '로컬 트랙 수집' : '테스트 트랙 합성');
+    setStep(job, 2, providerName === 'treblo' ? '곡 생성(Treblo API, 병렬)' : providerName === 'lyria' ? '곡 생성(Google Lyria, 병렬)' : providerName === 'local' ? '로컬 트랙 수집' : providerName === 'compile' ? '보관 곡 모으기' : '테스트 트랙 합성');
     let done = 0;
     const bump = (msg) => { done++; setStepProgress(job, (done / specs.length) * 100, msg); };
     let collected;
@@ -252,6 +252,13 @@ export async function runJob(job, cfg) {
         }
       });
       } finally { clearInterval(cancelTick); }
+    } else if (providerName === 'compile') {
+      // 보관 곡 조합: 완료된 작업의 곡 파일을 그대로 재료로 쓴다 (복사하지 않음). 가사·정렬은 원본 작업 폴더에서 읽는다
+      const { resolveTracks, loadLyrics } = await import('./library.js');
+      const items = resolveTracks(req.tracks);
+      job.tracks = items.map((it, i) => ({ index: i + 1, title: it.track.title, status: 'done', file: it.file, source: `${it.job.id} #${it.index}` }));
+      collected = items.map((it, i) => { const ly = instrumental ? { lyrics: '', words: null } : loadLyrics(it.job, it.index, it.file); return { index: i + 1, title: it.track.title, file: it.file, instrumental, lyrics: ly.lyrics, words: ly.words }; });
+      for (const c of collected) { log(job, `#${c.index} ${c.title} ← ${job.tracks[c.index - 1].source}${c.words ? ' (가사 정렬)' : c.lyrics ? ' (가사, 균등 배분)' : ''}`); bump(); }
     } else if (providerName === 'local') {
       const lp = new LocalProvider(DIRS.input);
       const files = lp.listFiles();
@@ -289,9 +296,10 @@ export async function runJob(job, cfg) {
     // 4. 결합
     setStep(job, 4, '트랙 결합');
     const fullWav = path.join(job.dir, 'full.wav');
-    const { offsets, durations, total } = await ff.concat(wavs, fullWav, { gapSeconds: cfg.render.gapSeconds, cwd: job.dir });
+    const crossfade = Math.max(0, Math.min(10, Number(req.crossfadeSeconds) || 0));
+    const { offsets, durations, total, crossfade: usedFade } = await ff.concat(wavs, fullWav, { gapSeconds: cfg.render.gapSeconds, crossfadeSeconds: crossfade, cwd: job.dir });
     collected.forEach((c, i) => { c.offset = offsets[i]; c.duration = durations[i]; });
-    log(job, `총 길이 ${fmt(total)}`);
+    log(job, `총 길이 ${fmt(total)}${usedFade ? ` (곡 사이 ${usedFade}초 크로스페이드)` : ` (곡 사이 무음 ${cfg.render.gapSeconds}초)`}`);
     setStepProgress(job, 100);
 
     // 5. 자막

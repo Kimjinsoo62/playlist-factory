@@ -48,6 +48,7 @@ python scripts/contact-sheet.py out.jpg     # 배경 풀 전체를 한 장으로
 | `lyria` | **연주곡 전용**. 가사 타이밍을 주지 않아 서버가 보컬 요청을 거부한다 (index.js와 pipeline.js 양쪽에서 검사) |
 | `local` | `input/` 폴더의 오디오 파일(mp3·m4a·wav·flac·ogg·aac). 같은 이름의 `.txt` 또는 `.lrc`가 있으면 가사로 사용, 파일명 앞 번호("01 - 제목")는 제목에서 제거 |
 | `mock` | pipeline.js 안에 인라인(`ff.synthTrack`). `dryRun: true`와 같음 |
+| `compile` | 완료된 작업의 곡을 재료로 다시 조합(`server/library.js`). 파일은 복사하지 않고 원본 폴더에서 읽으며, 가사·정렬은 원본의 `NN_generation.json`에서. `crossfadeSeconds`가 있으면 `ff.concat`이 acrossfade로 겹쳐 잇고 오프셋을 `Σdur − i·F`로 계산 |
 
 작곡 AI는 한 번에 하나만 활성(`config.provider`). 대기 상태 소스로는 작업 생성이 거부된다.
 

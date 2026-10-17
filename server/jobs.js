@@ -25,7 +25,7 @@ export function makeJobId(request) {
   const d = new Date(), p = (n) => String(n).padStart(2, '0');
   const stamp = `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}`;
   const n = Math.max(1, Math.min(40, Number(request?.count) || 6));
-  const base = `${stamp}_${presetLabel(request?.preset)}_${n}곡`;
+  const base = `${stamp}_${presetLabel(request?.preset)}_${n}곡${request?.provider === 'compile' ? '_조합' : ''}`;
   let id = base;
   for (let i = 2; jobs.has(id) || fs.existsSync(path.join(DIRS.output, id)); i++) id = `${base}_${i}`;
   return id;

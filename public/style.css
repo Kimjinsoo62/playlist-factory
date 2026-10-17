@@ -54,11 +54,18 @@ h2 { font-size: 8pt; margin: 0 0 4px; padding: 0 0 3px; border-bottom: 1px solid
 form .row { display: flex; align-items: center; gap: 6px; margin: 3px 0; }
 form .row > label { width: 92px; flex: none; color: var(--dim); }
 form .row > label.inline { width: auto; flex: 1; color: var(--fg); display: flex; align-items: center; gap: 4px; }
-#ytPanel > .row { margin: 4px 0; } #ytPanel > .row > label { width: 92px; flex: none; color: var(--dim); } #ytChannel { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+details > .row { display: flex; align-items: center; gap: 6px; margin: 4px 0; } details > .row > label { width: 92px; flex: none; color: var(--dim); }
+.cmbar { display: flex; align-items: center; gap: 6px; margin: 4px 0; }
+.cmlist { max-height: 290px; overflow: auto; border: 1px solid var(--line); border-radius: 3px; margin: 2px 0 6px; }
+.cmlist table { width: 100%; border-collapse: collapse; font-size: 7.5pt; }
+.cmlist th, .cmlist td { padding: 1px 5px; border-bottom: 1px solid var(--line); text-align: left; white-space: nowrap; }
+.cmlist th { color: var(--dim); font-weight: normal; position: sticky; top: 0; background: var(--panel); }
+.cmlist tr[data-k] { cursor: pointer; } .cmlist tr[data-k]:hover { background: var(--panel2); } .cmlist tr.on { background: var(--sel); } #ytChannel, #compInfo { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 form .row > input, form .row > select { flex: 1; min-width: 0; }
 .row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin: 3px 0; }
 .row3 label { display: block; color: var(--dim); margin-bottom: 1px; }
 .row3 input, .row3 select { width: 100%; }
+.row3 input[type=checkbox] { width: auto; margin: 0; }
 input, select { background: var(--input); border: 1px solid var(--line); border-radius: 3px; padding: 2px 5px; height: 21px; }
 input:focus, select:focus { outline: none; border-color: var(--accent); }
 .desc { margin: 2px 0 4px 98px; min-height: 12px; }

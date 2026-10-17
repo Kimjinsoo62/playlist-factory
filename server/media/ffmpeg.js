@@ -53,9 +53,26 @@ export async function normalize(input, output, { loudnorm = true } = {}) {
   return probe(output);
 }
 
-/** 트랙 사이에 gap초 무음을 넣어 하나의 WAV로 결합. 반환: 각 트랙 시작 오프셋 */
-export async function concat(trackFiles, outFile, { gapSeconds = 1.5, cwd } = {}) {
+/**
+ * 트랙을 하나의 WAV로 결합. 반환: 각 트랙 시작 오프셋·길이·총 길이
+ *  - crossfadeSeconds > 0: acrossfade 로 앞 곡 페이드아웃과 뒤 곡 페이드인을 겹친다 (offset_i = Σdur_j<i − i·F, total = Σdur − (n−1)·F)
+ *  - 0: 트랙 사이에 gapSeconds 무음을 넣는다 (기본)
+ */
+export async function concat(trackFiles, outFile, { gapSeconds = 1.5, crossfadeSeconds = 0, cwd } = {}) {
   const dir = cwd || path.dirname(outFile);
+  if (crossfadeSeconds > 0 && trackFiles.length >= 2) {
+    const durations = []; for (const f of trackFiles) durations.push((await probe(f)).duration);
+    const fade = Math.max(0.5, Math.min(crossfadeSeconds, Math.min(...durations) / 2));   // 가장 짧은 곡의 절반을 넘지 않게
+    const args = ['-hide_banner', '-loglevel', 'error', '-y'];
+    for (const f of trackFiles) args.push('-i', f);
+    let chain = [], prev = '[0:a]';
+    for (let i = 1; i < trackFiles.length; i++) { const label = i === trackFiles.length - 1 ? '[out]' : `[x${i}]`; chain.push(`${prev}[${i}:a]acrossfade=d=${fade}:c1=tri:c2=tri${label}`); prev = label; }
+    args.push('-filter_complex', chain.join(';'), '-map', '[out]', '-c:a', 'pcm_s16le', outFile);
+    await run('ffmpeg', args);
+    const offsets = []; let t = 0;
+    for (let i = 0; i < durations.length; i++) { offsets.push(t); t += durations[i] - (i < durations.length - 1 ? fade : 0); }
+    return { offsets, durations, total: t, crossfade: fade };
+  }
   const silence = path.join(dir, 'silence.wav');
   await run('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-y', '-f', 'lavfi', '-i', 'anullsrc=r=44100:cl=stereo', '-t', String(gapSeconds), '-c:a', 'pcm_s16le', silence]);
   const list = [];

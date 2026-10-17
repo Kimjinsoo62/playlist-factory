@@ -45,12 +45,14 @@ async function init() {
   if (cfg.hasApiKey) refreshBalance();
   providerChanged();
   refreshYt();
+  refreshCompileInfo();
   checkUpdateBadge();   // 앱을 켤 때 GitHub 에 새 커밋이 있는지 확인해 [업데이트] 버튼에 표시
   jobs = await api('/api/jobs'); renderJobs();
   const qj = new URLSearchParams(location.search).get('job'); if (qj && jobs.some(j => j.id === qj)) select(qj);   // ?job=작업id 로 바로 선택(링크·캡처용)
   if (!location.search.includes('nosse')) connectSSE();   // ?nosse=1: 화면 캡처 테스트용(실시간 갱신 끔)
   if (location.hash === '#preset') openPresetModal($('#preset').value);   // 링크로 바로 열기
   if (location.hash === '#keys') openKeyModal();                           // 링크로 설정(키) 모달 바로 열기
+  if (location.hash === '#compile') openCompileModal();                    // 링크로 조합 모달 바로 열기
 }
 function updatePresetUI() {
   const p = presets.find(x => x.id === $('#preset').value); if (!p) return;
@@ -283,7 +285,9 @@ function connectSSE() {
   es.addEventListener('hello', (e) => { jobs = JSON.parse(e.data).jobs; renderJobs(); if (selected) loadDetail(selected); else if (jobs.length) select(jobs[0].id); });
   es.addEventListener('job', (e) => {
     const ev = JSON.parse(e.data); const j = ev.data;
-    const i = jobs.findIndex(x => x.id === j.id); if (i >= 0) jobs[i] = j; else if (!j.hidden || $('#showHidden').checked) jobs.unshift(j);
+    const i = jobs.findIndex(x => x.id === j.id); const prev = i >= 0 ? jobs[i].status : null;
+    if (i >= 0) jobs[i] = j; else if (!j.hidden || $('#showHidden').checked) jobs.unshift(j);
+    if (j.status === 'done' && prev !== 'done') refreshCompileInfo();   // 완료된 곡이 늘면 보관 곡 수 갱신
     if (i < 0 && (j.status === 'running' || j.status === 'queued') && !selected) select(j.id);   // 외부(MCP)에서 시작된 작업: 아무것도 선택돼 있지 않으면 바로 따라감
     renderJobs(); if (selected === j.id) renderDetail(j);
   });
@@ -355,7 +359,7 @@ $('#btnOpenJob').onclick = () => selected && api('/api/open', { method: 'POST', 
 $('#btnDelete').onclick = async () => {
   if (!selected || !confirm('이 작업의 출력 폴더를 삭제할까요?')) return;
   await api('/api/jobs/' + selected, { method: 'DELETE' }).catch(e => alert(e.message));
-  jobs = jobs.filter(j => j.id !== selected); selected = null; $('#detail').hidden = true; renderJobs();
+  jobs = jobs.filter(j => j.id !== selected); selected = null; $('#detail').hidden = true; renderJobs(); refreshCompileInfo();
 };
 $('#btnCopyYt').onclick = () => navigator.clipboard.writeText($('#ytText').textContent).then(() => $('#btnCopyYt').textContent = '복사됨!');
 
@@ -491,6 +495,82 @@ $('#pmDelete').onclick = async () => {
     $('#preset').innerHTML = presets.map(x => `<option value="${x.id}">${x.name}</option>`).join('');
     updatePresetUI(); $('#pmodal').hidden = true;
   } catch (err) { $('#pmMsg').textContent = '오류: ' + err.message; }
+};
+
+// ── 플레이리스트 조합: 완료된 작업의 곡을 모아 목표 길이의 영상을 만드는 작업(provider=compile)
+let cmLib = [], cmSel = new Set();
+const cmf = () => $('#cmForm');
+const cmKey = (t) => `${t.jobId}#${t.index}`;
+const cmTarget = () => (cmf().target.value === 'custom' ? Number(cmf().customMin.value) || 0 : Number(cmf().target.value)) * 60;
+async function openCompileModal() {
+  const f = cmf();
+  $('#cmPreset').innerHTML = '<option value="">모든 프리셋</option>' + presets.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+  $('#cmPreset').value = $('#preset').value;
+  f.background.value = $('#background').value; f.subtitles.value = $('#subtitles').value; f.thumbnailStyle.value = $('#thumbnailStyle').value; f.title.value = '';
+  cmSel = new Set(); $('#cmMsg').textContent = '';
+  $('#cmodal').hidden = false;
+  await cmLoad();
+}
+async function cmLoad() {
+  try { cmLib = await api(`/api/library?preset=${encodeURIComponent($('#cmPreset').value)}&mock=${cmf().mock.checked ? 1 : 0}`); }
+  catch (e) { cmLib = []; $('#cmMsg').textContent = e.message; }
+  for (const k of [...cmSel]) if (!cmLib.some(t => cmKey(t) === k)) cmSel.delete(k);
+  cmReorder(); cmRender();
+}
+function cmReorder() {
+  const o = cmf().order.value;
+  if (o === 'random') cmLib.sort(() => Math.random() - 0.5);
+  else cmLib.sort((a, b) => (o === 'oldest' ? a.createdAt - b.createdAt : b.createdAt - a.createdAt) || a.index - b.index);
+}
+function cmSummary() {
+  const fade = Number(cmf().crossfade.value) || 0; const sel = cmLib.filter(t => cmSel.has(cmKey(t)));
+  return { sel, total: sel.reduce((a, t) => a + t.duration, 0) - Math.max(0, sel.length - 1) * fade };
+}
+/** 자동 선택: 현재 순서대로 목표 길이까지 채운다 (30초 여유, 같은 제목 제외 옵션) */
+function cmAuto() {
+  const f = cmf(); const target = cmTarget(); const fade = Number(f.crossfade.value) || 0;
+  cmSel = new Set(); const titles = new Set(); let total = 0;
+  for (const t of cmLib) {
+    if (f.dedupe.checked && titles.has(t.title)) continue;
+    const add = t.duration - (cmSel.size ? fade : 0);
+    if (total + add > target + 30) continue;
+    cmSel.add(cmKey(t)); titles.add(t.title); total += add;
+    if (total >= target) break;
+  }
+  cmRender();
+  $('#cmMsg').textContent = total < target - 60 ? `보관 곡이 부족해 목표에 못 미칩니다 (${fmt(total)} / ${fmt(target)}). 곡을 더 만들거나 "모든 프리셋"을 골라 보세요.` : '';
+}
+function cmRender() {
+  const { sel, total } = cmSummary(); const target = cmTarget();
+  $('#cmTotal').innerHTML = `선택 <b>${sel.length}곡</b> · <b>${fmt(total)}</b> / 목표 ${fmt(target)} <span class="dim">(보관 ${cmLib.length}곡)</span>`;
+  $('#cmList').innerHTML = cmLib.length
+    ? `<table><thead><tr><th></th><th>만든 날</th><th>제목</th><th>길이</th><th>프리셋</th><th>소스</th><th>가사</th></tr></thead><tbody>${cmLib.map(t => { const k = cmKey(t); return `<tr class="${cmSel.has(k) ? 'on' : ''}" data-k="${k}"><td><input type="checkbox" ${cmSel.has(k) ? 'checked' : ''}></td><td class="dim">${jobStamp(t.jobId)}</td><td>${t.title}</td><td>${fmt(t.duration)}</td><td class="dim">${presetName(t.presetId)}</td><td class="dim">${t.provider}${t.instrumental ? ' · 연주곡' : ''}</td><td class="dim">${t.instrumental ? '-' : t.hasWords ? '정렬' : '균등'}</td></tr>`; }).join('')}</tbody></table>`
+    : '<div class="dim" style="padding:6px">보관된 곡이 없습니다. 완료된 작업의 곡만 모을 수 있습니다 (테스트 곡은 "합성음 작업도 포함"을 켜야 보임).</div>';
+  $('#cmList').querySelectorAll('tr[data-k]').forEach(tr => tr.onclick = () => { const k = tr.dataset.k; if (cmSel.has(k)) cmSel.delete(k); else cmSel.add(k); cmRender(); });
+}
+/** 왼쪽 패널 칩: 보관 곡 수(모든 프리셋, 테스트 곡 제외) */
+async function refreshCompileInfo() {
+  try { const lib = await api('/api/library'); const st = $('#compState'); st.textContent = lib.length ? `보관 ${lib.length}곡` : '보관 곡 없음'; st.className = 'chip ' + (lib.length ? 'ok' : ''); $('#compInfo').textContent = lib.length ? `총 ${fmt(lib.reduce((a, t) => a + t.duration, 0))} 분량 · 프리셋 ${new Set(lib.map(t => t.presetId)).size}종 (크레딧 0)` : '완료된 작업이 생기면 그 곡들을 모아 만들 수 있습니다'; }
+  catch {}
+}
+$('#btnCompile').onclick = openCompileModal;
+$('#cmClose').onclick = () => $('#cmodal').hidden = true;
+$('#cmPreset').onchange = cmLoad;
+$('#cmAuto').onclick = cmAuto;
+$('#cmNone').onclick = () => { cmSel.clear(); cmRender(); };
+cmf().mock.onchange = cmLoad;
+cmf().order.onchange = () => { cmReorder(); cmRender(); };
+cmf().target.onchange = () => { cmf().customMin.hidden = cmf().target.value !== 'custom'; cmRender(); };
+cmf().customMin.oninput = cmRender; cmf().crossfade.oninput = cmRender;
+cmf().onsubmit = async (e) => {
+  e.preventDefault(); const f = cmf(); const { sel } = cmSummary();
+  if (!sel.length) return alert('조합할 곡을 선택하세요. [자동 선택]을 누르면 목표 길이만큼 골라 줍니다.');
+  const body = { provider: 'compile', preset: $('#cmPreset').value || sel[0].presetId, tracks: sel.map(t => ({ jobId: t.jobId, index: t.index })), crossfadeSeconds: Number(f.crossfade.value) || 0, background: f.background.value, subtitles: f.subtitles.value !== 'false', count: sel.length };
+  if (f.thumbnailStyle.value) body.thumbnailStyle = f.thumbnailStyle.value;
+  if (f.title.value.trim()) body.title = f.title.value.trim();
+  $('#cmStart').disabled = true;
+  try { const j = await api('/api/jobs', { method: 'POST', body }); $('#cmodal').hidden = true; select(j.id); }
+  catch (err) { alert(err.message); } finally { $('#cmStart').disabled = false; }
 };
 
 // ── 유튜브 업로드 (왼쪽 패널 + 모달). 진행 상황은 job.youtube 로 'job' 이벤트에 실려 온다

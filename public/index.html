@@ -95,6 +95,12 @@
       </form>
     </details>
 
+    <details id="compPanel" open>
+      <summary>플레이리스트 조합 <span id="compState" class="chip">보관 곡 확인 중…</span></summary>
+      <div class="row"><label>보관 곡</label><span id="compInfo" class="grow dim">완료된 작업의 곡을 모아 30·60분 영상으로 만듭니다 (크레딧 0)</span><button type="button" id="btnCompile" class="btn small primary">▶ 플레이리스트 조합…</button></div>
+      <div class="desc dim" style="margin-left:0">한두 곡씩 만들어 둔 같은 장르의 곡을 골라 크로스페이드로 이어 붙이고, 자막·썸네일·유튜브 설명까지 다시 만듭니다. 자세한 내용은 설명서 4-5.</div>
+    </details>
+
     <details id="ytPanel" open>
       <summary>유튜브 업로드 <span id="ytState" class="chip">확인 중…</span></summary>
       <div class="row"><label>연결 상태</label><span id="ytChannel" class="grow dim">확인 중…</span><button type="button" id="ytConnect" class="btn small primary">Google 계정 연결</button><button type="button" id="ytDisconnect" class="btn small" hidden>연결 해제</button></div>
@@ -109,7 +115,7 @@
         <div class="row"><label>자동 업로드</label><label class="inline"><input type="checkbox" name="autoUpload"> 작업이 완료되면 위 설정으로 자동 업로드 (테스트 소스 제외)</label></div>
         <div class="actions"><button type="submit" class="btn">저장</button><button type="button" id="ytUploadBtn" class="btn primary">▲ 선택한 작업 업로드…</button><span id="ytMsg" class="dim"></span></div>
       </form>
-      <div class="desc dim" style="margin-left:0">Google Cloud 콘솔에서 <b>YouTube Data API v3</b>를 켜고 OAuth 클라이언트(<b>데스크톱 앱</b>)를 만들어 ID·비밀을 넣은 뒤 [Google 계정 연결]. 연결은 서버 PC의 브라우저(localhost)에서만 됩니다. 업로드 1건에 API 할당량 1,600(하루 기본 10,000 → 약 6건). 자세한 순서는 설명서 4-5.</div>
+      <div class="desc dim" style="margin-left:0">Google Cloud 콘솔에서 <b>YouTube Data API v3</b>를 켜고 OAuth 클라이언트(<b>데스크톱 앱</b>)를 만들어 ID·비밀을 넣은 뒤 [Google 계정 연결]. 연결은 서버 PC의 브라우저(localhost)에서만 됩니다. 업로드 1건에 API 할당량 1,600(하루 기본 10,000 → 약 6건). 자세한 순서는 설명서 4-6.</div>
     </details>
   </section>
 
@@ -165,6 +171,33 @@
     <div class="mhead"><b id="mTitle"></b><div class="grow"></div><button id="mClose" class="btn small">닫기</button></div>
     <div id="mBody" class="mbody"></div>
     <div id="mActions" class="actions"></div>
+  </div>
+</div>
+<!-- 플레이리스트 조합 모달 -->
+<div id="cmodal" class="modal" hidden>
+  <div class="box wide">
+    <div class="mhead"><b>플레이리스트 조합</b><span class="dim">완료된 작업의 곡을 모아 지정한 길이의 영상을 만듭니다 · 크레딧 0</span><div class="grow"></div><button id="cmClose" class="btn small">닫기</button></div>
+    <form id="cmForm" class="mbody pm" autocomplete="off">
+      <div class="row3">
+        <div><label>프리셋(장르)</label><select name="preset" id="cmPreset"></select></div>
+        <div><label>목표 길이</label><div class="pair"><select name="target"><option value="30">30분</option><option value="60">60분</option><option value="90">90분</option><option value="120">120분</option><option value="custom">직접 입력(분)</option></select><input type="number" name="customMin" min="1" max="600" value="45" hidden></div></div>
+        <div><label>곡 순서</label><select name="order"><option value="newest">최신 곡부터</option><option value="oldest">오래된 곡부터</option><option value="random">무작위</option></select></div>
+      </div>
+      <div class="row3">
+        <div><label>곡 연결(크로스페이드, 초)</label><input type="number" name="crossfade" min="0" max="10" step="0.5" value="3" title="0이면 곡 사이에 무음 간격"></div>
+        <div><label>중복</label><label class="inline"><input type="checkbox" name="dedupe" checked> 같은 제목은 한 번만</label></div>
+        <div><label>테스트 곡</label><label class="inline"><input type="checkbox" name="mock"> 합성음 작업도 포함</label></div>
+      </div>
+      <div class="cmbar"><button type="button" id="cmAuto" class="btn primary small">자동 선택</button><button type="button" id="cmNone" class="btn small">모두 해제</button><span id="cmTotal" class="grow"></span></div>
+      <div id="cmList" class="cmlist"></div>
+      <div class="row3">
+        <div><label>배경</label><select name="background"><option value="slideshow">무료 사진 슬라이드쇼</option><option value="photo">무료 사진 한 장</option><option value="gradient">그라데이션</option></select></div>
+        <div><label>가사 자막</label><select name="subtitles"><option value="true">표시</option><option value="false">숨김</option></select></div>
+        <div><label>썸네일 스타일</label><select name="thumbnailStyle"><option value="">프리셋 기본</option><option>night</option><option>warm</option><option>mono</option><option>neon</option><option>paper</option><option>forest</option><option>ocean</option></select></div>
+      </div>
+      <div class="row"><label>영상 제목(선택)</label><input name="title" placeholder="비우면 프리셋 템플릿으로 자동 작성 (곡 수·길이 반영)"></div>
+      <div class="actions"><button type="submit" id="cmStart" class="btn primary">▶ 조합 시작</button><span id="cmMsg" class="dim"></span></div>
+    </form>
   </div>
 </div>
 <!-- 유튜브 업로드 모달 -->

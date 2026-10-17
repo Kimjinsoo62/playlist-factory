@@ -289,11 +289,27 @@ app.get('/api/jobs/:id', (req, res) => {
   }
   res.json({ ...summarize(j), logs });
 });
-app.post('/api/jobs', (req, res) => {
+app.get('/api/library', async (req, res) => {
+  const { listLibrary } = await import('./library.js');
+  res.json(listLibrary({ preset: String(req.query.preset || ''), includeMock: req.query.mock === '1' }).map(t => ({ ...t, file: undefined })));   // 절대 경로는 화면에 보내지 않음
+});
+app.post('/api/jobs', async (req, res) => {
   const body = req.body || {};
   if (!body.preset) return res.status(400).json({ error: 'preset 필요' });
   const cfg = loadConfig();
   const provider = body.dryRun ? 'mock' : (body.provider || cfg.provider);
+  if (provider === 'compile') {
+    // 보관 곡 조합: 곡 목록 검증, 곡 수·연주곡 여부·언어는 재료에서 결정
+    try {
+      const { resolveTracks } = await import('./library.js');
+      const items = resolveTracks(body.tracks);
+      body.count = items.length;
+      body.instrumental = items.every(it => Boolean(it.job.request?.instrumental));
+      if (!['ko', 'en', 'ja'].includes(body.language)) { const c = {}; for (const it of items) { const l = it.job.request?.language || 'ko'; c[l] = (c[l] || 0) + 1; } body.language = Object.entries(c).sort((a, b) => b[1] - a[1])[0][0]; }
+      body.crossfadeSeconds = Math.max(0, Math.min(10, Number(body.crossfadeSeconds) || 0));
+      delete body.koDescription; delete body.extraPrompt;
+    } catch (e) { return res.status(400).json({ error: e.message }); }
+  }
   if (isMusic(provider) && activeProvider(cfg) !== provider) return res.status(400).json({ error: `${KEY_PROVIDERS[provider].label} 소스는 대기 상태입니다. 상단 [설정]에서 활성화한 뒤 사용하세요. (현재 활성: ${KEY_PROVIDERS[activeProvider(cfg)].label})` });
   if (provider === 'treblo' && !cfg.treblo.apiKey) return res.status(400).json({ error: 'Treblo API 키가 없습니다. 설정에서 입력하거나 소스를 "로컬 폴더"로 바꾸세요.' });
   if (provider === 'lyria') {
