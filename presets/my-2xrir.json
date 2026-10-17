@@ -1,17 +1,33 @@
 {
   "id": "my-2xrir",
   "name": "한국 트로트",
-  "description": "한국 트로트",
-  "koDescription": "한국의 트로트음악 이별과 슬픔을 노래함",
-  "useKoDescription": true,
-  "prompt": "",
+  "description": "한국 트로트. 뽕짝 2박 리듬에 꺾기 창법, 이별과 그리움을 노래하는 성인가요.",
+  "koDescription": "한국 트로트(뽕짝). 일본 엔카 계열의 한국 성인가요 발라드. 100~125 BPM 중간 템포에 둥둥 울리는 2박 뽕짝 리듬(붐-짝 베이스와 스네어), 반짝이는 신디 브라스, 흐느끼는 색소폰 멜로디, 아코디언과 전자 오르간, 맑은 트윙 일렉 기타, 드럼머신, 단조 5음계 멜로디와 극적인 조옮김. 꺾기 창법과 넓은 비브라토, 흐느끼듯 감정을 싣는 트로트 리드 보컬, 따라 부르기 쉬운 후렴과 받쳐 주는 코러스. 이별·상심·그리움·눈물의 주제, 1980~90년대 카바레와 고속도로 휴게소의 향수.",
+  "useKoDescription": false,
+  "prompt": "Korean trot (teuroteu, ppongjjak) song, the classic Korean adult pop ballad style in the lineage of Japanese enka. Mid-tempo 100-125 BPM with the signature bouncy two-beat ppongjjak rhythm (oom-pah bass and snare), bright synth brass stabs, wailing saxophone melody fills, accordion and electric organ pads, clean twangy electric guitar, steady drum machine, minor pentatonic melody with dramatic modulations. Expressive Korean trot lead vocal with heavy kkeokgi vocal bends and wide sobbing vibrato, emotional sung phrasing on every line, catchy sing-along chorus with backing vocals answering the hook. Themes of farewell, heartbreak, longing and tears, nostalgic 1980s-1990s Korean cabaret and highway rest-stop atmosphere.",
   "instrumental": false,
-  "negative_tags": [],
+  "tags": [
+    "trot",
+    "korean",
+    "enka",
+    "ballad",
+    "sentimental",
+    "retro",
+    "korean ballad"
+  ],
+  "negative_tags": [
+    "edm",
+    "trap",
+    "hip hop",
+    "heavy metal",
+    "lo-fi",
+    "jazz"
+  ],
   "length_range": [
     150,
     240
   ],
-  "thumbnailStyle": "neon",
+  "thumbnailStyle": "warm",
   "topics": {
     "ko": [
       "이별의 눈물",
@@ -62,20 +78,30 @@
     "ja": "[Playlist] 韓国トロット {n}曲 · {dur}"
   },
   "youtubeIntro": {
-    "ko": "한국 트로트"
+    "ko": "이별과 그리움을 노래하는 한국 트로트 모음. 뽕짝 리듬과 꺾기 창법, 색소폰이 흐르는 성인가요.",
+    "en": "Korean trot songs of farewell and longing. Bouncy ppongjjak rhythm, soulful vocal bends and saxophone.",
+    "ja": "別れと恋しさを歌う韓国トロット集。ポンチャックのリズムと泣き節、サックスが流れる大人の歌謡曲。"
   },
   "hashtags": [
-    "#playlist",
-    "#aimusic"
+    "#트로트",
+    "#trot",
+    "#성인가요",
+    "#playlist"
   ],
   "keywords": [
-    "한국 트로트",
-    "playlist"
+    "트로트",
+    "korean trot",
+    "성인가요",
+    "트로트 모음",
+    "뽕짝"
   ],
   "imageQueries": [
-    "abstract background",
-    "night city lights",
-    "nature landscape calm"
+    "vintage korean street night",
+    "neon sign rainy street",
+    "old bus station",
+    "harbor at night",
+    "empty highway dusk",
+    "retro microphone stage"
   ],
   "createdAt": "2026-10-16T14:52:41.158Z"
 }
