@@ -356,7 +356,7 @@ export async function runJob(job, cfg) {
     const meta = buildYoutubeMeta({ preset, tracks: collected, total, request: req, cfg, photoCredit, photoCredits });
     const spec = {
       style: req.thumbnailStyle || preset.thumbnailStyle || 'night',
-      title: req.thumbnailText || meta.title.replace(/^\[[^\]]*\]\s*/, ''),
+      title: req.thumbnailText || thumbTitle(meta.title, collected.length),
       subtitle: req.thumbnailSub ?? `${trackCount(collected.length, lang)} · ${fmt(total)}`,
       background_image: bgImage,
       slides: slides.map(s => s.file),
@@ -430,4 +430,18 @@ export async function runJob(job, cfg) {
 }
 
 const pad = (n) => String(n).padStart(2, '0');
+/** 썸네일 제목: 유튜브 제목에서 앞의 [Playlist] 와 꼬리의 "N곡 · 1시간 23분"(라벨에 따로 표시) 을 뗀다 */
+function thumbTitle(title, n) {
+  let t = String(title || '').replace(/^\[[^\]]*\]\s*/, '');
+  for (const c of [`${n}곡`, `${n}曲`, `${n} songs`, `${n} song`, `${n} tracks`, `${n} track`]) {
+    const i = t.indexOf(c);
+    if (i <= 0) continue;
+    const rest = t.slice(i + c.length);
+    // 곡 수 뒤에 길이 표기(· 1시간 23분 / · 45 min / · 24分)만 남아 있으면 곡 수부터 끝까지 제거
+    if (/^\s*[·|\-–—:,]?\s*[\d\s:시간분초hrsminute分時間]*$/i.test(rest)) t = t.slice(0, i);
+  }
+  t = t.replace(/[\s·|\-–—:,]+$/, '').trim();
+  return t || String(title || '');
+}
+
 function fmt(sec) { sec = Math.floor(sec); const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60; return h ? `${h}:${pad(m)}:${pad(s)}` : `${m}:${pad(s)}`; }
