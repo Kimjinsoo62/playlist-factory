@@ -45,6 +45,16 @@ const DEFAULTS = {
     provider: 'commons',           // 'commons' (Wikimedia, 키 불필요, 빠름) | 'openverse' (키 불필요, CC0만, 느림) | 'pexels' (키 필요)
     pexelsKey: '',
   },
+  clock: {                         // 배경 "시간 표시"·"날씨와 시간" 옵션 ([배경] 옆 설정 모달에서 저장)
+    base: 'photo',                 // 'photo' (배경 이미지 위에 표시) | 'solid' (단색 배경)
+    photoMode: 'slideshow',        // base=photo 일 때의 배경: 'slideshow' | 'photo' | 'gradient'
+    color: '#101216',              // base=solid 배경색
+    address: '',                   // 날씨 조회 주소 (예: 서울특별시 강남구)
+    hour12: false,                 // 12시간제(AM/PM)
+    showSeconds: true,
+    startTime: '',                 // 'HH:MM' 이면 오늘 그 시각부터, 비우면 렌더링 시점 현재 시각
+    geocache: {},                  // 주소 → {lat, lon, name} (자동 저장)
+  },
   llm: { provider: 'anthropic' },   // 메인 LLM: 'anthropic' | 'openai' | 'gemini' (번역·프리셋 생성·배경 사진 기획에 사용)
   anthropic: { apiKey: '', model: 'claude-opus-5-5', cheapModel: 'claude-haiku-5-5' },
   openai: { apiKey: '', model: 'gpt-5.4', cheapModel: 'gpt-5.4-mini' },

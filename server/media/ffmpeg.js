@@ -157,10 +157,11 @@ export async function buildSlideshow({ cwd, images, out, cfg, slideSeconds = 10,
 /**
  * 배경(정지 이미지 또는 슬라이드쇼 루프 영상) + ASS 자막 + 오디오 → MP4. 모든 경로는 cwd 기준 상대 경로(Windows 콜론 문제 회피).
  */
-export async function renderVideo({ cwd, background, backgroundVideo, audio, ass, out, duration, cfg, onProgress, onLog }) {
+export async function renderVideo({ cwd, background, backgroundVideo, audio, ass, out, duration, cfg, extraFilters = [], onProgress, onLog }) {
   const enc = await pickEncoder(cfg.encoder);
   onLog?.(`비디오 인코더: ${enc}`);
   const vf = backgroundVideo ? ['format=yuv420p'] : [`scale=${cfg.width}:${cfg.height}:force_original_aspect_ratio=increase`, `crop=${cfg.width}:${cfg.height}`, 'format=yuv420p'];
+  vf.push(...extraFilters);   // 시계 같은 오버레이는 자막보다 아래 층에
   if (ass) vf.push(`ass=${ass.replace(/\\/g, '/')}`);
   const args = ['-hide_banner', '-loglevel', 'error', '-nostats', '-progress', 'pipe:1', '-y'];
   if (backgroundVideo) args.push('-stream_loop', '-1', '-i', backgroundVideo);
@@ -173,7 +174,7 @@ export async function renderVideo({ cwd, background, backgroundVideo, audio, ass
     if (enc !== 'libx264') {
       onLog?.(`${enc} 실패, libx264로 재시도: ${e.message.split('\n')[0]}`);
       encoderCache = 'libx264';
-      return renderVideo({ cwd, background, backgroundVideo, audio, ass, out, duration, cfg: { ...cfg, encoder: 'libx264' }, onProgress, onLog });
+      return renderVideo({ cwd, background, backgroundVideo, audio, ass, out, duration, cfg: { ...cfg, encoder: 'libx264' }, extraFilters, onProgress, onLog });
     }
     throw e;
   }

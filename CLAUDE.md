@@ -69,6 +69,10 @@ Claude·OpenAI·Gemini를 `chat()` 한 함수(system + user → JSON 텍스트)�
 
 Wikimedia Commons(기본) / Openverse / Pexels에서 상업 이용 가능 라이선스(CC0·PD·CC BY·Pexels)만 수집. 프리셋별 풀 `assets/backgrounds/<preset>/`(jpg + 출처 json)는 git 제외, `_rejected.txt`만 공유. CC BY 출처는 유튜브 설명에 자동 기재.
 
+### 시계·날씨 배경 (`server/media/clock.js`, `server/weather.js`)
+
+배경 선택 `clock`(시간 표시) / `weather`(날씨와 시간). 바탕·주소·시간 형식은 `config.clock`(모달에서 저장)과 요청의 `bgOptions`를 합쳐 쓴다. 레이아웃은 `clockLayout`이 1920 기준 한 벌로 만들어 ffmpeg(`clockFilters` → `renderVideo`의 `extraFilters`, 자막보다 아래 층)와 Python 썸네일(정지 시계)이 같이 쓴다. 시각은 `pts + epoch(현지 벽시계 기준)`을 `gmtime`으로 찍으므로 영상 시간만큼 흐른다. 글꼴은 작업 폴더 기준 상대 경로로 넘긴다(드라이브 콜론이 필터를 깨뜨림). 날씨는 Nominatim 지오코딩(좌표는 `config.clock.geocache`에 캐시) → Open-Meteo. mock 작업은 네트워크 없이 `sampleWeather`. 날씨를 쓰면 유튜브 설명에 Open-Meteo 출처가 자동 추가된다.
+
 ### 자식 프로세스
 
 ffmpeg·ffprobe·python은 모두 `media/ffmpeg.js`의 `children` Set을 거친다. `shutdown.js`가 이 Set으로 작업 프로세스를 죽이므로 새 spawn도 같은 경로를 쓸 것. `runPython`은 `-X utf8`을 붙여 호출한다.

@@ -10,6 +10,8 @@ import * as ff from './media/ffmpeg.js';
 import { buildAss, lyricLines, alignLinesToWords, distributeLines } from './media/subtitles.js';
 import { buildYoutubeMeta, trackCount } from './youtube.js';
 import { findBackground, collectBackgrounds } from './images.js';
+import { clockLayout, clockFilters, clockEpoch, clockLabel } from './media/clock.js';
+import { getWeather, sampleWeather, WEATHER_CREDIT } from './weather.js';
 import { hasLlmKey, llmModel, llmProvider, LLM_PROVIDERS, translateToEnglish, planBackgroundQueries, rankBackgrounds } from './llm.js';
 
 const HANGUL = /[\uac00-\ud7a3]/;
@@ -323,11 +325,35 @@ export async function runJob(job, cfg) {
     let bgImage = req.backgroundImage || preset.backgroundImage || '';
     let photoCredit = null;
     let slides = [];                 // 슬라이드쇼용 사진 목록 [{file, credit}]
-    const bgMode = bgImage ? 'custom' : (req.background || cfg.images?.defaultMode || 'slideshow');
+    // 시계·날씨 오버레이: 배경 선택이 'clock'(시간 표시) | 'weather'(날씨와 시간) 이면 바탕은 bgOptions 로 정한다
+    const overlay = ['clock', 'weather'].includes(req.background) ? req.background : null;
+    const bgo = { ...(cfg.clock || {}), ...(req.bgOptions || {}) };
+    let bgMode = overlay ? (bgo.base === 'solid' ? 'solid' : (bgo.photoMode || cfg.images?.defaultMode || 'slideshow')) : (req.background || cfg.images?.defaultMode || 'slideshow');
+    if (bgMode === 'solid') bgImage = '';
+    else if (bgImage) bgMode = 'custom';
+    let clock = null, weather = null;
+    if (overlay) {
+      const epoch = clockEpoch(bgo.startTime);
+      const layout = clockLayout({ mode: overlay, showSeconds: bgo.showSeconds !== false, hour12: Boolean(bgo.hour12) }, cfg.render.width);
+      clock = { layout, epoch, hour12: Boolean(bgo.hour12), showSeconds: bgo.showSeconds !== false };
+      log(job, `시계 배경: ${clockLabel(epoch)} 부터 ${bgo.hour12 ? '12시간제' : '24시간제'}${bgo.showSeconds === false ? ', 초 숨김' : ''} · 바탕 ${bgMode === 'solid' ? `단색 ${bgo.color}` : bgMode}`);
+      if (overlay === 'weather') {
+        if (providerName === 'mock') { weather = sampleWeather(bgo.address); log(job, '날씨: 테스트 작업이라 표본 데이터를 씁니다 (네트워크 호출 없음)'); }
+        else {
+          try {
+            weather = await getWeather(bgo.address, cfg);
+            log(job, `날씨 (${weather.place}): ${weather.desc} ${weather.temp}°C, 최고 ${weather.tmax}° 최저 ${weather.tmin}°, 습도 ${weather.humidity}%, 바람 ${weather.wind}m/s (Open-Meteo)`);
+          } catch (e) {
+            log(job, `날씨 조회 실패 → 시계만 표시: ${e.message.split('\n')[0]}`, 'warn');
+            clock.layout = clockLayout({ mode: 'clock', showSeconds: clock.showSeconds, hour12: clock.hour12 }, cfg.render.width);
+          }
+        }
+      }
+    }
     const imgLog = (m, lv) => log(job, m, lv);
     // 분위기 기획: 곡 제목·가사·스타일로 검색어를 짜고(LLM), 후보는 분위기 기준으로 선별. 키가 없으면 프리셋 검색어 사용.
     let bgPlan = null, bgRank = null;
-    if (llmOn && bgMode !== 'custom' && bgMode !== 'gradient') {
+    if (llmOn && bgMode !== 'custom' && bgMode !== 'gradient' && bgMode !== 'solid') {
       try {
         bgPlan = await planBackgroundQueries({ preset, instrumental, lang, cfg, tracks: collected.map(c => ({ title: c.title, lyrics: instrumental ? '' : lyricLines(c.lyrics).slice(0, 6).join(' / ') })) });
         fs.writeFileSync(path.join(job.dir, 'background_plan.json'), JSON.stringify(bgPlan, null, 2), 'utf8');
@@ -353,11 +379,14 @@ export async function runJob(job, cfg) {
     }
     setStepProgress(job, 50);
     const photoCredits = slides.map(s => s.credit).filter(Boolean);
-    const meta = buildYoutubeMeta({ preset, tracks: collected, total, request: req, cfg, photoCredit, photoCredits });
+    const extraCredits = weather && !weather.sample ? [WEATHER_CREDIT] : [];
+    const meta = buildYoutubeMeta({ preset, tracks: collected, total, request: req, cfg, photoCredit, photoCredits, extraCredits });
     const spec = {
       style: req.thumbnailStyle || preset.thumbnailStyle || 'night',
       title: req.thumbnailText || thumbTitle(meta.title, collected.length),
       subtitle: req.thumbnailSub ?? `${trackCount(collected.length, lang)} · ${fmt(total)}`,
+      solid_color: bgMode === 'solid' ? (/^#[0-9a-f]{6}$/i.test(String(bgo.color || '')) ? bgo.color : '#101216') : '',
+      clock, weather,
       background_image: bgImage,
       slides: slides.map(s => s.file),
       slides_dir: path.join(job.dir, 'slides'),
@@ -384,9 +413,11 @@ export async function runJob(job, cfg) {
       });
       backgroundVideo = 'slideshow.mp4';
     }
+    // 시계는 영상 시간(pts)+시작 시각을 drawtext 로 찍어 영상이 흐르는 만큼 흘러간다. 글꼴은 작업 폴더 기준 상대 경로(드라이브 콜론 회피)
+    const extraFilters = clock ? clockFilters(clock.layout, clock.epoch, rel(job, path.join(DIRS.assets, 'fonts', 'BlackHanSans-Regular.ttf')), { hour12: clock.hour12 }) : [];
     await ff.renderVideo({
       cwd: job.dir, background: 'background.png', backgroundVideo, audio: 'full.wav', ass: subsOn || cfg.subtitles.showTitleOverlay ? 'subs.ass' : null,
-      out: 'playlist.mp4', duration: total, cfg: cfg.render,
+      out: 'playlist.mp4', duration: total, cfg: cfg.render, extraFilters,
       onProgress: p => setStepProgress(job, p, `렌더링 ${p.toFixed(0)}%`),
       onLog: m => log(job, m),
     });

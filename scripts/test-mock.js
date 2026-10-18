@@ -11,7 +11,7 @@ const count = Number(process.argv[3] || 3);
 const mockSeconds = Number(process.argv[4] || 12);
 bus.on('event', ev => { if (ev.type === 'log') console.log(`[${ev.data.t}] ${ev.data.msg}`); });
 
-const job = createJob({ preset, count, language: 'ko', dryRun: true, provider: 'mock', mockSeconds, subtitles: true, background: process.env.BG || 'slideshow' });
+const job = createJob({ preset, count, language: 'ko', dryRun: true, provider: 'mock', mockSeconds, subtitles: true, background: process.env.BG || 'slideshow', bgOptions: process.env.BG_OPTS ? JSON.parse(process.env.BG_OPTS) : undefined });   // BG=clock|weather 일 때 BG_OPTS='{"base":"solid"}' 등
 console.log('job', job.id, job.dir);
 await runJob(job, cfg);
 if (job.status !== 'done') { console.error('FAILED:', job.error); process.exit(1); }

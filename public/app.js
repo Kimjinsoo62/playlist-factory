@@ -42,6 +42,7 @@ async function init() {
   sel.onchange = () => { try { localStorage.setItem('pf.preset', sel.value); } catch {} updatePresetUI(); }; updatePresetUI();
   const cfg = appCfg = await api('/api/config');
   fillForm($('#cfgForm'), cfg);
+  bgOptsInit(cfg.clock);
   applyActive(cfg.provider || 'treblo');
   if (!cfg.hasApiKey && !cfg.hasLyriaKey) openKeyModal('작곡 AI API 키가 없습니다. Treblo 또는 Lyria 키를 등록하세요. 로컬 폴더·테스트 소스는 키 없이 쓸 수 있습니다.');
   if (cfg.hasApiKey) refreshBalance();
@@ -102,6 +103,7 @@ function formData() {
   o.subtitles = o.subtitles !== 'false';
   if (o.provider === 'mock') { o.dryRun = true; }
   for (const k of ['title', 'thumbnailText', 'backgroundImage', 'extraPrompt', 'thumbnailStyle']) if (!o[k]) delete o[k];
+  if (isClockBg(o.background)) o.bgOptions = bgOptions();   // 시계·날씨 배경의 바탕(사진/단색)·주소·시간 형식
   return o;
 }
 
@@ -537,6 +539,7 @@ qmf().onsubmit = async (e) => {
   if (desc.length < 10) return alert('곡 설명을 10자 이상 적어 주세요 (장르·악기·템포·보컬·분위기).');
   const prov = f.provider.value, voc = f.instrumental.value;
   if (prov === 'lyria' && voc !== 'true') return alert('Lyria 소스는 연주곡 전용입니다. 보컬을 "연주곡"으로 바꾸세요. (가사 타이밍 데이터가 없어 가사 자막을 만들 수 없음)');
+  if (f.background.value === 'weather' && !bgOpts.address) { alert('날씨 배경에는 주소가 필요합니다. 열리는 설정 창에서 주소를 저장한 뒤 다시 시작하세요.'); openBgModal('weather'); return; }
   const name = f.name.value.trim() || quickName(desc);
   const d = new Date(), p2 = (n) => String(n).padStart(2, '0');
   const id = `quick-${d.getFullYear()}${p2(d.getMonth() + 1)}${p2(d.getDate())}-${p2(d.getHours())}${p2(d.getMinutes())}${p2(d.getSeconds())}`;
@@ -561,6 +564,43 @@ qmf().onsubmit = async (e) => {
     select(j.id);
   } catch (err) { $('#qmMsg').textContent = '오류: ' + err.message; }
   finally { $('#qmStart').disabled = false; }
+};
+
+// ── 시계·날씨 배경: [배경]에서 '시간 표시'·'날씨와 시간'을 고르면 바탕(배경 이미지/단색)·주소·시간 형식을 묻는 모달. 값은 config.clock 에 저장되어 다음에도 쓰인다
+let bgOpts = {};
+const isClockBg = (v) => v === 'clock' || v === 'weather';
+const bgmf = () => $('#bgmForm');
+function bgOptsInit(c) {
+  bgOpts = { base: 'photo', photoMode: 'slideshow', color: '#101216', address: '', hour12: false, showSeconds: true, startTime: '', ...(c || {}) };
+  delete bgOpts.geocache;
+  $('#btnBgOpts').hidden = !isClockBg($('#background').value);
+}
+function bgOptions() { const o = { ...bgOpts }; delete o.geocache; return o; }
+function bgmBase() { const solid = bgmf().base.value === 'solid'; $('#bgmPhotoRow').hidden = solid; $('#bgmSolidRow').hidden = !solid; }
+function openBgModal(mode) {
+  const f = bgmf(); mode = mode || $('#background').value;
+  $('#bgmTitle').textContent = mode === 'weather' ? '날씨와 시간 배경 설정' : '시간 표시 배경 설정';
+  f.base.value = bgOpts.base === 'solid' ? 'solid' : 'photo';
+  f.photoMode.value = bgOpts.photoMode || 'slideshow';
+  f.color.value = /^#[0-9a-f]{6}$/i.test(bgOpts.color || '') ? bgOpts.color : '#101216';
+  f.address.value = bgOpts.address || ''; f.hour12.value = String(Boolean(bgOpts.hour12)); f.showSeconds.value = String(bgOpts.showSeconds !== false); f.startTime.value = bgOpts.startTime || '';
+  $('#bgmAddrRow').hidden = mode !== 'weather'; bgmBase(); $('#bgmMsg').textContent = '';
+  $('#bgmodal').hidden = false;
+  if (mode === 'weather' && !f.address.value) f.address.focus();
+}
+$('#background').addEventListener('change', () => { const v = $('#background').value; $('#btnBgOpts').hidden = !isClockBg(v); if (isClockBg(v)) openBgModal(v); });
+$('#btnBgOpts').onclick = () => openBgModal();
+$('#bgmClose').onclick = () => $('#bgmodal').hidden = true;
+$('#bgmodal').addEventListener('click', (e) => { if (e.target === $('#bgmodal')) $('#bgmodal').hidden = true; });
+for (const r of bgmf().querySelectorAll('input[name=base]')) r.onchange = bgmBase;
+bgmf().onsubmit = async (e) => {
+  e.preventDefault(); const f = bgmf();
+  const st = f.startTime.value.trim();
+  if (st && !/^\d{1,2}:\d{2}$/.test(st)) return alert('시작 시각은 HH:MM 형식으로 적어 주세요 (예: 09:00). 비우면 렌더링 시점의 현재 시각부터 시작합니다.');
+  if (!$('#bgmAddrRow').hidden && !f.address.value.trim()) return alert('날씨를 조회할 주소를 입력하세요 (예: 서울특별시 강남구).');
+  const patch = { base: f.base.value, photoMode: f.photoMode.value, color: f.color.value, address: f.address.value.trim(), hour12: f.hour12.value === 'true', showSeconds: f.showSeconds.value === 'true', startTime: st };
+  try { const cfg = await api('/api/config', { method: 'POST', body: { clock: patch } }); bgOptsInit(cfg.clock); $('#bgmodal').hidden = true; }
+  catch (err) { $('#bgmMsg').textContent = '저장 실패: ' + err.message; }
 };
 
 // ── 플레이리스트 조합: 완료된 작업의 곡을 모아 목표 길이의 영상을 만드는 작업(provider=compile)
@@ -631,9 +671,11 @@ cmf().customMin.oninput = cmRender; cmf().crossfade.oninput = cmRender;
 cmf().onsubmit = async (e) => {
   e.preventDefault(); const f = cmf(); const { sel } = cmSummary();
   if (!sel.length) return alert('조합할 곡을 선택하세요. [자동 선택]을 누르면 목표 길이만큼 골라 줍니다.');
+  if (f.background.value === 'weather' && !bgOpts.address) { alert('날씨 배경에는 주소가 필요합니다. 열리는 설정 창에서 주소를 저장한 뒤 다시 시작하세요.'); openBgModal('weather'); return; }
   const body = { provider: 'compile', preset: $('#cmPreset').value || sel[0].presetId, tracks: sel.map(t => ({ jobId: t.jobId, index: t.index })), crossfadeSeconds: Number(f.crossfade.value) || 0, background: f.background.value, subtitles: f.subtitles.value !== 'false', count: sel.length };
   if (f.thumbnailStyle.value) body.thumbnailStyle = f.thumbnailStyle.value;
   if (f.title.value.trim()) body.title = f.title.value.trim();
+  if (isClockBg(body.background)) body.bgOptions = bgOptions();
   $('#cmStart').disabled = true;
   try { const j = await api('/api/jobs', { method: 'POST', body }); $('#cmodal').hidden = true; select(j.id); }
   catch (err) { alert(err.message); } finally { $('#cmStart').disabled = false; }

@@ -47,7 +47,7 @@ server.tool('create_playlist', '플레이리스트 영상 생성 작업을 시�
   thumbnailText: z.string().optional(),
   extraPrompt: z.string().optional().describe('음악 프롬프트에 덧붙일 영어 지시 (예: "female vocal, saxophone solo")'),
   subtitles: z.boolean().default(true),
-  background: z.enum(['slideshow', 'photo', 'gradient']).default('slideshow').describe('slideshow=무료 사진 여러 장 10초마다 페이드 전환, photo=무료 사진 한 장 고정, gradient=자동 생성 그라데이션'),
+  background: z.enum(['slideshow', 'photo', 'gradient', 'clock', 'weather']).default('slideshow').describe('slideshow=무료 사진 여러 장 10초마다 페이드 전환, photo=무료 사진 한 장 고정, gradient=자동 생성 그라데이션, clock=화면 가득 디지털 플립시계, weather=주소지 날씨+시계 (clock/weather 의 바탕·주소는 웹앱 [배경] 설정에 저장된 값 사용)'),
   koDescription: z.string().optional().describe('이 작업에만 적용할 한국어 상세 스타일 설명(분위기·악기·템포·보컬). 생략하면 프리셋에 저장된 설명을 사용'),
 }, async (args) => {
   const body = { ...args };
@@ -65,7 +65,7 @@ server.tool('create_playlist_from_description', '[간편하게 생성] 프리셋
   provider: z.enum(['treblo', 'lyria', 'mock']).optional().describe('생략하면 설정에서 활성화한 작곡 AI. lyria 는 vocal=instrumental 이어야 함. mock=크레딧 없는 테스트'),
   title: z.string().optional().describe('유튜브 영상 제목(생략 시 자동)'),
   subtitles: z.boolean().default(true),
-  background: z.enum(['slideshow', 'photo', 'gradient']).default('slideshow'),
+  background: z.enum(['slideshow', 'photo', 'gradient', 'clock', 'weather']).default('slideshow'),
 }, async ({ description, name, count, language, vocal, provider, title, subtitles, background }) => {
   if (provider === 'lyria' && vocal !== 'instrumental') throw new Error('Lyria 소스는 연주곡 전용입니다. vocal=instrumental 로 지정하세요.');
   const first = description.split(/[\n.,!?;:()·]/).map(s => s.trim()).find(Boolean) || description.trim();

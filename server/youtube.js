@@ -18,7 +18,7 @@ export function durLabel(total, lang = 'ko') {
   return h ? `${h}시간${m ? ` ${m}분` : ''}` : `${m}분`;
 }
 
-export function buildYoutubeMeta({ preset, tracks, total, request, cfg, photoCredit = null, photoCredits = [] }) {
+export function buildYoutubeMeta({ preset, tracks, total, request, cfg, photoCredit = null, photoCredits = [], extraCredits = [] }) {
   const lang = ['ko', 'en', 'ja'].includes(request.language) ? request.language : 'ko';
   const title = request.title || defaultTitle(preset, tracks.length, total, lang);
   const chapters = tracks.map(t => `${fmtTime(t.offset)} ${String(t.index).padStart(2, '0')}. ${t.title}`);
@@ -36,6 +36,7 @@ export function buildYoutubeMeta({ preset, tracks, total, request, cfg, photoCre
   ];
   const credits = photoCredits.length ? photoCredits : (photoCredit ? [photoCredit] : []);
   if (credits.length) { lines.push(''); lines.push(credits.length > 1 ? 'Background photos:' : ''); for (const c of credits) lines.push((credits.length > 1 ? '- ' : '') + creditLine(c).replace(/^Background photo: /, credits.length > 1 ? '' : 'Background photo: ')); }
+  if (extraCredits.length) { lines.push(''); lines.push(...extraCredits); }   // 날씨 데이터 출처 등(CC BY)
   if (cfg.youtube?.channelName) lines.push(`© ${cfg.youtube.channelName}`);
   const tags = [...new Set([...(preset.tags || []), ...(preset.keywords || []), 'playlist', 'ai music', preset.name])].slice(0, 30);
   return { title, description: lines.filter(l => l !== undefined).join('\n'), chapters, tags };

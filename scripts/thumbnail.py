@@ -3,6 +3,7 @@
 spec: {style, title, subtitle, out_background, out_thumbnail, background_image(optional), font, seed}
 """
 import json, math, random, sys, os
+from datetime import datetime, timezone
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 STYLES = {
@@ -204,27 +205,30 @@ def draw_badge(img, text, fontpath):
     d.text((x0 + px, y0 + py - bb[1]), text, font=fs, fill=BADGE_FG)
 
 
-def draw_title(img, title, subtitle, st, fontpath):
+def draw_title(img, title, subtitle, st, fontpath, band=None, badge=True):
     """참고 썸네일 스타일: 아주 두꺼운 제목체, 흰 글자 + 검정 외곽선, 2줄째 노랑, 좌상단 라벨.
-    배경을 가리는 띠는 두지 않고, 외곽선·그림자로 가독성을 확보한다."""
+    배경을 가리는 띠는 두지 않고, 외곽선·그림자로 가독성을 확보한다.
+    band=(y0, y1) (높이 비율) 을 주면 그 띠 안에 맞춰 크기를 줄인다(시계·날씨 배경일 때)."""
     title = strip_symbols(title)
     subtitle = strip_symbols(subtitle or '')
     img = img.convert('RGBA')
     w, h = img.size
     d = ImageDraw.Draw(img)
     maxw = int(w * 0.90)
-    size = int(h * 0.20)
+    by0, bh = (int(h * band[0]), int(h * (band[1] - band[0]))) if band else (0, h)
+    size = int(min(h * 0.20, bh * 0.5)) if band else int(h * 0.20)
     while True:
         f = font(size, fontpath, title)
         lines = balanced_lines(d, title, f, maxw)
-        if (len(lines) <= 2 and all(d.textlength(ln, font=f) <= maxw for ln in lines)) or size <= 40:
+        fits = len(lines) <= 2 and all(d.textlength(ln, font=f) <= maxw for ln in lines) and (not band or int(size * 1.17) * len(lines) <= bh)
+        if fits or size <= 30:
             break
         size = int(size * 0.92)
     stroke_w = max(3, int(size * 0.085))
     lh = int(size * 1.17)
     total = lh * len(lines)
-    # 세로 중앙보다 조금 아래(유튜브 재생시간 표시가 있는 우하단은 피한다)
-    y = (h - total) // 2 + int(h * 0.04)
+    # 세로 중앙보다 조금 아래(유튜브 재생시간 표시가 있는 우하단은 피한다). 띠가 있으면 띠 가운데
+    y = by0 + (bh - total) // 2 if band else (h - total) // 2 + int(h * 0.04)
     asc = f.getbbox('가')[1]  # 글자 위 여백 보정
     for i, ln in enumerate(lines):
         tw = d.textlength(ln, font=f)
@@ -233,7 +237,148 @@ def draw_title(img, title, subtitle, st, fontpath):
         fill = TITLE_ACCENT if (i == 1 and len(lines) > 1) else TITLE_FILL
         stroked_text(img, (x, y - asc), ln, f, fill, stroke_w)
         y += lh
-    draw_badge(img, subtitle, fontpath)
+    if badge:
+        draw_badge(img, subtitle, fontpath)
+    return img
+
+
+def hex_rgb(s):
+    s = str(s or '').strip().lstrip('#')
+    if len(s) != 6:
+        return (16, 18, 22)
+    try:
+        return tuple(int(s[i:i + 2], 16) for i in (0, 2, 4))
+    except ValueError:
+        return (16, 18, 22)
+
+
+def draw_clock(img, clock, s, show_date=True):
+    """정지 플립시계(썸네일용). 영상에서는 같은 레이아웃을 ffmpeg drawtext 가 흐르는 시각으로 그린다.
+    clock = {layout(1920 기준), epoch(현지 벽시계 기준 초), hour12}, s = 축척. show_date=False 면 날짜 줄 자리를 제목에 양보"""
+    img = img.convert('RGBA')
+    lay = clock['layout']
+    t = datetime.fromtimestamp(int(clock['epoch']), timezone.utc)
+    d = ImageDraw.Draw(img, 'RGBA')
+    r = lambda v: int(round(v * s))
+    for c in lay['cards']:
+        d.rounded_rectangle([r(c['x']), r(c['y']), r(c['x'] + c['w']), r(c['y'] + c['h'])], radius=r(c['h'] * 0.05), fill=(0, 0, 0, 173))
+    off, dot = lay['cards'][0]['h'] * 0.12, lay['dot']
+    for cl in lay['colons']:
+        for dy in (-off, off):
+            d.rounded_rectangle([r(cl['x'] - dot / 2), r(cl['y'] + dy - dot / 2), r(cl['x'] + dot / 2), r(cl['y'] + dy + dot / 2)], radius=r(dot * 0.2), fill=(255, 255, 255, 217))
+    fmt = {'H': '%I' if clock.get('hour12') else '%H', 'M': '%M', 'S': '%S'}
+    f = font(r(lay['digit']), None, '0123456789')
+    cy = r(lay['cy'])
+    for c in lay['cards']:
+        txt = t.strftime(fmt[c['key']])
+        bb = f.getbbox(txt)
+        cx = r(c['x'] + c['w'] / 2)
+        d.text((cx - (bb[2] - bb[0]) / 2 - bb[0], cy - (bb[3] - bb[1]) / 2 - bb[1]), txt, font=f, fill=(255, 255, 255))
+    ln = max(1, r(3))
+    for c in lay['cards']:
+        d.rectangle([r(c['x']), cy - ln, r(c['x'] + c['w']), cy + ln], fill=(5, 6, 10, 230))
+    if lay.get('date') and show_date:
+        fd = font(r(lay['date']['size']), None, 'ABC0123')
+        txt = t.strftime('%Y.%m.%d (%a)')
+        d.text(((img.width - d.textlength(txt, font=fd)) / 2, r(lay['date']['y'])), txt, font=fd, fill=(255, 255, 255, 217))
+    if lay.get('ampm'):
+        fa = font(r(lay['ampm']['size']), None, 'AMP')
+        txt = t.strftime('%p')
+        d.text((r(lay['ampm']['x']) - d.textlength(txt, font=fa), r(lay['ampm']['y'])), txt, font=fa, fill=(255, 255, 255, 204))
+    return img
+
+
+def draw_icon(d, kind, x, y, sz, is_day=True):
+    """날씨 아이콘을 도형으로 그린다 (clear·partly·cloudy·fog·rain·snow·thunder)"""
+    sun, cloud_c, dark_c, blue = (255, 204, 64), (236, 239, 246), (165, 172, 190), (120, 190, 255)
+
+    def cloud(cx, cy, w, color):
+        h = w * 0.6
+        d.ellipse([cx - w * 0.5, cy - h * 0.1, cx, cy + h * 0.5], fill=color)
+        d.ellipse([cx - w * 0.28, cy - h * 0.5, cx + w * 0.28, cy + h * 0.3], fill=color)
+        d.ellipse([cx, cy - h * 0.15, cx + w * 0.5, cy + h * 0.5], fill=color)
+        d.rounded_rectangle([cx - w * 0.5, cy + h * 0.1, cx + w * 0.5, cy + h * 0.5], radius=h * 0.2, fill=color)
+
+    def sun_at(cx, cy, rr):
+        for i in range(8):
+            a = math.radians(i * 45)
+            d.line([cx + math.cos(a) * rr * 1.35, cy + math.sin(a) * rr * 1.35, cx + math.cos(a) * rr * 1.75, cy + math.sin(a) * rr * 1.75], fill=sun, width=max(2, int(rr * 0.18)))
+        d.ellipse([cx - rr, cy - rr, cx + rr, cy + rr], fill=sun)
+
+    def moon_at(cx, cy, rr):
+        d.ellipse([cx - rr, cy - rr, cx + rr, cy + rr], fill=(250, 240, 200))
+        d.ellipse([cx - rr * 0.55, cy - rr * 1.15, cx + rr * 0.95, cy + rr * 0.35], fill=(18, 20, 28))
+
+    cx, cy = x + sz / 2, y + sz / 2
+    if kind == 'clear':
+        (sun_at if is_day else moon_at)(cx, cy, sz * 0.3)
+    elif kind == 'partly':
+        (sun_at if is_day else moon_at)(cx - sz * 0.18, cy - sz * 0.18, sz * 0.2)
+        cloud(cx + sz * 0.08, cy + sz * 0.15, sz * 0.6, cloud_c)
+    elif kind == 'cloudy':
+        cloud(cx + sz * 0.1, cy - sz * 0.05, sz * 0.5, dark_c)
+        cloud(cx - sz * 0.05, cy + sz * 0.12, sz * 0.7, cloud_c)
+    elif kind == 'fog':
+        cloud(cx, cy - sz * 0.12, sz * 0.65, dark_c)
+        for i in range(3):
+            yy = cy + sz * (0.22 + i * 0.1)
+            d.line([cx - sz * 0.3, yy, cx + sz * 0.3, yy], fill=cloud_c, width=max(2, int(sz * 0.04)))
+    else:
+        cloud(cx, cy - sz * 0.15, sz * 0.7, dark_c if kind == 'thunder' else cloud_c)
+        if kind == 'rain':
+            for i in range(3):
+                xx = cx - sz * 0.2 + i * sz * 0.2
+                d.line([xx, cy + sz * 0.15, xx - sz * 0.06, cy + sz * 0.38], fill=blue, width=max(2, int(sz * 0.045)))
+        elif kind == 'snow':
+            for i in range(3):
+                xx, rr = cx - sz * 0.2 + i * sz * 0.2, sz * 0.04
+                d.ellipse([xx - rr, cy + sz * 0.25 - rr, xx + rr, cy + sz * 0.25 + rr], fill=cloud_c)
+        else:
+            d.polygon([(cx + sz * 0.02, cy + sz * 0.08), (cx - sz * 0.1, cy + sz * 0.28), (cx, cy + sz * 0.28), (cx - sz * 0.05, cy + sz * 0.45), (cx + sz * 0.12, cy + sz * 0.22), (cx + sz * 0.02, cy + sz * 0.22)], fill=sun)
+
+
+def fmt_deg(v):
+    return '-' if v is None else f'{round(float(v))}도'
+
+
+def draw_weather(img, wx, s):
+    """상단 날씨 패널(1920 기준 좌표 × s): 지역명, 아이콘, 큰 기온, 설명·최고최저·습도바람. 글자는 제목체(없는 글자는 대체 글꼴)"""
+    img = img.convert('RGBA')
+    d = ImageDraw.Draw(img, 'RGBA')
+    r = lambda v: int(round(v * s))
+    d.rounded_rectangle([r(120), r(70), r(1800), r(550)], radius=r(36), fill=(0, 0, 0, 118))
+    place = f"{wx.get('place') or ''} 현재 날씨".strip()
+    fp = font(r(54), None, place)
+    d.text(((img.width - d.textlength(place, font=fp)) / 2, r(92)), place, font=fp, fill=(255, 255, 255, 230))
+    draw_icon(d, wx.get('kind') or 'cloudy', r(360), r(190), r(300), wx.get('isDay', True))
+    # 큰 기온: 숫자는 제목체, 도(°) 기호는 원으로 그린다
+    temp = wx.get('temp')
+    txt = '--' if temp is None else str(round(float(temp)))
+    ft = font(r(290), None, txt)
+    bb = ft.getbbox(txt)
+    tx, ty = r(700), r(340) - (bb[3] - bb[1]) / 2 - bb[1]
+    d.text((tx, ty), txt, font=ft, fill=(255, 255, 255))
+    dx = tx + d.textlength(txt, font=ft) + r(14)
+    dr = r(22)
+    d.ellipse([dx, r(215), dx + dr * 2, r(215) + dr * 2], outline=(255, 255, 255), width=max(2, r(9)))
+    # 오른쪽 열: 설명, 최고/최저, 습도/바람
+    x1 = r(1230)
+    desc = wx.get('desc') or ''
+    fd = font(r(92), None, desc)
+    d.text((x1, r(185)), desc, font=fd, fill=(255, 228, 0))
+    hum = wx.get('humidity'); wind = wx.get('wind')
+    lines = [f"최고 {fmt_deg(wx.get('tmax'))} / 최저 {fmt_deg(wx.get('tmin'))}",
+             f"습도 {'-' if hum is None else hum}% / 바람 {'-' if wind is None else wind}m/s"]
+    if wx.get('feels') is not None:
+        lines.append(f"체감 {fmt_deg(wx.get('feels'))}")
+    yy = r(320)
+    for ln in lines:
+        fl = font(r(50), None, ln)
+        d.text((x1, yy), ln, font=fl, fill=(255, 255, 255, 235))
+        yy += r(66)
+    if wx.get('sample'):
+        fs = font(r(34), None, '표본')
+        d.text((r(150), r(500)), '표본 날씨 데이터(테스트 작업)', font=fs, fill=(255, 255, 255, 150))
     return img
 
 
@@ -264,27 +409,49 @@ def main():
     seed = spec.get('seed', 1)
     W, H = 1920, 1080
     bg = spec.get('background_image')
+    solid = hex_rgb(spec['solid_color']) if spec.get('solid_color') else None   # 단색 배경(시계·날씨 모드)
+    clock = spec.get('clock')        # {layout, epoch, hour12} — 썸네일에 정지 시계, 영상은 ffmpeg 가 그림
+    weather = spec.get('weather')    # 날씨 패널 데이터 — 배경·슬라이드·썸네일에 고정으로 그림
     slides_out = []
     thumb_src = None  # 썸네일에 쓸 원본 사진(있으면)
-    if spec.get('slides'):
+    base_has_weather = False
+    if solid:
+        base = Image.new('RGB', (W, H), solid)
+    elif spec.get('slides'):
         # 슬라이드쇼: 각 사진을 어둡게 처리해 slides_dir 에 저장, 첫 장을 대표 배경으로
         os.makedirs(spec['slides_dir'], exist_ok=True)
         for i, p in enumerate(spec['slides']):
             if not os.path.exists(p):
                 continue
             outp = os.path.join(spec['slides_dir'], f'slide_{i + 1:02d}.png')
-            darken_photo(p, W, H).save(outp)
+            img = darken_photo(p, W, H)
+            if weather:
+                img = draw_weather(img, weather, 1.0).convert('RGB')
+            img.save(outp)
             slides_out.append(outp)
             thumb_src = thumb_src or p
+        base_has_weather = bool(weather and slides_out)
         base = Image.open(slides_out[0]).convert('RGB') if slides_out else gradient(W, H, st['colors'], seed)
     elif bg and os.path.exists(bg):
         base = darken_photo(bg, W, H)
         thumb_src = bg
     else:
         base = gradient(W, H, st['colors'], seed)
-    base.save(spec['out_background'], quality=95)
+    # 썸네일 바탕은 패널을 얹기 전 원본에서 만든다
     thumb = thumb_photo(thumb_src, 1280, 720) if thumb_src else base.resize((1280, 720), Image.LANCZOS)
-    thumb = draw_title(thumb, spec.get('title', ''), spec.get('subtitle', ''), st, spec.get('font'))
+    if weather and not base_has_weather:
+        base = draw_weather(base, weather, 1.0).convert('RGB')
+    base.save(spec['out_background'], quality=95)
+    ts = 1280 / 1920
+    band, badge = None, True
+    if weather:
+        thumb = draw_weather(thumb, weather, ts)
+    if clock:
+        full = bool(clock['layout'].get('full'))
+        thumb = draw_clock(thumb, clock, ts, show_date=not full)
+        # 제목은 시계와 겹치지 않는 띠에: 전체 시계면 위쪽(날짜 줄 대신), 날씨 모드면 아래쪽
+        band, badge = ((0.015, 0.25) if full else (0.80, 0.995)), False
+    thumb = draw_title(thumb, spec.get('title', ''), spec.get('subtitle', ''), st, spec.get('font'), band=band, badge=badge)
     thumb.convert('RGB').save(spec['out_thumbnail'], quality=92)
     print(json.dumps({'ok': True, 'background': spec['out_background'], 'thumbnail': spec['out_thumbnail'], 'slides': slides_out, 'styles': list(STYLES)}))
 
