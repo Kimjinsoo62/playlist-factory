@@ -12,7 +12,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```bat
 START.bat                       :: 서버 실행 + 브라우저 열기 (node_modules 없으면 install.bat 자동 호출, 포트는 config.json)
-install.bat                     :: npm install + Pillow + ffmpeg 확인
+install.bat                     :: npm install + Pillow + ffmpeg 확인 + git 확인(없으면 winget 설치, .git 없으면 GitHub origin 연결·최신화)
 STOP.bat                        :: 비상 종료 (종료 API 호출 → 실패 시 이 프로젝트 경로의 프로세스만 직접 정리)
 ```
 
