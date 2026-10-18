@@ -106,6 +106,7 @@ app.post('/api/presets', async (req, res) => {
       youtubeIntro: { ko: (b.description || '').trim() || name },
       hashtags: ['#playlist', '#aimusic'], keywords: [name, 'playlist'],
       imageQueries: (b.imageQueries || []).length ? b.imageQueries : ['abstract background', 'night city lights', 'nature landscape calm'],
+      quick: Boolean(b.quick),   // [간편하게 생성]이 곡 설명으로 만든 프리셋 (화면에 ⚡ 표시)
       createdAt: new Date().toISOString(),
     };
     fs.writeFileSync(file, JSON.stringify(p, null, 2) + '\n', 'utf8');
@@ -118,7 +119,7 @@ app.post('/api/presets/:id/copy', (req, res) => {
     const dst = presetPath(newId);
     if (!fs.existsSync(src)) return res.status(404).json({ error: '원본 프리셋 없음' });
     if (fs.existsSync(dst)) return res.status(400).json({ error: '이미 있는 id' });
-    const p = JSON.parse(fs.readFileSync(src, 'utf8')); p.id = newId; p.name = req.body?.name || `${p.name} (복제)`;
+    const p = JSON.parse(fs.readFileSync(src, 'utf8')); p.id = newId; p.name = req.body?.name || `${p.name} (복제)`; delete p.quick;   // 복제본은 일반 프리셋
     fs.writeFileSync(dst, JSON.stringify(p, null, 2) + '\n', 'utf8');
     res.json(p);
   } catch (e) { res.status(400).json({ error: e.message }); }
@@ -127,7 +128,7 @@ app.delete('/api/presets/:id', (req, res) => {
   try { const f = presetPath(req.params.id); if (!fs.existsSync(f)) return res.sendStatus(404); fs.unlinkSync(f); res.json({ ok: true }); }
   catch (e) { res.status(400).json({ error: e.message }); }
 });
-app.get('/api/config', (req, res) => res.json(maskConfig(loadConfig())));
+app.get('/api/config', async (req, res) => { const cfg = loadConfig(); const { hasLlmKey } = await import('./llm.js'); res.json({ ...maskConfig(cfg), hasLlmKey: hasLlmKey(cfg) }); });
 app.post('/api/config', (req, res) => {
   const patch = req.body || {};
   if (patch.anthropic && typeof patch.anthropic.apiKey === 'string') {

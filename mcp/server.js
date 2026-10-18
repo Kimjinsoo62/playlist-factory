@@ -56,6 +56,31 @@ server.tool('create_playlist', '플레이리스트 영상 생성 작업을 시�
   return text({ jobId: j.id, status: j.status, outputDir: j.dir, hint: 'get_job 으로 진행 상황을 확인하세요. 완료되면 playlist.mp4, thumbnail.jpg, youtube.txt 가 생깁니다.' });
 });
 
+server.tool('create_playlist_from_description', '[간편하게 생성] 프리셋 없이 곡 설명(한국어)만으로 플레이리스트를 만든다: 메인 LLM이 설명으로 영어 프롬프트·태그·곡 주제를 담은 새 프리셋(quick-…, ⚡)을 저장한 뒤 그 프리셋으로 작업을 시작한다. 설명에는 장르·악기·템포·보컬·분위기를 꼭 넣을 것. 프롬프트 자동 생성에 실패하면 유료 소스(treblo·lyria)는 시작하지 않고 오류를 돌려준다.', {
+  description: z.string().min(10).describe('곡 설명(한국어, 10자 이상). 예: "비 오는 밤 창가에서 듣는 잔잔한 어쿠스틱 발라드. 통기타와 피아노, 70~80 BPM, 담담한 여성 보컬"'),
+  name: z.string().max(30).optional().describe('프리셋 이름(생략 시 설명의 첫 구절)'),
+  count: z.number().int().min(1).max(40).default(6).describe('곡 수'),
+  language: z.enum(['ko', 'en', 'ja']).default('ko').describe('가사 언어'),
+  vocal: z.enum(['vocal', 'male', 'female', 'instrumental']).default('vocal').describe('vocal=보컬(성별 미지정), male=남성 보컬, female=여성 보컬, instrumental=연주곡'),
+  provider: z.enum(['treblo', 'lyria', 'mock']).optional().describe('생략하면 설정에서 활성화한 작곡 AI. lyria 는 vocal=instrumental 이어야 함. mock=크레딧 없는 테스트'),
+  title: z.string().optional().describe('유튜브 영상 제목(생략 시 자동)'),
+  subtitles: z.boolean().default(true),
+  background: z.enum(['slideshow', 'photo', 'gradient']).default('slideshow'),
+}, async ({ description, name, count, language, vocal, provider, title, subtitles, background }) => {
+  if (provider === 'lyria' && vocal !== 'instrumental') throw new Error('Lyria 소스는 연주곡 전용입니다. vocal=instrumental 로 지정하세요.');
+  const first = description.split(/[\n.,!?;:()·]/).map(s => s.trim()).find(Boolean) || description.trim();
+  const d = new Date(), p2 = (n) => String(n).padStart(2, '0');
+  const id = `quick-${d.getFullYear()}${p2(d.getMonth() + 1)}${p2(d.getDate())}-${p2(d.getHours())}${p2(d.getMinutes())}${p2(d.getSeconds())}`;
+  const created = await api('/api/presets', { method: 'POST', body: { id, name: (name || '').trim() || first.slice(0, 16), koDescription: description, instrumental: vocal === 'instrumental', vocalGender: vocal === 'male' || vocal === 'female' ? vocal : '', quick: true } });
+  if (!created._generated && provider !== 'mock') throw new Error(`프리셋 "${created.name}"(${created.id})은 저장했지만 영어 프롬프트 자동 생성에 실패해 시작하지 않았습니다: ${created._generateError || '알 수 없는 오류'}. 메인 LLM 키를 확인하세요.`);
+  const body = { preset: created.id, count, language, instrumental: vocal === 'instrumental', subtitles, background };
+  if (vocal === 'male' || vocal === 'female') body.vocalGender = vocal;
+  if (provider) body.provider = provider; if (provider === 'mock') body.dryRun = true;
+  if (title) body.title = title;
+  const j = await api('/api/jobs', { method: 'POST', body });
+  return text({ jobId: j.id, presetId: created.id, presetName: created.name, prompt: created.prompt, status: j.status, outputDir: j.dir, hint: 'get_job 으로 진행 상황을 확인하세요. 프리셋은 presets/ 에 저장되어 list_presets 에 나타납니다.' });
+});
+
 server.tool('get_job', '작업의 진행 상황, 트랙 목록, 결과 파일, 최근 로그를 돌려준다.', { jobId: z.string(), logLines: z.number().int().min(0).max(200).default(30) }, async ({ jobId, logLines }) => {
   const j = await api('/api/jobs/' + jobId);
   const { logs, ...rest } = j;

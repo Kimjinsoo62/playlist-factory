@@ -34,6 +34,7 @@ python scripts/contact-sheet.py out.jpg     # 배경 풀 전체를 한 장으로
 `public/app.js` (바닐라 JS, 빌드 없음, 다크/라이트 테마는 `public/theme.js`가 `<head>`에서 적용) → `server/index.js` REST → `jobs.js`의 `createJob` → `pipeline.js`의 `runJob` (setImmediate로 비동기 실행) → 진행 상황은 `jobs.js`의 `bus` EventEmitter → `GET /api/events` SSE → 메인 창과 별도 로그 창(`public/log.html`).
 
 - 작업 id = 출력 폴더명 `YYYYMMDD_HHMM_프리셋명_N곡`(`makeJobId`, 한글 포함·충돌 시 `_2`). 작업 상태는 메모리 Map + `output/<id>/job.json`(summarize) + `job.log`에 영속. 서버 재시작 시 `loadPastJobs`가 job.json을 다시 읽고, running/queued였던 작업은 failed로 바꾼다. 로그는 디스크의 job.log에서 복원.
+- [▶ 간편하게 생성](`#qmodal`, app.js `openQuickModal`)은 서버 경로가 따로 없다: 곡 설명으로 `POST /api/presets`(메인 LLM 자동 생성, `quick: true` → 화면에 ⚡) → 메인 폼에 반영 → 같은 `POST /api/jobs`. 프롬프트 생성에 실패하면 유료 소스는 시작하지 않는다.
 - 라우트 묶음: `/api/presets*` (CRUD·복제·LLM 생성), `/api/keys*` (키 저장·활성/대기·연결 확인·모델 목록), `/api/jobs*`, `/api/plan`, `/api/backgrounds*`, `/api/update/*`, `/api/shutdown`.
 
 ### 파이프라인 9단계 (`server/pipeline.js`)
@@ -82,7 +83,7 @@ Google OAuth(데스크톱 앱 클라이언트, `http://localhost:PORT/api/youtub
 
 ### MCP (`mcp/server.js`)
 
-실행 중인 웹 서버의 REST를 호출하는 얇은 클라이언트. 도구: list_presets, plan_playlist, create_playlist, get_job, wait_job, list_jobs, get_youtube_text, credits, upload_youtube. 파이프라인 로직은 넣지 않는다.
+실행 중인 웹 서버의 REST를 호출하는 얇은 클라이언트. 도구: list_presets, plan_playlist, create_playlist, create_playlist_from_description(간편 생성과 같은 2단계), get_job, wait_job, list_jobs, get_youtube_text, credits, upload_youtube. 파이프라인 로직은 넣지 않는다.
 
 ## 주의
 

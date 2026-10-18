@@ -70,6 +70,7 @@ input, select { background: var(--input); border: 1px solid var(--line); border-
 input:focus, select:focus { outline: none; border-color: var(--accent); }
 .desc { margin: 2px 0 4px 98px; min-height: 12px; }
 .estimate { margin: 4px 0; padding: 4px 6px; background: var(--panel2); border-radius: 3px; white-space: pre-line; }
+.quickbar { display: flex; align-items: center; gap: 6px; margin: 0 0 4px; }   /* 제목 버튼 아랫줄: [▶ 간편하게 생성] */
 .actions { display: flex; gap: 6px; align-items: center; margin: 6px 0 2px; flex-wrap: wrap; }
 details { margin-top: 8px; border-top: 1px solid var(--line); padding-top: 4px; }
 summary { cursor: pointer; color: var(--dim); }
@@ -128,6 +129,7 @@ summary { cursor: pointer; color: var(--dim); }
 .pm .actions .btn.primary { padding: 4px 16px; }
 .pm .row.top { align-items: flex-start; }
 .pm textarea { flex: 1; background: var(--input); border: 1px solid var(--line); border-radius: 3px; padding: 3px 5px; resize: vertical; font: inherit; line-height: 1.4; }
+.pm .grow > textarea { display: block; width: 100%; box-sizing: border-box; }   /* 설명란(div.grow 안의 textarea)을 칸 너비에 맞춤 */
 .pm .pair { display: flex; gap: 4px; } .pm .pair input { width: 50%; }
 .pm label.inline { display: flex; align-items: center; gap: 4px; color: var(--fg); width: auto; }
 .pm .tabs { display: flex; gap: 3px; margin-bottom: 3px; } .pm .tab.on { border-color: var(--accent); color: var(--accent); }

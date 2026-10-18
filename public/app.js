@@ -16,7 +16,9 @@ const api = async (url, opt = {}) => {
 };
 const fmt = (s) => { s = Math.floor(s || 0); const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), x = s % 60; return (h ? h + ':' : '') + String(m).padStart(h ? 2 : 1, '0') + ':' + String(x).padStart(2, '0'); };
 
-let presets = [], jobs = [], selected = null, info = null;
+let presets = [], jobs = [], selected = null, info = null, appCfg = null;
+/** 프리셋 <option>. [간편하게 생성]이 만든 프리셋은 ⚡ 표시 */
+const optHtml = (p) => `<option value="${p.id}">${p.quick ? '⚡ ' : ''}${p.name}</option>`;
 const logEl = $('#log');
 function logLine(t, level, msg) {
   const d = document.createElement('div');
@@ -35,10 +37,10 @@ async function init() {
   $('#lan').textContent = ['localhost:' + info.port, ...info.lan.map(l => l.url.replace('http://', ''))].join('  ·  ');
   presets = await api('/api/presets');
   const sel = $('#preset');
-  sel.innerHTML = presets.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+  sel.innerHTML = presets.map(optHtml).join('');
   try { const last = localStorage.getItem('pf.preset'); if (last && presets.some(p => p.id === last)) sel.value = last; } catch {}   // 새로고침해도 마지막 프리셋 유지
   sel.onchange = () => { try { localStorage.setItem('pf.preset', sel.value); } catch {} updatePresetUI(); }; updatePresetUI();
-  const cfg = await api('/api/config');
+  const cfg = appCfg = await api('/api/config');
   fillForm($('#cfgForm'), cfg);
   applyActive(cfg.provider || 'treblo');
   if (!cfg.hasApiKey && !cfg.hasLyriaKey) openKeyModal('작곡 AI API 키가 없습니다. Treblo 또는 Lyria 키를 등록하세요. 로컬 폴더·테스트 소스는 키 없이 쓸 수 있습니다.');
@@ -53,6 +55,7 @@ async function init() {
   if (location.hash === '#preset') openPresetModal($('#preset').value);   // 링크로 바로 열기
   if (location.hash === '#keys') openKeyModal();                           // 링크로 설정(키) 모달 바로 열기
   if (location.hash === '#compile') openCompileModal();                    // 링크로 조합 모달 바로 열기
+  if (location.hash === '#quick') openQuickModal();                        // 링크로 간편 생성 모달 바로 열기
 }
 function updatePresetUI() {
   const p = presets.find(x => x.id === $('#preset').value); if (!p) return;
@@ -309,7 +312,7 @@ function renderJobs() {
     </div>`).join('') || '<div class="dim" style="padding:6px">아직 작업이 없습니다.</div>';
   $('#jobs').querySelectorAll('.job').forEach(el => el.onclick = () => select(el.dataset.id));
 }
-const presetName = (id) => presets.find(p => p.id === id)?.name || id || '';
+const presetName = (id) => { const p = presets.find(x => x.id === id); return p ? (p.quick ? '⚡ ' : '') + p.name : id || ''; };
 /** 작업 id 에서 날짜·시각: 새 형식 20261018_0030_프리셋_6곡 / 옛 형식 20261017145919_1j70 */
 const jobStamp = (id) => { const m = /^(\d{4})(\d{2})(\d{2})_?(\d{2})(\d{2})/.exec(id); return m ? `${m[1]}-${m[2]}-${m[3]} ${m[4]}:${m[5]}` : id.slice(0, 12); };
 const chipClass = (s) => ({ running: 'run', done: 'ok', failed: 'err', cancelled: 'warn', queued: '' })[s] || '';
@@ -424,7 +427,7 @@ async function pmPreview() {
 }
 async function refreshPresetSelect(selectId) {
   presets = await api('/api/presets');
-  $('#preset').innerHTML = presets.map(x => `<option value="${x.id}">${x.name}</option>`).join('');
+  $('#preset').innerHTML = presets.map(optHtml).join('');
   if (selectId) $('#preset').value = selectId;
   updatePresetUI();
 }
@@ -483,7 +486,7 @@ $('#pmCopy').onclick = async () => {
     await api(`/api/presets/${pmPreset.id}`, { method: 'PUT', body: pmBody() });   // 현재 편집 내용 먼저 저장
     const p = await api(`/api/presets/${pmPreset.id}/copy`, { method: 'POST', body: { newId, name } });
     presets = await api('/api/presets');
-    $('#preset').innerHTML = presets.map(x => `<option value="${x.id}">${x.name}</option>`).join('');
+    $('#preset').innerHTML = presets.map(optHtml).join('');
     $('#preset').value = p.id; updatePresetUI(); openPresetModal(p.id);
   } catch (err) { $('#pmMsg').textContent = '오류: ' + err.message; }
 };
@@ -492,9 +495,72 @@ $('#pmDelete').onclick = async () => {
   try {
     await api('/api/presets/' + pmPreset.id, { method: 'DELETE' });
     presets = await api('/api/presets');
-    $('#preset').innerHTML = presets.map(x => `<option value="${x.id}">${x.name}</option>`).join('');
+    $('#preset').innerHTML = presets.map(optHtml).join('');
     updatePresetUI(); $('#pmodal').hidden = true;
   } catch (err) { $('#pmMsg').textContent = '오류: ' + err.message; }
+};
+
+// ── 간편하게 생성: 곡 설명(한국어)만 적으면 메인 LLM이 프리셋(영어 프롬프트·태그·주제·배경 검색어)을 만들어 저장하고, 그 프리셋으로 바로 작업을 시작한다.
+//    서버에 별도 경로는 없다: POST /api/presets(자동 생성) → 메인 폼에 반영 → 같은 POST /api/jobs 경로.
+const qmf = () => $('#qmForm');
+/** 프리셋 이름을 비우면 설명의 첫 구절(최대 16자) */
+function quickName(desc) {
+  const first = desc.split(/[\n.,!?;:()·]/).map(s => s.trim()).find(Boolean) || desc.trim();
+  return first.length > 16 ? first.slice(0, 16) : first;
+}
+function qmEstimate() {
+  const f = qmf(); const n = Math.max(1, Math.min(40, Number(f.count.value) || 6)); const prov = f.provider.value; const instr = f.instrumental.value === 'true';
+  const mins = Math.round(n * 195 / 60);
+  $('#qmEstimate').textContent = (prov === 'treblo' ? `예상: Treblo API ${n}곡 · 크레딧 ${n * 100} · 영상 약 ${mins}분`
+    : prov === 'lyria' ? (instr ? `예상: Google Lyria ${n}곡(연주곡) · 약 $${(n * 0.08).toFixed(2)} (곡당 $0.08) · 영상 약 ${mins}분` : '⚠ Lyria 소스는 연주곡 전용입니다. 보컬을 "연주곡"으로 바꾸세요.')
+    : `테스트: ${n}곡 × ${$('#mockSeconds').value || 20}초 합성음, 크레딧 0`) + '\n프리셋 생성에 메인 LLM 호출 1회(토큰 2~4천, 수십 원 수준)가 더 듭니다. [▶ 생성 시작]을 누르면 별도 확인 없이 바로 시작합니다.';
+}
+async function openQuickModal() {
+  const f = qmf();
+  try { appCfg = await api('/api/config'); } catch {}
+  // 작곡 AI는 하나만 활성: 대기 중인 소스는 고를 수 없게
+  const active = appCfg?.provider || 'treblo';
+  for (const o of f.provider.options) if (o.dataset.label) { o.disabled = o.value !== active; o.textContent = o.dataset.label + (o.disabled ? ' — 대기 (설정에서 활성화)' : ''); }
+  const ok = (v) => ['treblo', 'lyria', 'mock'].includes(v) && !f.provider.querySelector(`option[value="${v}"]`)?.disabled;
+  const mp = $('#provider').value; f.provider.value = ok(mp) ? mp : ok(active) ? active : 'mock';
+  f.count.value = $('#count').value; f.language.value = $('#language').value; f.background.value = $('#background').value; f.subtitles.value = $('#subtitles').value;
+  const v = $('#instrumental').value; f.instrumental.value = v === '' ? 'false' : v;
+  $('#qmMsg').textContent = appCfg && appCfg.hasLlmKey === false ? '⚠ 메인 LLM 키가 없어 영어 프롬프트를 만들 수 없습니다. 상단 [설정]에서 Claude·OpenAI·Gemini 키를 등록하세요 (테스트 소스는 키 없이 진행).' : '';
+  qmEstimate(); $('#qmodal').hidden = false; f.description.focus();
+}
+$('#btnQuick').onclick = openQuickModal;
+$('#qmClose').onclick = () => $('#qmodal').hidden = true;
+['provider', 'count', 'instrumental'].forEach(k => qmf()[k].addEventListener('change', qmEstimate));
+qmf().onsubmit = async (e) => {
+  e.preventDefault(); const f = qmf();
+  const desc = f.description.value.trim();
+  if (desc.length < 10) return alert('곡 설명을 10자 이상 적어 주세요 (장르·악기·템포·보컬·분위기).');
+  const prov = f.provider.value, voc = f.instrumental.value;
+  if (prov === 'lyria' && voc !== 'true') return alert('Lyria 소스는 연주곡 전용입니다. 보컬을 "연주곡"으로 바꾸세요. (가사 타이밍 데이터가 없어 가사 자막을 만들 수 없음)');
+  const name = f.name.value.trim() || quickName(desc);
+  const d = new Date(), p2 = (n) => String(n).padStart(2, '0');
+  const id = `quick-${d.getFullYear()}${p2(d.getMonth() + 1)}${p2(d.getDate())}-${p2(d.getHours())}${p2(d.getMinutes())}${p2(d.getSeconds())}`;
+  $('#qmStart').disabled = true; $('#qmMsg').textContent = '메인 LLM이 설명을 읽고 영어 프롬프트·태그·곡 주제·배경 검색어를 만드는 중… (10~30초)';
+  try {
+    const created = await api('/api/presets', { method: 'POST', body: { id, name, koDescription: desc, instrumental: voc === 'true', vocalGender: voc === 'male' || voc === 'female' ? voc : '', quick: true } });
+    await refreshPresetSelect(created.id); try { localStorage.setItem('pf.preset', created.id); } catch {}
+    if (!created._generated && prov !== 'mock') {
+      // 영어 프롬프트가 없으면 한국어 설명이 그대로 작곡 AI에 가서 크레딧만 낭비된다 → 유료 소스는 시작하지 않는다
+      $('#qmMsg').textContent = `프리셋 "${created.name}"은 저장했지만 영어 프롬프트 자동 생성에 실패해 시작하지 않았습니다: ${created._generateError || '알 수 없는 오류'}. 상단 [설정]에서 메인 LLM 키를 확인한 뒤 [설명·편집] → ✨ 버튼으로 프롬프트를 만들거나, 소스를 테스트로 바꿔 보세요.`;
+      return;
+    }
+    // 메인 폼에 반영하고 [▶ 자동 생성 시작]과 같은 경로로 시작
+    $('#provider').value = prov; $('#count').value = f.count.value; $('#language').value = f.language.value; $('#instrumental').value = voc;
+    $('#background').value = f.background.value; $('#subtitles').value = f.subtitles.value;
+    const prevTitle = $('#title').value; $('#title').value = f.title.value.trim();   // 제목은 이 작업에만 쓰고 메인 폼은 원래대로
+    providerChanged();
+    const body = formData(); $('#title').value = prevTitle;
+    $('#qmMsg').textContent = `프리셋 "${created.name}" 저장됨${created._model ? ` (${created._model})` : ''} · 작업 시작 중…`;
+    const j = await api('/api/jobs', { method: 'POST', body });
+    $('#qmodal').hidden = true; f.description.value = ''; f.name.value = ''; f.title.value = ''; $('#qmMsg').textContent = '';
+    select(j.id);
+  } catch (err) { $('#qmMsg').textContent = '오류: ' + err.message; }
+  finally { $('#qmStart').disabled = false; }
 };
 
 // ── 플레이리스트 조합: 완료된 작업의 곡을 모아 목표 길이의 영상을 만드는 작업(provider=compile)
@@ -504,7 +570,7 @@ const cmKey = (t) => `${t.jobId}#${t.index}`;
 const cmTarget = () => (cmf().target.value === 'custom' ? Number(cmf().customMin.value) || 0 : Number(cmf().target.value)) * 60;
 async function openCompileModal() {
   const f = cmf();
-  $('#cmPreset').innerHTML = '<option value="">모든 프리셋</option>' + presets.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+  $('#cmPreset').innerHTML = '<option value="">모든 프리셋</option>' + presets.map(optHtml).join('');
   $('#cmPreset').value = $('#preset').value;
   f.background.value = $('#background').value; f.subtitles.value = $('#subtitles').value; f.thumbnailStyle.value = $('#thumbnailStyle').value; f.title.value = '';
   cmSel = new Set(); $('#cmMsg').textContent = '';

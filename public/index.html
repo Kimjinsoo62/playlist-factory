@@ -29,6 +29,7 @@
       <button type="button" id="btnOpenInput" class="btn">input 폴더</button>
       <button type="button" id="btnOpenOutput" class="btn">output 폴더</button>
     </h2>
+    <div class="quickbar"><span class="dim grow">프리셋 없이 곡 설명만 글로 적어 바로 만들기</span><button type="button" id="btnQuick" class="btn primary" title="곡 설명만 적고 바로 생성 (설명서 4-3)">▶ 간편하게 생성</button></div>
     <form id="form" autocomplete="off">
       <div class="row"><label>소스</label>
         <select name="provider" id="provider">
@@ -98,7 +99,7 @@
     <details id="compPanel" open>
       <summary>플레이리스트 조합 <span id="compState" class="chip">보관 곡 확인 중…</span></summary>
       <div class="row"><label>보관 곡</label><span id="compInfo" class="grow dim">완료된 작업의 곡을 모아 30·60분 영상으로 만듭니다 (크레딧 0)</span><button type="button" id="btnCompile" class="btn small primary">▶ 플레이리스트 조합…</button></div>
-      <div class="desc dim" style="margin-left:0">한두 곡씩 만들어 둔 같은 장르의 곡을 골라 크로스페이드로 이어 붙이고, 자막·썸네일·유튜브 설명까지 다시 만듭니다. 자세한 내용은 설명서 4-5.</div>
+      <div class="desc dim" style="margin-left:0">한두 곡씩 만들어 둔 같은 장르의 곡을 골라 크로스페이드로 이어 붙이고, 자막·썸네일·유튜브 설명까지 다시 만듭니다. 자세한 내용은 설명서 4-6.</div>
     </details>
 
     <details id="ytPanel" open>
@@ -115,7 +116,7 @@
         <div class="row"><label>자동 업로드</label><label class="inline"><input type="checkbox" name="autoUpload"> 작업이 완료되면 위 설정으로 자동 업로드 (테스트 소스 제외)</label></div>
         <div class="actions"><button type="submit" class="btn">저장</button><button type="button" id="ytUploadBtn" class="btn primary">▲ 선택한 작업 업로드…</button><span id="ytMsg" class="dim"></span></div>
       </form>
-      <div class="desc dim" style="margin-left:0">Google Cloud 콘솔에서 <b>YouTube Data API v3</b>를 켜고 OAuth 클라이언트(<b>데스크톱 앱</b>)를 만들어 ID·비밀을 넣은 뒤 [Google 계정 연결]. 연결은 서버 PC의 브라우저(localhost)에서만 됩니다. 업로드 1건에 API 할당량 1,600(하루 기본 10,000 → 약 6건). 자세한 순서는 설명서 4-6.</div>
+      <div class="desc dim" style="margin-left:0">Google Cloud 콘솔에서 <b>YouTube Data API v3</b>를 켜고 OAuth 클라이언트(<b>데스크톱 앱</b>)를 만들어 ID·비밀을 넣은 뒤 [Google 계정 연결]. 연결은 서버 PC의 브라우저(localhost)에서만 됩니다. 업로드 1건에 API 할당량 1,600(하루 기본 10,000 → 약 6건). 자세한 순서는 설명서 4-7.</div>
     </details>
   </section>
 
@@ -281,6 +282,29 @@
   </div>
 </div>
 <!-- 프리셋 설명·편집 모달 -->
+<div id="qmodal" class="modal" hidden>
+  <div class="box wide">
+    <div class="mhead"><b>▶ 간편하게 생성</b><span class="dim">곡을 글로 설명하면 메인 LLM이 프리셋(영어 프롬프트·태그·주제)을 만들고 바로 생성을 시작합니다</span><div class="grow"></div><button type="button" id="qmClose" class="btn small">닫기</button></div>
+    <form id="qmForm" class="pm" autocomplete="off">
+      <div class="row top"><label>곡 설명<br><span class="dim">한국어로 자유롭게</span></label><div class="grow"><textarea name="description" rows="6" placeholder="예: 비 오는 밤 창가에서 듣는 잔잔한 어쿠스틱 발라드. 통기타와 피아노, 느린 템포(70~80 BPM), 담담한 여성 보컬, 이별 뒤의 그리움을 노래. 후렴은 조금 올라가지만 전체적으로 차분하게."></textarea><div class="dim" style="margin-top:2px">⚠ 반드시 <b>음악 장르·악기·템포·보컬·분위기</b>를 적으세요. 풍경·감정만 쓰면 어떤 음악인지 AI가 알 수 없습니다. 이 글은 메인 LLM이 영어 프롬프트·태그·곡 주제로 바꿔 작곡 AI에 전달합니다.</div></div></div>
+      <div class="row"><label>프리셋 이름(선택)</label><input name="name" maxlength="30" placeholder="비우면 설명의 첫 구절을 이름으로 씁니다"></div>
+      <div class="row3">
+        <div><label>소스</label><select name="provider"><option value="treblo" data-label="Treblo API">Treblo API</option><option value="lyria" data-label="Google Lyria (연주곡 전용)">Google Lyria (연주곡 전용)</option><option value="mock">테스트(합성음, 크레딧 0)</option></select></div>
+        <div><label>곡 수</label><input type="number" name="count" min="1" max="40" value="6"></div>
+        <div><label>가사 언어</label><select name="language"><option value="ko">한국어</option><option value="en">English</option><option value="ja">日本語</option></select></div>
+      </div>
+      <div class="row3">
+        <div><label>보컬</label><select name="instrumental"><option value="false">보컬 (성별 미지정)</option><option value="male">남성 보컬</option><option value="female">여성 보컬</option><option value="true">연주곡</option></select></div>
+        <div><label>배경</label><select name="background"><option value="slideshow">무료 사진 슬라이드쇼</option><option value="photo">무료 사진 한 장 고정</option><option value="gradient">자동 생성 그라데이션</option></select></div>
+        <div><label>가사 자막</label><select name="subtitles"><option value="true">표시</option><option value="false">숨김</option></select></div>
+      </div>
+      <div class="row"><label>영상 제목(선택)</label><input name="title" placeholder="비우면 프리셋 이름으로 자동 작성"></div>
+      <div id="qmEstimate" class="estimate dim"></div>
+      <div class="actions"><button type="submit" id="qmStart" class="btn primary">▶ 생성 시작</button><span id="qmMsg" class="dim"></span></div>
+      <div class="desc dim" style="margin-left:0">설명으로 만든 프리셋은 ⚡ 표시로 프리셋 목록에 저장되어 다음에 다시 쓰거나 [설명·편집]에서 고치고 지울 수 있습니다. 썸네일 스타일·추가 프롬프트 등 세부 옵션은 메인 화면의 프리셋 선택 → [▶ 자동 생성 시작] 경로를 쓰세요.</div>
+    </form>
+  </div>
+</div>
 <div id="pmodal" class="modal" hidden>
   <div class="box wide">
     <div class="mhead"><b id="pmTitle">프리셋</b><span id="pmId" class="dim"></span><div class="grow"></div><button type="submit" form="pmForm" class="btn primary small">저장</button><button id="pmClose" class="btn small">닫기</button></div>
