@@ -40,7 +40,7 @@ START.bat
 - 설명서: `사용설명서.html` (앱 상단 [설명서] 버튼)
 - 음악 생성: [Treblo](https://treblo.com) (구 Sonauto) 공개 API. 곡당 100크레딧. *Powered by Treblo*
 - 음원 소스 5종: Treblo API 자동 생성 / Google Lyria 자동 생성(연주곡 전용) / Mureka API 자동 생성(보컬·연주곡, 가사 타이밍) / `input/` 로컬 파일 / 테스트 합성음(크레딧 0)
-- 배경 사진 자동 수집: Wikimedia Commons(Unsplash 출처 CC0 우선, 키 불필요) / Openverse / Pexels(키). `assets/backgrounds/`에 풀로 저장, `_rejected.txt`로 제외 관리
+- 배경 사진 자동 수집: Wikimedia Commons(Unsplash 출처 CC0 우선, 키 불필요) / Openverse / Pexels(키) / Pixabay(키, 일반 키는 1280px → 1920 확대, 키 없으면 Commons 대체). `assets/backgrounds/`에 풀로 저장, `_rejected.txt`로 제외 관리
 - 배경 영상(무료·상업 이용 가능): 슬라이드쇼 [설정] 모달에서 사진만 / 사진·영상 섞기 / 영상만 선택. Pexels Videos 또는 Pixabay Videos(둘 다 무료 API 키 필요)에서 클립을 받아 1920×1080·무음·12초로 정규화해 `assets/backgrounds/<preset>/videos/`에 저장(`server/videos.js`, `scripts/fetch-videos.js`). 영상이 들어가면 24fps 로 렌더링, 출처는 유튜브 설명에 "Background videos:"로 기재
   - 상업적 이용 가능 라이선스만(CC0·퍼블릭 도메인·CC BY·Pexels). NC/ND/SA·사용 제한 파일 제외, CC BY 출처는 유튜브 설명에 자동 기재
   - 메인 LLM 키가 있으면 작업마다 곡 제목·가사로 검색어를 기획하고 후보(풀 + 새 검색)를 분위기 기준으로 선별

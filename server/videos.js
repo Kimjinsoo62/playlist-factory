@@ -1,4 +1,4 @@
-// 무료 배경 영상 클립 자동 수집: Pexels Videos(키 필요, images.pexelsKey 공유) / Pixabay Videos(키 필요, videos.pixabayKey)
+// 무료 배경 영상 클립 자동 수집: Pexels Videos(키 필요, images.pexelsKey) / Pixabay Videos(키 필요, images.pixabayKey — 사진과 같은 키)
 // 두 서비스 모두 무료 키로 상업 이용(유튜브 수익화 포함)이 허용되고 출처 표기는 권장 사항 → 유튜브 설명에 자동 기재한다.
 // 사진 풀(images.js)과 같은 구조: assets/backgrounds/<preset>/videos/ 에 정규화된 mp4(1920x1080, 무음, clipSeconds) + 출처 json.
 // 거부 목록은 사진과 같은 _rejected.txt 를 쓰되 id 앞에 pv:(Pexels) / px:(Pixabay) 를 붙여 사진 id 와 섞이지 않게 한다.
@@ -58,7 +58,7 @@ export async function searchPexelsVideos(query, cfg, { count = 15 } = {}) {
 }
 
 export async function searchPixabayVideos(query, cfg, { count = 15 } = {}) {
-  const key = cfg?.videos?.pixabayKey; if (!key) throw new Error('Pixabay API 키가 없습니다 ([배경] 설정에서 입력)');
+  const key = cfg?.images?.pixabayKey; if (!key) throw new Error('Pixabay API 키가 없습니다 ([배경] 설정에서 입력)');
   const base = (cfg?.videos?.pixabayBase || 'https://pixabay.com/api').replace(/\/$/, '');
   const q = new URLSearchParams({ key, q: query.slice(0, 100), video_type: 'film', safesearch: 'true', per_page: String(Math.max(3, count)), min_width: '1280' });
   const d = await fetchJson(`${base}/videos/?${q}`);
@@ -97,7 +97,7 @@ export function rejectVideo(presetId, file) {
 
 export function videoKeyReady(cfg) {
   const p = cfg?.videos?.provider || 'pexels';
-  return p === 'pixabay' ? Boolean(cfg?.videos?.pixabayKey) : Boolean(cfg?.images?.pexelsKey);
+  return p === 'pixabay' ? Boolean(cfg?.images?.pixabayKey) : Boolean(cfg?.images?.pexelsKey);
 }
 
 async function gatherCandidates({ presetId, queries, cfg, log, avoid = [], maxQueries = 3 }) {

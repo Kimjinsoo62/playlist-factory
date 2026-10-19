@@ -160,7 +160,7 @@ function fillForm(form, cfg) {
     if (!el.name) continue;
     const v = el.name.split('.').reduce((o, k) => o?.[k], cfg);
     if (v === undefined || v === null) continue;
-    if (el.name === 'images.pexelsKey') { if (v) el.placeholder = '저장됨'; continue; }
+    if (el.name === 'images.pexelsKey' || el.name === 'images.pixabayKey') { if (v) el.placeholder = '저장됨'; continue; }
     if (el.name === 'anthropic.apiKey') { if (cfg.hasAnthropicKey) el.placeholder = '저장됨 (****)'; continue; }
     el.value = String(v);
   }
@@ -171,7 +171,7 @@ $('#cfgForm').onsubmit = async (e) => {
   for (const el of $('#cfgForm').elements) {
     if (!el.name) continue;
     let v = el.value;
-    if ((el.name === 'treblo.apiKey' || el.name === 'lyria.apiKey' || el.name === 'images.pexelsKey' || el.name === 'anthropic.apiKey') && !v) continue;
+    if ((el.name === 'treblo.apiKey' || el.name === 'lyria.apiKey' || el.name === 'images.pexelsKey' || el.name === 'images.pixabayKey' || el.name === 'anthropic.apiKey') && !v) continue;
     if (el.type === 'number') v = Number(v);
     if (v === 'true') v = true; if (v === 'false') v = false;
     const keys = el.name.split('.'); let o = patch;
@@ -633,8 +633,9 @@ async function openVideoModal() {
   const f = vmf(); const v = appCfg?.videos || {};
   f.mix.value = ['photo', 'video', 'mixed'].includes(v.mix) ? v.mix : 'photo';
   f.provider.value = v.provider || 'pexels'; f.clipSeconds.value = v.clipSeconds || 12; f.fps.value = String(v.fps || 24);
-  f.pexelsKey.value = ''; f.pexelsKey.placeholder = appCfg?.images?.pexelsKey ? '저장됨 (****) — 바꾸려면 새 키 입력' : 'pexels.com/api 에서 무료 발급';
-  f.pixabayKey.value = ''; f.pixabayKey.placeholder = v.pixabayKey ? '저장됨 (****) — 바꾸려면 새 키 입력' : 'pixabay.com/api/docs 에서 무료 발급(로그인 후 표시)';
+  f.photoProvider.value = appCfg?.images?.provider || 'commons';
+  f.pexelsKey.value = ''; f.pexelsKey.placeholder = appCfg?.images?.pexelsKey ? '저장됨 (****) — 바꾸려면 새 키 입력' : 'pexels.com/api 에서 무료 발급 — 사진·영상 공용';
+  f.pixabayKey.value = ''; f.pixabayKey.placeholder = appCfg?.images?.pixabayKey ? '저장됨 (****) — 바꾸려면 새 키 입력' : 'pixabay.com/api/docs 에서 무료 발급(로그인 후 표시) — 사진·영상 공용';
   $('#vmMsg').textContent = ''; $('#vmodal').hidden = false;
   refreshVideoPool();
 }
@@ -654,10 +655,10 @@ $('#vmFetch').onclick = async () => {
 vmf().onsubmit = async (e) => {
   e.preventDefault(); const f = vmf();
   const videos = { mix: f.mix.value, provider: f.provider.value, clipSeconds: Math.max(4, Math.min(60, Number(f.clipSeconds.value) || 12)), fps: Number(f.fps.value) || 24 };
-  const body = { videos };
-  if (f.pixabayKey.value.trim()) videos.pixabayKey = f.pixabayKey.value.trim();
-  if (f.pexelsKey.value.trim()) body.images = { pexelsKey: f.pexelsKey.value.trim() };
-  try { await api('/api/config', { method: 'POST', body }); await openVideoModal(); $('#vmMsg').textContent = '저장됨 ' + new Date().toLocaleTimeString() + (videos.mix === 'photo' ? ' (사진만)' : videos.mix === 'video' ? ' (영상만)' : ' (사진·영상 섞기)'); }
+  const body = { videos, images: { provider: f.photoProvider.value } };
+  if (f.pixabayKey.value.trim()) body.images.pixabayKey = f.pixabayKey.value.trim();
+  if (f.pexelsKey.value.trim()) body.images.pexelsKey = f.pexelsKey.value.trim();
+  try { const cfg = await api('/api/config', { method: 'POST', body }); fillForm($('#cfgForm'), cfg); await openVideoModal(); $('#vmMsg').textContent = '저장됨 ' + new Date().toLocaleTimeString() + (videos.mix === 'photo' ? ' (사진만)' : videos.mix === 'video' ? ' (영상만)' : ' (사진·영상 섞기)'); }
   catch (err) { $('#vmMsg').textContent = '저장 실패: ' + err.message; }
 };
 

@@ -22,6 +22,7 @@ export function isCommercialOk(r) {
   if (/\b(NC|ND|SA)\b/i.test(lic)) return false;
   if (r.restrictions && String(r.restrictions).trim()) return false;
   if (/^pexels license$/i.test(lic)) return true;
+  if (/^pixabay content license$/i.test(lic)) return true;   // 무료·상업 이용 가능, 출처 표기 권장
   if (/^(CC0|CC0 1\.0|Public domain|PD|PDM|Public Domain Mark( 1\.0)?)$/i.test(lic)) return true;
   if (/^CC BY( \d\.\d)?( [A-Za-z]{2}(-[A-Za-z]{2})?)?$/i.test(lic)) return true;   // CC BY, CC BY 2.0, CC BY 4.0 DE ...
   return false;
@@ -121,6 +122,21 @@ export async function searchPexels(query, apiKey, { count = 15 } = {}) {
   }));
 }
 
+/** Pixabay 사진(키 필요). 일반 키는 largeImageURL(최대 1280px)까지, fullHDURL(1920px)은 계정이 full API access 승인을 받은 경우에만 온다 */
+export async function searchPixabay(query, cfg, { count = 20 } = {}) {
+  const key = cfg?.images?.pixabayKey; if (!key) throw new Error('Pixabay API 키가 없습니다');
+  const base = (cfg?.videos?.pixabayBase || 'https://pixabay.com/api').replace(/\/$/, '');
+  const q = new URLSearchParams({ key, q: query.slice(0, 100), image_type: 'photo', orientation: 'horizontal', min_width: '1280', safesearch: 'true', per_page: String(Math.max(3, count)) });
+  const d = await fetchJson(`${base}/?${q}`);
+  return (d.hits || [])
+    .filter(h => !PEOPLE.test(String(h.tags || '')))
+    .map(h => ({
+      id: `px:${h.id}`, url: h.fullHDURL || h.largeImageURL, title: String(h.tags || '').split(',').map(s => s.trim()).filter(Boolean).slice(0, 4).join(', ') || `pixabay ${h.id}`, creator: h.user || '',
+      license: 'Pixabay Content License', licenseUrl: 'https://pixabay.com/service/license-summary/', desc: h.tags || '', source: 'pixabay', page: h.pageURL, provider: 'pixabay',
+      width: h.imageWidth, height: h.imageHeight, fullHd: Boolean(h.fullHDURL),
+    }));
+}
+
 async function download(url, dest, timeoutMs = 90000) {
   const ac = new AbortController(); const t = setTimeout(() => ac.abort(), timeoutMs);
   try {
@@ -178,14 +194,17 @@ export function listPool(presetId) {
 
 /** 검색어 여러 개로 후보를 모은다(라이선스·인물·중복·거부 목록 필터 적용, 점수순). */
 async function gatherCandidates({ presetId, queries, cfg, log, avoid = [], maxQueries = 3 }) {
-  const provider = cfg?.images?.provider || 'commons';
+  let provider = cfg?.images?.provider || 'commons';
+  // 키가 필요한 소스에 키가 없으면 Commons(키 불필요)로 대체한다
+  if ((provider === 'pixabay' && !cfg?.images?.pixabayKey) || (provider === 'pexels' && !cfg?.images?.pexelsKey)) { log?.(`사진 소스 ${provider} 의 API 키가 없어 Wikimedia Commons 로 대체합니다 ([배경] 설정에서 키 입력)`, 'warn'); provider = 'commons'; }
   const qs = [...new Set((queries || []).map(q => String(q).trim()).filter(Boolean))];
   const useQs = qs.length > maxQueries ? qs.sort(() => Math.random() - 0.5).slice(0, maxQueries) : qs;
   if (!useQs.length) useQs.push('abstract background');
   log?.(`배경 사진 검색 (${provider}): ${useQs.map(q => `"${q}"`).join(', ')}`);
   const searchOne = async (query) => {
     let results = [];
-    if (provider === 'pexels' && cfg?.images?.pexelsKey) results = await searchPexels(query, cfg.images.pexelsKey);
+    if (provider === 'pixabay') results = await searchPixabay(query, cfg);
+    else if (provider === 'pexels' && cfg?.images?.pexelsKey) results = await searchPexels(query, cfg.images.pexelsKey);
     else if (provider === 'openverse') {
       const [ov, cm] = await Promise.allSettled([
         searchOpenverse(query).then(rs => rs.filter(r => !/rawpixel/i.test(r.source))),   // rawpixel 은 다운로드 URL 만료(410)
@@ -218,7 +237,7 @@ async function gatherCandidates({ presetId, queries, cfg, log, avoid = [], maxQu
 /** 후보 한 장을 내려받아 풀에 저장. 반환 {file, credit} | null */
 async function downloadCandidate(r, presetId, log) {
   const dir = poolDir(presetId);
-  const base = `${Date.now()}_${String(r.id).slice(0, 8)}`;
+  const base = `${Date.now()}_${String(r.id).replace(/[^a-z0-9]/gi, '').slice(0, 10)}`;   // id 의 콜론 등은 파일명에서 제거 (Windows 에서 ':' 는 대체 스트림)
   const raw = path.join(dir, base + '.download');
   const out = path.join(dir, base + '.jpg');
   try {
@@ -227,7 +246,7 @@ async function downloadCandidate(r, presetId, log) {
     const { query, ...rest } = r;
     const credit = { ...rest, downloaded: new Date().toISOString(), original: size, query };
     fs.writeFileSync(path.join(dir, base + '.json'), JSON.stringify(credit, null, 2), 'utf8');
-    log?.(`배경 사진 확보: "${credit.title || r.id}" by ${credit.creator || '?'} · ${credit.license} · ${credit.source} (${size.width}x${size.height})`);
+    log?.(`배경 사진 확보: "${credit.title || r.id}" by ${credit.creator || '?'} · ${credit.license} · ${credit.source} (${size.width}x${size.height}${r.provider === 'pixabay' && !r.fullHd ? ', 1280px → 1920 확대' : ''})`);
     return { file: out, credit };
   } catch (e) {
     log?.(`사진 후보 건너뜀 "${(r.title || r.id).slice(0, 40)}" (${e.message.split('\n')[0]})`, 'warn');

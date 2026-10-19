@@ -49,13 +49,13 @@ const DEFAULTS = {
     fadeSeconds: 1.2,              // 페이드 전환 시간
     slideCount: 8,                 // 슬라이드쇼에 쓸 사진 수(풀 + 새로 받기)
     maxFetchPerJob: 4,             // 작업당 새로 받는 사진 최대 수
-    provider: 'commons',           // 'commons' (Wikimedia, 키 불필요, 빠름) | 'openverse' (키 불필요, CC0만, 느림) | 'pexels' (키 필요)
+    provider: 'commons',           // 'commons' (Wikimedia, 키 불필요, 빠름) | 'openverse' (키 불필요, CC0만, 느림) | 'pexels' (키 필요) | 'pixabay' (키 필요, 키 없으면 commons 로 대체)
     pexelsKey: '',
+    pixabayKey: '',                // pixabay.com/api/docs (로그인 후 표시). 사진·영상 모두 이 키를 쓴다. 일반 키는 사진 최대 1280px(fullHD 는 별도 승인)
   },
   videos: {                        // 슬라이드쇼 배경에 무료 영상 클립을 섞는 옵션 ([배경] 옆 설정 모달에서 저장)
     mix: 'photo',                  // 'photo' (사진만, 기존 동작) | 'video' (영상만) | 'mixed' (사진·영상 번갈아)
-    provider: 'pexels',            // 'pexels' (images.pexelsKey 공유) | 'pixabay' (pixabayKey). 둘 다 무료 키, 상업 이용 가능
-    pixabayKey: '',
+    provider: 'pexels',            // 'pexels' (images.pexelsKey) | 'pixabay' (images.pixabayKey). 둘 다 무료 키, 상업 이용 가능
     clipSeconds: 12,               // 풀에 저장할 때 클립을 이 길이로 자른다 (슬라이드 표시 10초 + 페이드 1.2초보다 길어야 함)
     maxFetchPerJob: 2,             // 작업당 새로 받는 클립 최대 수 (클립 하나에 수 MB)
     fps: 24,                       // 영상 클립이 들어가면 렌더링 fps 를 이 값으로 올린다 (사진만이면 render.fps=10)
@@ -129,7 +129,7 @@ export function maskConfig(cfg) {
   if (c.mureka?.apiKey) c.mureka.apiKey = c.mureka.apiKey.slice(0, 4) + '****' + c.mureka.apiKey.slice(-4);
   c.hasMurekaKey = Boolean(cfg.mureka?.apiKey);
   if (c.images?.pexelsKey) c.images.pexelsKey = '****';
-  if (c.videos?.pixabayKey) c.videos.pixabayKey = '****';
+  if (c.images?.pixabayKey) c.images.pixabayKey = '****';
   c.hasAnthropicKey = Boolean(cfg.anthropic?.apiKey || process.env.ANTHROPIC_API_KEY);
   for (const id of ['anthropic', 'openai', 'gemini']) if (c[id]?.apiKey) c[id].apiKey = '****';
   if (c.youtube) { c.youtube.connected = Boolean(cfg.youtube?.oauth?.refresh_token); delete c.youtube.oauth; if (c.youtube.clientSecret) c.youtube.clientSecret = '****'; }

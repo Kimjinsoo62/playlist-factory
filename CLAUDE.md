@@ -69,7 +69,7 @@ Claude·OpenAI·Gemini를 `chat()` 한 함수(system + user → JSON 텍스트)�
 
 ### 배경 사진 (`server/images.js`)
 
-Wikimedia Commons(기본) / Openverse / Pexels에서 상업 이용 가능 라이선스(CC0·PD·CC BY·Pexels)만 수집. 프리셋별 풀 `assets/backgrounds/<preset>/`(jpg + 출처 json)는 git 제외, `_rejected.txt`만 공유. CC BY 출처는 유튜브 설명에 자동 기재.
+Wikimedia Commons(기본) / Openverse / Pexels / Pixabay에서 상업 이용 가능 라이선스(CC0·PD·CC BY·Pexels·Pixabay Content License)만 수집. Pexels·Pixabay 키는 `images.pexelsKey`·`images.pixabayKey`에 두고 사진·영상이 공유하며, 키 없이 고르면 Commons로 대체한다. 풀 파일명에는 id의 콜론 등을 빼야 한다(Windows에서 `:`는 대체 스트림이 되어 파일이 사라진 것처럼 보임). 프리셋별 풀 `assets/backgrounds/<preset>/`(jpg + 출처 json)는 git 제외, `_rejected.txt`만 공유. CC BY 출처는 유튜브 설명에 자동 기재.
 
 ### 배경 영상 (`server/videos.js`)
 

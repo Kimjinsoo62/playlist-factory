@@ -155,7 +155,7 @@ app.post('/api/config', (req, res) => {
     else patch.lyria.apiKey = k;
   }
   // 사진·영상 소스 키: 빈 값·마스킹된 값은 저장하지 않음 (모달을 그냥 저장해도 기존 키가 지워지지 않게)
-  for (const [sec, key] of [['images', 'pexelsKey'], ['videos', 'pixabayKey']]) {
+  for (const [sec, key] of [['images', 'pexelsKey'], ['images', 'pixabayKey']]) {
     if (patch[sec] && typeof patch[sec][key] === 'string') {
       const k = patch[sec][key].trim();
       if (!k || k.includes('****')) delete patch[sec][key];
