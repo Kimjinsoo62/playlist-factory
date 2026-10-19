@@ -18,7 +18,16 @@ const cfg0 = loadConfig();
 const PORT = cfg0.port;
 const app = express();
 app.use(express.json({ limit: '2mb' }));
-app.use((req, res, next) => { res.setHeader('Access-Control-Allow-Origin', '*'); res.setHeader('Access-Control-Allow-Headers', 'Content-Type'); res.setHeader('Access-Control-Allow-Methods', 'GET,POST,DELETE,OPTIONS'); if (req.method === 'OPTIONS') return res.sendStatus(204); next(); });
+// 다른 사이트(출처)에서 온 API 요청은 거부한다. 열어 둔 아무 웹페이지가 작업 시작(과금)·설정 변경·종료를 못 하게.
+// 이 서버가 내려준 화면(localhost·LAN 주소 모두)은 Origin 의 host 가 Host 와 같고, MCP·curl 은 Origin 을 보내지 않는다.
+app.use('/api', (req, res, next) => {
+  const origin = req.headers.origin;
+  if (!origin) return next();
+  let host = '';
+  try { host = new URL(origin).host; } catch {}
+  if (host && host === req.headers.host) return next();
+  res.status(403).json({ error: `다른 출처(${origin})의 요청은 허용하지 않습니다.` });
+});
 app.use(express.static(DIRS.public));
 app.use('/output', express.static(DIRS.output));
 app.get('/사용설명서.html', (req, res) => res.sendFile(path.join(DIRS.root, '사용설명서.html')));

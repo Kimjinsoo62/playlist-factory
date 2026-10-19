@@ -96,4 +96,5 @@ Google OAuth(데스크톱 앱 클라이언트, `http://localhost:PORT/api/youtub
 - `config.json`은 git 제외이며 실제 API 키가 들어 있다. 내용을 확인할 때는 `cat`하지 말고 `GET /api/config`(마스킹) 또는 키 필드를 제외하고 본다.
 - 이 셸에서 파이프로 받은 한글은 깨져 보일 수 있다. Python 출력은 `python -I -X utf8`로 확인한다. 깨짐은 표시 문제일 뿐 앱 버그가 아니다.
 - Express 5라서 와일드카드·경로 문법이 v4와 다르다.
+- `/api`는 다른 출처(Origin의 host ≠ Host) 요청을 403으로 거부한다(index.js 상단 미들웨어). 열어 둔 아무 웹페이지가 과금 작업·설정 변경·종료를 못 하게 하려는 것이므로 `Access-Control-Allow-Origin: *`를 다시 넣지 말 것. 같은 서버가 내려준 화면(localhost·LAN)과 Origin 없는 MCP·curl은 영향 없다.
 - 제외 태그·주제·검색어 등 데이터는 코드가 아니라 프리셋 JSON에 둔다. 최근 커밋 대부분이 프리셋 추가·수정이다.
