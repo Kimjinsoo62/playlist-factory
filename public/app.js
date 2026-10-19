@@ -790,7 +790,7 @@ async function applyUpdate() {
   modal('업데이트 적용 중', '<div class="bar" style="height:14px"><div class="fill" style="width:40%;animation:none"></div></div><pre id="updLog">git pull --ff-only …</pre>');
   try {
     const r = await api('/api/update/apply', { method: 'POST' });
-    $('#btnUpdate').textContent = '업데이트'; $('#btnUpdate').classList.remove('update-new');
+    $('#btnUpdate').textContent = '업데이트'; $('#btnUpdate').classList.remove('update-new'); $('#btnUpdate').title = `업데이트 완료 (${r.after}), 재시작 필요`;
     modal('업데이트 완료', `<p><b>업데이트 완료, 앱을 재시작하세요.</b> (${r.before} → ${r.after})</p>${r.needInstall ? '<p>⚠ 의존성이 바뀌었습니다. 재시작 전에 <code>install.bat</code> 을 먼저 실행하세요.</p>' : ''}${r.backupDir ? `<p>이 PC 에서 고쳤던 파일 ${r.backedUp.length}개는 <code>${r.backupDir}</code> 폴더에 백업했습니다. 필요하면 앱에서 다시 고치거나 파일을 제자리로 복사하세요.</p>` : ''}<pre>${(r.log || []).join('\n')}\n${r.changed.join('\n')}</pre>`, [
       { label: '지금 종료(재시작 준비)', cls: 'danger', onClick: shutdown },
       { label: '닫기', onClick: () => $('#modal').hidden = true },

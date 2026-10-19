@@ -136,6 +136,7 @@ summary { cursor: pointer; color: var(--dim); }
 .pm #pmPreview { max-height: 90px; margin: 0; }
 .offline { position: fixed; top: 30px; left: 0; right: 0; z-index: 40; background: var(--danger); color: #fff; font-weight: bold; text-align: center; padding: 4px 8px; }
 .modal, .overlay { position: fixed; inset: 0; background: var(--shade); display: flex; align-items: center; justify-content: center; z-index: 50; }
+#modal { z-index: 55; }   /* 알림·확인 팝업은 설정·프리셋 등 다른 창 위에 */
 .box { background: var(--panel); border: 1px solid var(--line); border-radius: 5px; padding: 10px 12px; min-width: 420px; max-width: 760px; max-height: 80vh; display: flex; flex-direction: column; }
 .mhead { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
 .mbody { overflow: auto; max-height: 55vh; }
