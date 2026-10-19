@@ -170,6 +170,7 @@ export async function runJob(job, cfg) {
     } else if (providerName !== 'mock' && providerName !== 'compile') log(job, '메인 LLM 키가 없어 한국어 요청을 번역하지 않고 그대로 전달합니다 (상단 [설정]에서 등록 가능)', 'warn');
     const { specs, lang, instrumental, gender } = planTracks(preset, req);
     log(job, `프리셋 "${preset.name}" · ${specs.length}곡 · 언어 ${LANG[lang].name} · ${instrumental ? '연주곡' : gender === 'male' ? '남성 보컬' : gender === 'female' ? '여성 보컬' : '보컬'} · 소스 ${providerName}`);
+    if (req.autoSwitch) log(job, req.autoSwitch, 'warn');
     job.tracks = specs.map(s => ({ index: s.index, title: s.title, status: 'pending' }));
     persist(job);
 

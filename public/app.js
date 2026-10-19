@@ -197,9 +197,18 @@ async function refreshBalance() {
     return;
   }
   if (!appCfg?.hasApiKey) { el.textContent = '크레딧 –'; el.className = 'chip'; return; }
-  try { const b = await api('/api/treblo/balance'); el.textContent = `크레딧 ${(b.num_credits || 0).toLocaleString()} + 종량제 ${(b.num_credits_payg || 0).toLocaleString()}`; el.className = 'chip ok'; }
+  try {
+    const b = await api('/api/treblo/balance'); const credits = (b.num_credits || 0) + (b.num_credits_payg || 0);
+    el.textContent = `크레딧 ${(b.num_credits || 0).toLocaleString()} + 종량제 ${(b.num_credits_payg || 0).toLocaleString()}`; el.className = credits ? 'chip ok' : 'chip err';
+    // 크레딧이 0 이고 Lyria 키가 있으면 작곡 AI 를 Lyria 로 자동 전환 (서버도 작업 시작 때 같은 규칙으로 전환한다)
+    if (!credits && active === 'treblo' && appCfg?.hasLyriaKey && !autoSwitched) {
+      autoSwitched = true;
+      try { await api('/api/keys/lyria/activate', { method: 'POST' }); appCfg = await api('/api/config'); applyActive('lyria'); logLine('--', 'warn', 'Treblo 크레딧이 0 이라 작곡 AI 를 Lyria(연주곡 전용)로 자동 전환했습니다. 충전한 뒤 [설정]에서 Treblo 를 다시 활성화하세요.'); } catch {}
+    }
+  }
   catch (e) { el.textContent = '크레딧 확인 실패'; el.className = 'chip err'; el.title = e.message; }
 }
+let autoSwitched = false;   // 세션당 한 번만 자동 전환(사용자가 일부러 Treblo 로 되돌린 경우 다시 바꾸지 않음)
 
 // ── 설정 모달: 작곡 AI API 키 관리 (Treblo · Lyria)
 $('#btnSettings').onclick = () => openKeyModal();

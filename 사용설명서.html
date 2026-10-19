@@ -46,6 +46,7 @@
   <li><a href="https://aistudio.google.com/apikey" target="_blank">aistudio.google.com/apikey</a>에서 Gemini API 키를 발급합니다. Lyria는 <b>무료 티어가 없어</b> 결제가 연결된 Google Cloud 프로젝트의 키여야 합니다. 곡당 $0.08(2026년 10월 기준, 프리뷰라 변동 가능)이 Google 결제 계정에 청구됩니다.</li>
   <li>상단 <span class="btn gray">설정</span> 버튼 → Google Lyria 카드에 붙여 넣고 <b>저장</b> → <b>키 확인</b>을 누르면 모델 이름이 표시됩니다(확인은 과금되지 않음). 환경변수 <code>GEMINI_API_KEY</code>로도 전달할 수 있으며, 환경변수로 지정된 키는 모달에서 지울 수 없습니다.</li>
   <li>소스에서 <b>Google Lyria</b>를 고르면 보컬 옵션이 자동으로 "연주곡"이 됩니다. 보컬곡 프리셋을 그대로 보내면 서버가 거부합니다.</li>
+  <li><b>Treblo 크레딧이 0이면 자동으로 Lyria 로 전환</b>됩니다(Lyria 키가 있을 때). 앱을 켤 때 크레딧이 0이면 활성 작곡 AI를 Lyria로 바꾸고 로그에 안내하며, 작업을 시작할 때도 크레딧이 모자라면 연주곡 작업은 Lyria로 보냅니다(보컬곡은 Lyria가 못 만들어 오류로 안내). 충전한 뒤에는 [설정]에서 Treblo를 다시 활성화하세요.</li>
 </ol>
 <div class="warn"><b>Lyria는 왜 연주곡만?</b> Lyria는 가사 텍스트는 돌려주지만 <b>단어별 타이밍 데이터를 주지 않아</b> 박자에 맞는 가사 자막을 만들 수 없습니다. 보컬곡은 Treblo 소스를 쓰세요. 또 Lyria 출력에는 SynthID 워터마크(비가청)가 항상 들어가며, Gemini API 약관은 생성물 소유권을 주장하지 않지만 유튜브 수익화·Content ID 안전성을 보장하지는 않습니다. 업로드 전 <a href="https://ai.google.dev/gemini-api/terms" target="_blank">Gemini API 약관</a>을 확인하세요.</div>
 

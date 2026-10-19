@@ -343,7 +343,7 @@ app.post('/api/jobs', async (req, res) => {
   const body = req.body || {};
   if (!body.preset) return res.status(400).json({ error: 'preset 필요' });
   const cfg = loadConfig();
-  const provider = body.dryRun ? 'mock' : (body.provider || cfg.provider);
+  let provider = body.dryRun ? 'mock' : (body.provider || cfg.provider);   // 크레딧 부족 시 아래에서 lyria 로 바뀔 수 있음
   if (provider === 'compile') {
     // 보관 곡 조합: 곡 목록 검증, 곡 수·연주곡 여부·언어는 재료에서 결정
     try {
@@ -358,6 +358,20 @@ app.post('/api/jobs', async (req, res) => {
   }
   if (isMusic(provider) && activeProvider(cfg) !== provider) return res.status(400).json({ error: `${KEY_PROVIDERS[provider].label} 소스는 대기 상태입니다. 상단 [설정]에서 활성화한 뒤 사용하세요. (현재 활성: ${KEY_PROVIDERS[activeProvider(cfg)].label})` });
   if (provider === 'treblo' && !cfg.treblo.apiKey) return res.status(400).json({ error: 'Treblo API 키가 없습니다. 설정에서 입력하거나 소스를 "로컬 폴더"로 바꾸세요.' });
+  // Treblo 크레딧이 모자라면 Lyria(키가 있고 연주곡일 때)로 자동 전환하고 활성 소스도 Lyria 로 바꾼다 (보컬곡은 Lyria 가 못 만드니 안내만)
+  if (provider === 'treblo' && cfg.lyria?.apiKey) {
+    const p = loadPresets().find(x => x.id === body.preset);
+    if (!p) return res.status(400).json({ error: '프리셋 없음' });
+    const plan = planTracks(p, body); const need = plan.specs.length * 100;
+    let credits = null;
+    try { const b = await new TrebloProvider(cfg.treblo).balance(); credits = (b.num_credits || 0) + (b.num_credits_payg || 0); } catch { /* 잔액 조회 실패는 그대로 진행(파이프라인이 다시 확인) */ }
+    if (credits !== null && credits < need) {
+      if (!plan.instrumental) return res.status(400).json({ error: `Treblo 크레딧 부족(${credits} < ${need}). 보컬곡이라 Lyria 로 자동 전환할 수 없습니다. 크레딧을 충전하거나 보컬 옵션을 "연주곡"으로 바꾸세요.` });
+      provider = 'lyria'; body.instrumental = true;
+      body.autoSwitch = `Treblo 크레딧 부족(${credits} < ${need}) → Lyria 로 자동 전환 (활성 작곡 AI 도 Lyria 로 바뀜, 충전 후 [설정]에서 Treblo 활성화)`;
+      saveConfig({ provider: 'lyria' });
+    }
+  }
   if (provider === 'mureka' && !cfg.mureka.apiKey) return res.status(400).json({ error: 'Mureka API 키가 없습니다. 설정에서 입력하세요.' });
   if (provider === 'lyria') {
     if (!cfg.lyria.apiKey) return res.status(400).json({ error: 'Lyria(Gemini) API 키가 없습니다. 설정에서 입력하세요.' });

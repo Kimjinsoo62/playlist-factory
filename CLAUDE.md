@@ -53,7 +53,7 @@ python scripts/contact-sheet.py out.jpg     # 배경 풀 전체를 한 장으로
 | `mock` | pipeline.js 안에 인라인(`ff.synthTrack`). `dryRun: true`와 같음 |
 | `compile` | 완료된 작업의 곡을 재료로 다시 조합(`server/library.js`). 파일은 복사하지 않고 원본 폴더에서 읽으며, 가사·정렬은 원본의 `NN_generation.json`에서. `crossfadeSeconds`가 있으면 `ff.concat`이 acrossfade로 겹쳐 잇고 오프셋을 `Σdur − i·F`로 계산 |
 
-작곡 AI는 한 번에 하나만 활성(`config.provider`). 대기 상태 소스로는 작업 생성이 거부된다.
+작곡 AI는 한 번에 하나만 활성(`config.provider`). 대기 상태 소스로는 작업 생성이 거부된다. **Treblo 크레딧 부족 시 Lyria 자동 전환**: `POST /api/jobs`가 Treblo 잔액을 확인해 모자라면(연주곡이고 Lyria 키가 있을 때) provider를 lyria로 바꾸고 `config.provider`도 저장하며 `body.autoSwitch` 문구를 작업 로그에 남긴다. 보컬곡은 400으로 안내. 화면(`refreshBalance`)도 크레딧 0이면 세션당 한 번 `/api/keys/lyria/activate`를 호출한다.
 
 ### LLM 층 (`server/llm.js`)
 
