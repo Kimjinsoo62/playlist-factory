@@ -1,0 +1,115 @@
+{
+  "id": "rain-sounds",
+  "name": "빗소리 (연주곡)",
+  "description": "휴식·수면·집중용 빗소리. 곡마다 다른 종류의 비(창가 이슬비, 양철 지붕, 숲속 비, 우산 위, 텐트 위, 먼 천둥 등)를 자연 소리 위주로 담고, 악기는 거의 쓰지 않는다. 배경은 잔잔한 비 오는 풍경 사진.",
+  "instrumental": true,
+  "prompt": "Realistic natural rain soundscape, a field recording of rainfall with no melody, no drums and no singing. The rain itself is the main sound: layered raindrops, steady rainfall texture, water dripping and trickling, soft distant ambience, continuous and even from start to end with no sudden changes or loud moments. At most a faint, barely audible warm ambient pad far in the background. Calm, cozy and relaxing, suitable for sleep, study and meditation. Instrumental only, no vocals.",
+  "tags": [
+    "rain",
+    "field recording",
+    "nature",
+    "soundscape",
+    "ambient",
+    "environmental",
+    "soothing",
+    "sleep"
+  ],
+  "negative_tags": [
+    "drums",
+    "percussion",
+    "vocal",
+    "melodic",
+    "upbeat",
+    "energetic",
+    "loud",
+    "aggressive",
+    "edm",
+    "trap",
+    "heavy metal",
+    "dubstep"
+  ],
+  "length_range": [
+    180,
+    240
+  ],
+  "thumbnailStyle": "ocean",
+  "topics": {
+    "ko": [
+      "창가의 이슬비",
+      "양철 지붕 위 빗소리",
+      "숲속에 내리는 비",
+      "우산 위 빗방울",
+      "텐트 위 밤비",
+      "먼 천둥과 잔잔한 비",
+      "처마 끝 낙숫물",
+      "호수에 내리는 비",
+      "밤거리의 비",
+      "나뭇잎에 떨어지는 비",
+      "장대비 쏟아지는 오후",
+      "비 그친 뒤 물방울"
+    ],
+    "en": [
+      "Light drizzle on a window at night",
+      "Rain drumming on a tin roof",
+      "Rain falling in a forest",
+      "Raindrops on an umbrella",
+      "Night rain on a tent",
+      "Gentle rain with soft distant thunder",
+      "Water dripping from the eaves",
+      "Rain falling on a lake",
+      "Rain on a quiet city street at night",
+      "Rain falling on leaves",
+      "Heavy steady downpour in the afternoon",
+      "Dripping after the rain has stopped"
+    ],
+    "ja": [
+      "窓辺の小雨",
+      "トタン屋根に降る雨",
+      "森に降る雨",
+      "傘に落ちる雨粒",
+      "テントに降る夜の雨",
+      "遠い雷と静かな雨",
+      "軒先の雨だれ",
+      "湖に降る雨",
+      "夜の街の雨",
+      "木の葉に落ちる雨",
+      "午後の土砂降り",
+      "雨上がりの雫"
+    ]
+  },
+  "titleTemplate": {
+    "ko": "[Playlist] 잠 잘 오는 빗소리 모음 🌧️ {n}가지 · {dur}",
+    "en": "[Playlist] Relaxing Rain Sounds 🌧️ {n} kinds · {dur}",
+    "ja": "[Playlist] よく眠れる雨音集 🌧️ {n}種類 · {dur}"
+  },
+  "youtubeIntro": {
+    "ko": "창가의 이슬비부터 양철 지붕 위 빗소리, 숲속 비, 우산 위 빗방울까지 여러 종류의 빗소리를 모았습니다. 수면·휴식·공부할 때 작은 볼륨으로 틀어 두세요.",
+    "en": "A collection of rain sounds — drizzle on a window, rain on a tin roof, rain in the forest, raindrops on an umbrella and more. Play it softly for sleep, rest or study.",
+    "ja": "窓辺の小雨からトタン屋根の雨、森の雨、傘に落ちる雨粒まで、さまざまな雨音を集めました。睡眠・休息・勉強のお供に小さな音量でどうぞ。"
+  },
+  "hashtags": [
+    "#rainsounds",
+    "#빗소리",
+    "#asmr",
+    "#sleep",
+    "#playlist"
+  ],
+  "keywords": [
+    "rain sounds",
+    "빗소리",
+    "빗소리 asmr",
+    "rain sounds for sleeping",
+    "비오는 소리",
+    "백색소음"
+  ],
+  "imageQueries": [
+    "raindrops on window glass",
+    "rainy street umbrella soft",
+    "rain on lake calm",
+    "rainy forest path mist",
+    "rain puddle reflection street",
+    "rainy day cafe window"
+  ],
+  "koDescription": "실제 빗소리 같은 자연 소리 중심의 사운드스케이프. 멜로디·드럼·노래 없이 빗방울이 겹겹이 떨어지는 소리, 고르게 이어지는 빗줄기, 물이 똑똑 떨어지고 흘러내리는 소리, 멀리 은은한 주변음이 처음부터 끝까지 갑작스러운 변화나 큰 소리 없이 이어진다. 기껏해야 저 멀리 거의 들리지 않는 따뜻한 앰비언트 패드 정도. 차분하고 아늑하며, 수면·공부·명상에 어울림. 보컬 없음. 곡마다 주제(창가 이슬비, 양철 지붕, 숲속 비, 우산 위, 텐트 위, 먼 천둥 등)에 맞는 종류의 비를 만든다.",
+  "useKoDescription": false
+}

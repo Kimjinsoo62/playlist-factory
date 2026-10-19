@@ -510,7 +510,8 @@ const pad = (n) => String(n).padStart(2, '0');
 /** 썸네일 제목: 유튜브 제목에서 앞의 [Playlist] 와 꼬리의 "N곡 · 1시간 23분"(라벨에 따로 표시) 을 뗀다 */
 function thumbTitle(title, n) {
   let t = String(title || '').replace(/^\[[^\]]*\]\s*/, '');
-  for (const c of [`${n}곡`, `${n}曲`, `${n} songs`, `${n} song`, `${n} tracks`, `${n} track`]) {
+  // 곡 수 표기: 곡·曲·songs·tracks 외에 빗소리 모음처럼 "N가지 · N kinds · N種類" 로 세는 템플릿도 지원
+  for (const c of [`${n}곡`, `${n}曲`, `${n} songs`, `${n} song`, `${n} tracks`, `${n} track`, `${n}가지`, `${n} kinds`, `${n} kind`, `${n}種類`, `${n}種`]) {
     const i = t.indexOf(c);
     if (i <= 0) continue;
     const rest = t.slice(i + c.length);
