@@ -14,12 +14,25 @@ echo.
 
 echo [1] 서버에 종료 API 호출 시도 (POST /api/shutdown)...
 curl -s -m 5 -X POST http://localhost:%PORT%/api/shutdown >nul 2>&1
-if not errorlevel 1 (
-  echo     서버가 응답했습니다. [종료] 버튼과 같은 절차로 정리합니다. 5초 대기...
-  timeout /t 5 /nobreak >nul
-) else (
-  echo     서버가 응답하지 않습니다. 직접 정리합니다.
+if errorlevel 1 goto :no_server
+echo     서버가 응답했습니다. [종료] 버튼과 같은 절차로 정리합니다. 서버가 꺼질 때까지 최대 15초 대기...
+rem 서버의 종료 절차(PowerShell 3회 + 브라우저 정상 종료 대기)는 5초 넘게 걸릴 수 있어, 끝나기 전에 끼어들지 않도록 실제로 꺼질 때까지 기다린다
+rem 1초 대기는 ping 으로 한다 (timeout 은 입력이 리디렉션된 창에서 바로 끝나 버린다)
+set /a WAIT=0
+:wait_loop
+ping -n 2 127.0.0.1 >nul
+set /a WAIT+=1
+curl -s -m 1 -o nul http://localhost:%PORT%/api/info >nul 2>&1
+if errorlevel 1 (
+  echo     서버가 종료되었습니다 ^(%WAIT%초^). 남은 것이 있는지 확인합니다.
+  goto :cleanup
 )
+if %WAIT% lss 15 goto :wait_loop
+echo     15초 안에 끝나지 않아 직접 정리합니다.
+goto :cleanup
+:no_server
+echo     서버가 응답하지 않습니다. 직접 정리합니다.
+:cleanup
 
 echo [2] 캐시 삭제...
 if exist "cache\" ( del /q /s "cache\*" >nul 2>&1 & for /d %%d in ("cache\*") do rd /s /q "%%d" >nul 2>&1 )

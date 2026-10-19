@@ -39,8 +39,8 @@ export async function shutdownSequence({ port, log }) {
     const r1 = await psCount(`$me=${process.pid}; $k=0; $pids = Get-NetTCPConnection -LocalPort ${port} -State Listen -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess -Unique; foreach($p in $pids){ if($p -ne $me){ Stop-Process -Id $p -Force -ErrorAction SilentlyContinue; $k++ } }; $k`);
     add('포트 정리', `${fmtCount(r1, '개 프로세스')} (서버 자신 PID ${process.pid} 은 종료 시 해제)`);
 
-    // 4. 이 프로젝트 경로가 명령줄에 포함된 cmd 창 닫기 (START.bat 창 포함)
-    const r2 = await psCount(`$root='${root}'.ToLower(); $k=0; Get-CimInstance Win32_Process | Where-Object { $_.Name -eq 'cmd.exe' -and $_.CommandLine -and $_.CommandLine.ToLower().Contains($root) } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue; $k++ }; $k`);
+    // 4. 이 프로젝트 경로가 명령줄에 포함된 cmd 창 닫기 (START.bat 창 포함). STOP.bat 창은 서버가 꺼지길 기다렸다 마무리하므로 제외
+    const r2 = await psCount(`$root='${root}'.ToLower(); $k=0; Get-CimInstance Win32_Process | Where-Object { $_.Name -eq 'cmd.exe' -and $_.CommandLine -and $_.CommandLine.ToLower().Contains($root) -and $_.CommandLine -notlike '*STOP.bat*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue; $k++ }; $k`);
     add('명령 창 닫기', fmtCount(r2, '개 창'));
 
     // 5. 브라우저 창 닫기: START.bat 이 연 앱 전용 창(명령줄에 이 프로젝트의 .app-browser 프로필)만 닫는다.
