@@ -79,7 +79,7 @@ ffmpeg·ffprobe·python은 모두 `media/ffmpeg.js`의 `children` Set을 거친�
 
 ### 전역 11개 기본 기능의 위치
 
-[종료] → `server/shutdown.js` (캐시 → 자식 프로세스 → 포트 → 이 경로의 cmd 창 → 앱 제목의 브라우저 창). [업데이트] → `server/update.js` (fetch → 커밋 목록 → `pull --ff-only`, package.json 변경 시 install 안내). LAN 주소 → `server/lan.js`, `/api/info`. 설명서 → `사용설명서.html`을 `/manual`로 서빙. 기능이 바뀌면 설명서를 같이 고친다.
+[종료] → `server/shutdown.js` (캐시 → 자식 프로세스 → 포트 → 이 경로의 cmd 창 → 앱 전용 브라우저 창). 앱 창은 START.bat이 `PF_OPEN_BROWSER=1`로 서버를 띄우면 `server/browser.js`가 Edge/Chrome `--app` + 프로젝트 안 프로필(`.app-browser/`, git 제외)로 연다. 닫을 때는 명령줄에 프로젝트 경로가 있는 msedge/chrome만 골라 닫고, 그런 창이 없을 때만 창 제목으로 찾는다(평소 브라우저 보호). 방화벽은 install.bat [5/6]이 `PlaylistFactory TCP <port>` 규칙(개인 네트워크만)을 UAC로 추가. [업데이트] → `server/update.js` (fetch → 커밋 목록 → `pull --ff-only`, package.json 변경 시 install 안내). LAN 주소 → `server/lan.js`, `/api/info`. 설명서 → `사용설명서.html`을 `/manual`로 서빙. 기능이 바뀌면 설명서를 같이 고친다.
 
 ### 유튜브 업로드 (`server/youtubeUpload.js`)
 

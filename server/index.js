@@ -7,6 +7,7 @@ import { lanAddresses } from './lan.js';
 import { bus, createJob, getJob, removeJob, listJobs, summarize, loadPastJobs, log, hideFinishedJobs, unhideJobs } from './jobs.js';
 import { runJob, loadPresets, planTracks, DEFAULT_TOPICS } from './pipeline.js';
 import { shutdownSequence } from './shutdown.js';
+import { openAppWindow } from './browser.js';
 import { checkUpdate, applyUpdate } from './update.js';
 import { TrebloProvider } from './providers/treblo.js';
 import { LocalProvider } from './providers/local.js';
@@ -410,6 +411,8 @@ const server = app.listen(PORT, '0.0.0.0', () => {
   for (const l of lan) console.log(`  LAN:   ${l.url}  (${l.name})`);
   console.log(`  입력 폴더: ${DIRS.input}\n  출력 폴더: ${DIRS.output}`);
   console.log(`  종료: 화면 우측 상단 [종료] 버튼 또는 STOP.bat\n`);
+  // START.bat 이 PF_OPEN_BROWSER=1 로 실행하면 서버가 뜬 뒤 앱 전용 창을 연다 (npm start·테스트에서는 열지 않음)
+  if (process.env.PF_OPEN_BROWSER === '1') console.log(`  브라우저: ${openAppWindow(`http://localhost:${PORT}`)}\n`);
 });
 server.on('error', (e) => {
   if (e.code === 'EADDRINUSE') { console.error(`포트 ${PORT} 가 이미 사용 중입니다. STOP.bat 으로 이전 인스턴스를 종료하거나 config.json 의 port 를 바꾸세요.`); process.exit(1); }

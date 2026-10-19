@@ -43,9 +43,14 @@ export async function shutdownSequence({ port, log }) {
     const r2 = await psCount(`$root='${root}'.ToLower(); $k=0; Get-CimInstance Win32_Process | Where-Object { $_.Name -eq 'cmd.exe' -and $_.CommandLine -and $_.CommandLine.ToLower().Contains($root) } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue; $k++ }; $k`);
     add('명령 창 닫기', fmtCount(r2, '개 창'));
 
-    // 5. 브라우저 창 닫기: 창 제목에 앱 이름이 들어간 창만 (클라이언트가 먼저 새로고침·close 시도)
-    const r3 = await psCount(`$t='*${APP_TITLE}*'; $k=0; foreach($p in Get-Process | Where-Object { $_.MainWindowTitle -like $t -and $_.ProcessName -notin @('cmd','powershell','node') }){ $null = $p.CloseMainWindow(); $k++ }; $k`);
-    add('브라우저 창 닫기', fmtCount(r3, '개 창에 닫기 요청'));
+    // 5. 브라우저 창 닫기: START.bat 이 연 앱 전용 창(명령줄에 이 프로젝트의 .app-browser 프로필)만 닫는다.
+    //    정상 종료(CloseMainWindow) 후 남은 프로세스는 강제 종료. 사용자가 쓰는 브라우저는 건드리지 않는다.
+    const r3 = await psCount(`$root='${root}'.ToLower(); $ids = @(Get-CimInstance Win32_Process | Where-Object { $_.Name -in @('msedge.exe','chrome.exe') -and $_.CommandLine -and $_.CommandLine.ToLower().Contains($root) } | ForEach-Object { $_.ProcessId }); $k=-1; if($ids.Count){ $k=0; foreach($p in Get-Process -Id $ids -ErrorAction SilentlyContinue){ if($p.MainWindowHandle -ne 0){ $null = $p.CloseMainWindow(); $k++ } }; Start-Sleep -Milliseconds 1500; foreach($i in $ids){ Stop-Process -Id $i -Force -ErrorAction SilentlyContinue } }; $k`);
+    if (r3 === -1) {
+      // 앱 전용 창이 없음(Edge·Chrome 없음, 일반 탭으로 연 경우): 창 제목에 앱 이름이 있는 창만 닫는다. 그 창의 다른 탭도 함께 닫힐 수 있다
+      const r4 = await psCount(`$t='*${APP_TITLE}*'; $k=0; foreach($p in Get-Process | Where-Object { $_.MainWindowTitle -like $t -and $_.ProcessName -notin @('cmd','powershell','node') }){ $null = $p.CloseMainWindow(); $k++ }; $k`);
+      add('브라우저 창 닫기', `앱 전용 창 없음 → 제목 일치 창 ${fmtCount(r4, '개에 닫기 요청')}`);
+    } else add('브라우저 창 닫기', `앱 전용 창 ${fmtCount(r3, '개')}`);
   } else {
     add('포트/창 정리', 'Windows 전용 단계 건너뜀');
   }

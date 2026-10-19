@@ -54,7 +54,8 @@ echo  * 비상 종료(화면이 멈췄거나 창을 닫아 버린 경우): STOP.bat 실행
 echo  * 사용설명서: 화면 상단 [설명서] 버튼 또는 사용설명서.html
 echo.
 
-start "" /b cmd /c "timeout /t 2 /nobreak >nul & start "" http://localhost:%PORT%"
+rem 서버가 뜨면 서버가 앱 전용 창(Edge/Chrome --app, 별도 프로필)을 연다. [종료] 때 이 창만 닫혀 다른 브라우저 탭은 그대로 남는다
+set "PF_OPEN_BROWSER=1"
 node "%~dp0server\index.js"
 echo.
 echo 서버가 종료되었습니다.

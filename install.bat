@@ -20,7 +20,7 @@ if exist "%ProgramFiles%\nodejs\node.exe" set "PATH=%PATH%;%ProgramFiles%\nodejs
 if exist "%LocalAppData%\Microsoft\WinGet\Links" set "PATH=%PATH%;%LocalAppData%\Microsoft\WinGet\Links"
 for /d %%d in ("%LocalAppData%\Microsoft\WinGet\Packages\Gyan.FFmpeg_*") do for /d %%e in ("%%d\ffmpeg-*") do set "PATH=%PATH%;%%e\bin"
 
-echo [1/5] Node.js 확인 (앱 실행에 필수)...
+echo [1/6] Node.js 확인 (앱 실행에 필수)...
 where node >nul 2>&1
 if errorlevel 1 (
   echo   Node.js 가 설치되어 있지 않습니다. 이 앱은 Node.js 로 실행됩니다.
@@ -45,7 +45,7 @@ if errorlevel 1 (
 for /f "tokens=1" %%v in ('node -v') do echo   Node.js %%v 설치됨
 
 echo.
-echo [2/5] Node 패키지 설치 (express, MCP SDK)...
+echo [2/6] Node 패키지 설치 (express, MCP SDK)...
 call npm install --no-fund --no-audit
 if errorlevel 1 (
   echo [오류] npm install 실패. 인터넷 연결을 확인하고 install.bat 을 다시 실행하세요.
@@ -54,7 +54,7 @@ if errorlevel 1 (
 )
 
 echo.
-echo [3/5] Python 확인 (Pillow: 썸네일/배경 생성)...
+echo [3/6] Python 확인 (Pillow: 썸네일/배경 생성)...
 where python >nul 2>&1
 if errorlevel 1 (
   echo   Python 이 없습니다.
@@ -79,7 +79,7 @@ if errorlevel 1 (
 )
 
 echo.
-echo [4/5] ffmpeg 확인 (영상 렌더링에 필수)...
+echo [4/6] ffmpeg 확인 (영상 렌더링에 필수)...
 where ffmpeg >nul 2>&1
 if errorlevel 1 (
   echo   ffmpeg 가 없습니다.
@@ -101,7 +101,33 @@ if errorlevel 1 (
 )
 
 echo.
-echo [5/5] git 확인 (앱 화면의 [업데이트] 버튼이 GitHub 에서 새 버전을 받는 데 필요)...
+echo [5/6] Windows 방화벽 확인 (같은 네트워크의 다른 PC 에서 접속하는 데 필요)...
+set "FW_PORT=5177"
+for /f %%p in ('node -p "try{JSON.parse(require('fs').readFileSync('config.json','utf8')).port||5177}catch(e){5177}" 2^>nul') do set "FW_PORT=%%p"
+set "FW_NAME=PlaylistFactory TCP %FW_PORT%"
+netsh advfirewall firewall show rule name="%FW_NAME%" >nul 2>&1
+if not errorlevel 1 (
+  echo   방화벽 규칙 있음: %FW_NAME%
+  goto :fw_done
+)
+echo   포트 %FW_PORT% 을 개인 네트워크에서만 여는 방화벽 규칙을 추가합니다. 관리자 권한 창이 뜨면 [예]를 누르세요.
+powershell -NoProfile -NonInteractive -Command "try { $p = Start-Process netsh -Verb RunAs -Wait -PassThru -WindowStyle Hidden -ArgumentList 'advfirewall firewall add rule name=\"%FW_NAME%\" dir=in action=allow protocol=TCP localport=%FW_PORT% profile=private'; exit $p.ExitCode } catch { exit 1 }"
+if errorlevel 1 (
+  echo [경고] 방화벽 규칙을 추가하지 못했습니다. 이 PC 에서 쓰는 데는 지장이 없습니다.
+  echo        다른 PC 에서 접속하려면 install.bat 을 다시 실행해 관리자 권한 창에서 [예]를 누르세요.
+) else (
+  echo   방화벽 규칙 추가됨: %FW_NAME% ^(개인 네트워크만^)
+)
+:fw_done
+rem 공용 네트워크로 지정된 연결에서는 위 규칙이 적용되지 않는다 (카페·공용 Wi-Fi 에서 앱이 노출되지 않게)
+powershell -NoProfile -NonInteractive -Command "if (Get-NetConnectionProfile -ErrorAction SilentlyContinue | Where-Object { $_.NetworkCategory -eq 'Public' }) { exit 1 }" >nul 2>&1
+if errorlevel 1 (
+  echo   [안내] 현재 네트워크가 '공용'으로 지정되어 있어 다른 PC 에서 접속할 수 없습니다.
+  echo          집·사무실 네트워크라면 Windows 설정 ^> 네트워크 및 인터넷 ^> 속성에서 '개인'으로 바꾸세요.
+)
+
+echo.
+echo [6/6] git 확인 (앱 화면의 [업데이트] 버튼이 GitHub 에서 새 버전을 받는 데 필요)...
 set "REPO_URL=https://github.com/Kimjinsoo62/playlist-factory.git"
 where git >nul 2>&1
 if errorlevel 1 (

@@ -19,6 +19,9 @@ input/*
 assets/backgrounds/*/
 !assets/backgrounds/_rejected.txt
 
+# START.bat 이 여는 앱 전용 브라우저 창의 프로필
+.app-browser/
+
 # [간편하게 생성]이 각 PC에서 만든 일회용 프리셋 (⚡)
 presets/quick-*.json
 
