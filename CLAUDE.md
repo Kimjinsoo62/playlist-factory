@@ -47,6 +47,7 @@ python scripts/contact-sheet.py out.jpg     # 배경 풀 전체를 한 장으로
 |---|---|
 | `treblo` | 보컬·연주곡 모두. 단어별 정렬(`extractAlignment`)을 받아 박자 맞는 자막을 만든다. 태그는 `presets/_treblo-tags.txt` 사전으로 검증 |
 | `lyria` | **연주곡 전용**. 가사 타이밍을 주지 않아 서버가 보컬 요청을 거부한다 (index.js와 pipeline.js 양쪽에서 검사) |
+| `mureka` | 보컬·연주곡 모두 (공식 API, `api.mureka.ai`, Bearer). 보컬은 `/v1/lyrics/generate`로 가사를 먼저 만든 뒤 `/v1/song/generate`, 연주곡은 `/v1/instrumental/generate`(o2 미지원→auto). 요청마다 **`n: 1`**(기본 2, 곡 수만큼 과금). `choices[0].lyrics_sections`의 줄·단어 타이밍(**밀리초** → 초 변환, `extractTimings`)으로 자막. 줄 타이밍(`timedLines`)이 있으면 `timedLinesToSubs`가 단어 정렬보다 우선. `NN_generation.json`에는 Treblo와 같은 `word_aligned_lyrics` + `timed_lines`로 저장해 compile이 읽는다. 작업 시작 시 `/v1/account/billing`의 `concurrent_request_limit`로 동시 생성 수를 낮춘다. `baseUrl`을 바꿔 로컬 스텁(http)으로 테스트할 수 있다 |
 | `local` | `input/` 폴더의 오디오 파일(mp3·m4a·wav·flac·ogg·aac). 같은 이름의 `.txt` 또는 `.lrc`가 있으면 가사로 사용, 파일명 앞 번호("01 - 제목")는 제목에서 제거 |
 | `mock` | pipeline.js 안에 인라인(`ff.synthTrack`). `dryRun: true`와 같음 |
 | `compile` | 완료된 작업의 곡을 재료로 다시 조합(`server/library.js`). 파일은 복사하지 않고 원본 폴더에서 읽으며, 가사·정렬은 원본의 `NN_generation.json`에서. `crossfadeSeconds`가 있으면 `ff.concat`이 acrossfade로 겹쳐 잇고 오프셋을 `Σdur − i·F`로 계산 |
@@ -59,7 +60,7 @@ Claude·OpenAI·Gemini를 `chat()` 한 함수(system + user → JSON 텍스트)�
 
 ### 설정 (`server/config.js`)
 
-`DEFAULTS`에 `config.json`을 deepMerge하고 환경변수(`TREBLO_API_KEY`, `GEMINI_API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `PORT`)로 덮어쓴다. `saveConfig`는 **파일 내용**을 기준으로 병합한다. 환경변수로 들어온 키가 파일에 기록되지 않게 하려는 의도이므로 단순화하지 말 것. API 응답에는 항상 `maskConfig`를 거친다.
+`DEFAULTS`에 `config.json`을 deepMerge하고 환경변수(`TREBLO_API_KEY`, `GEMINI_API_KEY`, `MUREKA_API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `PORT`)로 덮어쓴다. `saveConfig`는 **파일 내용**을 기준으로 병합한다. 환경변수로 들어온 키가 파일에 기록되지 않게 하려는 의도이므로 단순화하지 말 것. API 응답에는 항상 `maskConfig`를 거친다.
 
 ### 프리셋 (`presets/*.json`)
 
@@ -91,7 +92,7 @@ Google OAuth(데스크톱 앱 클라이언트, `http://localhost:PORT/api/youtub
 
 ## 주의
 
-- **treblo·lyria 소스로 작업을 시작하면 실제 과금된다** (Treblo 곡당 100크레딧, Lyria 곡당 약 $0.08). 검증은 항상 `mock`(`dryRun`) 또는 `npm run test:mock`으로 한다. 활성 소스로 `POST /api/jobs`를 테스트 삼아 보내지 말 것.
+- **treblo·lyria·mureka 소스로 작업을 시작하면 실제 과금된다** (Treblo 곡당 100크레딧, Lyria 곡당 약 $0.08, Mureka 모델별 곡당 요금을 잔액에서 차감). 검증은 항상 `mock`(`dryRun`) 또는 `npm run test:mock`으로 한다. 활성 소스로 `POST /api/jobs`를 테스트 삼아 보내지 말 것.
 - **배치 파일은 CP949(ANSI) + CRLF**다 (`.gitattributes`). UTF-8로 다시 저장하면 cmd가 한글 줄 뒤 명령을 잘라먹는다. 읽을 때는 `iconv -f cp949 -t utf-8`, 고칠 때는 UTF-8로 편집한 뒤 `iconv -t cp949`로 되돌려 쓰거나 PowerShell에서 `-Encoding Default`로 저장한다.
 - `config.json`은 git 제외이며 실제 API 키가 들어 있다. 내용을 확인할 때는 `cat`하지 말고 `GET /api/config`(마스킹) 또는 키 필드를 제외하고 본다.
 - 이 셸에서 파이프로 받은 한글은 깨져 보일 수 있다. Python 출력은 `python -I -X utf8`로 확인한다. 깨짐은 표시 문제일 뿐 앱 버그가 아니다.

@@ -3,7 +3,7 @@ import { CONFIG_FILE } from './paths.js';
 
 const DEFAULTS = {
   port: 5177,
-  provider: 'treblo',            // 'treblo' | 'lyria' | 'local'
+  provider: 'treblo',            // 'treblo' | 'lyria' | 'mureka' | 'local'
   treblo: {
     apiKey: '',
     baseUrl: 'https://api.treblo.com/v1',
@@ -18,6 +18,13 @@ const DEFAULTS = {
     baseUrl: 'https://generativelanguage.googleapis.com/v1beta',
     model: 'lyria-3.5',            // 'lyria-3.5' | 'lyria-3-pro-preview' (둘 다 곡당 $0.08)
     concurrency: 2,
+    pollIntervalMs: 5000,
+  },
+  mureka: {
+    apiKey: '',                    // platform.mureka.ai/apiKeys 에서 발급. 보컬·연주곡 모두, 단어별 가사 타이밍 제공
+    baseUrl: 'https://api.mureka.ai',
+    model: 'auto',                 // 'auto' | 'mureka-9.5' | 'mureka-9' | 'mureka-8' | 'mureka-o2' | 'mureka-7.6' (auto = 최신 정규 모델)
+    concurrency: 1,                // 계정의 concurrent_request_limit(기본 티어 1)를 넘으면 작업 시작 시 자동으로 낮춘다
     pollIntervalMs: 5000,
   },
   render: {
@@ -89,6 +96,7 @@ export function loadConfig() {
   const cfg = fileConfig();
   if (process.env.TREBLO_API_KEY) cfg.treblo.apiKey = process.env.TREBLO_API_KEY;
   if (process.env.GEMINI_API_KEY) { cfg.lyria.apiKey = process.env.GEMINI_API_KEY; cfg.gemini.apiKey = process.env.GEMINI_API_KEY; }
+  if (process.env.MUREKA_API_KEY) cfg.mureka.apiKey = process.env.MUREKA_API_KEY;
   if (process.env.OPENAI_API_KEY) cfg.openai.apiKey = process.env.OPENAI_API_KEY;
   if (process.env.ANTHROPIC_API_KEY) cfg.anthropic.apiKey = process.env.ANTHROPIC_API_KEY;
   if (process.env.PORT) cfg.port = Number(process.env.PORT);
@@ -108,6 +116,8 @@ export function maskConfig(cfg) {
   c.hasApiKey = Boolean(cfg.treblo?.apiKey);
   if (c.lyria?.apiKey) c.lyria.apiKey = c.lyria.apiKey.slice(0, 4) + '****' + c.lyria.apiKey.slice(-4);
   c.hasLyriaKey = Boolean(cfg.lyria?.apiKey);
+  if (c.mureka?.apiKey) c.mureka.apiKey = c.mureka.apiKey.slice(0, 4) + '****' + c.mureka.apiKey.slice(-4);
+  c.hasMurekaKey = Boolean(cfg.mureka?.apiKey);
   if (c.images?.pexelsKey) c.images.pexelsKey = '****';
   c.hasAnthropicKey = Boolean(cfg.anthropic?.apiKey || process.env.ANTHROPIC_API_KEY);
   for (const id of ['anthropic', 'openai', 'gemini']) if (c[id]?.apiKey) c[id].apiKey = '****';

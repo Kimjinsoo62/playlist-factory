@@ -32,6 +32,8 @@ export function buildYoutubeMeta({ preset, tracks, total, request, cfg, photoCre
     hashtags, '',
     ...(request.provider === 'lyria'
       ? ['Music generated with Google Lyria (Gemini API, https://deepmind.google/models/lyria/)', '이 플레이리스트의 음악은 AI(Google Lyria)로 생성되었습니다.']
+      : request.provider === 'mureka'
+      ? ['Music generated with Mureka (https://www.mureka.ai)', '이 플레이리스트의 음악은 AI(Mureka)로 생성되었습니다.']
       : [cfg.youtube?.footer || 'Music generated with Treblo (https://treblo.com)', '이 플레이리스트의 음악은 AI(Treblo)로 생성되었습니다.']),
   ];
   const credits = photoCredits.length ? photoCredits : (photoCredit ? [photoCredit] : []);

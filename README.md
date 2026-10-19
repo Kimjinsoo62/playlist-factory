@@ -26,7 +26,7 @@ START.bat
 
 1. `install.bat`: Node 패키지(express, MCP SDK)와 Pillow를 설치하고 ffmpeg 유무를 확인한다.
 2. `START.bat`: 서버를 띄우고 브라우저를 연다. 의존성이 없으면 install.bat을 자동으로 호출한다. 콘솔에 LAN 주소가 표시되어 같은 네트워크의 다른 PC에서도 접속할 수 있다.
-3. 앱 상단 **[설정]** 버튼을 눌러 작곡 AI API 키 모달에서 Treblo API 키를 등록한다(Lyria 키도 같은 곳). 키는 https://treblo.com/developers 에서 발급하며 `config.json`에만 저장된다(git 제외). 모달에서 키 확인·삭제, 모델, 동시 생성 수를 관리한다. 키가 둘 다 있으면 **● 활성화 / ○ 대기** 버튼으로 하나만 활성으로 쓴다(활성 소스 = `config.provider`, 대기 소스는 소스 목록에서 선택 불가·작업 거부).
+3. 앱 상단 **[설정]** 버튼을 눌러 작곡 AI API 키 모달에서 Treblo API 키를 등록한다(Lyria·Mureka 키도 같은 곳). 키는 https://treblo.com/developers 에서 발급하며 `config.json`에만 저장된다(git 제외). 모달에서 키 확인·삭제, 모델, 동시 생성 수를 관리한다. 키가 둘 다 있으면 **● 활성화 / ○ 대기** 버튼으로 하나만 활성으로 쓴다(활성 소스 = `config.provider`, 대기 소스는 소스 목록에서 선택 불가·작업 거부).
 4. 소스를 "테스트(합성음)"로 두고 **▶ 자동 생성 시작**을 눌러 전체 과정을 먼저 확인한 뒤, "Treblo API"로 바꿔 실제 곡을 만든다.
 
 업데이트는 앱 상단 **[업데이트]** 버튼(git fetch → 승인 → git pull) 또는 `git pull`로 한다. package.json이 바뀌면 install.bat을 다시 실행한다.
@@ -39,7 +39,7 @@ START.bat
 - 비상 종료: `STOP.bat`
 - 설명서: `사용설명서.html` (앱 상단 [설명서] 버튼)
 - 음악 생성: [Treblo](https://treblo.com) (구 Sonauto) 공개 API. 곡당 100크레딧. *Powered by Treblo*
-- 음원 소스 4종: Treblo API 자동 생성 / Google Lyria 자동 생성(연주곡 전용) / `input/` 로컬 파일 / 테스트 합성음(크레딧 0)
+- 음원 소스 5종: Treblo API 자동 생성 / Google Lyria 자동 생성(연주곡 전용) / Mureka API 자동 생성(보컬·연주곡, 가사 타이밍) / `input/` 로컬 파일 / 테스트 합성음(크레딧 0)
 - 배경 사진 자동 수집: Wikimedia Commons(Unsplash 출처 CC0 우선, 키 불필요) / Openverse / Pexels(키). `assets/backgrounds/`에 풀로 저장, `_rejected.txt`로 제외 관리
   - 상업적 이용 가능 라이선스만(CC0·퍼블릭 도메인·CC BY·Pexels). NC/ND/SA·사용 제한 파일 제외, CC BY 출처는 유튜브 설명에 자동 기재
   - 메인 LLM 키가 있으면 작업마다 곡 제목·가사로 검색어를 기획하고 후보(풀 + 새 검색)를 분위기 기준으로 선별
@@ -55,12 +55,22 @@ START.bat
 - 프리셋 변환: Treblo용 `length_range`는 "Target length about N–M minutes", `negative_tags`는 "Avoid: …" 문장으로 프롬프트에 녹인다. `tags`·`style_scale`은 무시한다.
 - 모든 출력에 SynthID 워터마크(비가청)가 들어간다. Gemini API 약관은 생성물 소유권을 주장하지 않지만 유튜브 수익화·Content ID 안전성을 보장하지는 않으므로 업로드 전 약관을 확인한다. 유튜브 설명 푸터는 자동으로 "Music generated with Google Lyria"로 바뀐다.
 
+### Mureka API (보컬·연주곡 소스)
+
+[Mureka 공식 API](https://platform.mureka.ai/docs)를 쓰는 세 번째 생성 소스. 보컬곡·연주곡 모두 되고 줄·단어별 가사 타임스탬프를 주므로 Treblo처럼 박자에 맞는 자막이 나온다.
+
+- 키: [platform.mureka.ai/apiKeys](https://platform.mureka.ai/apiKeys)에서 발급(잔액 선결제). 상단 [설정] 모달의 Mureka 카드에 입력하거나 환경변수 `MUREKA_API_KEY`로 전달. [잔액 확인]은 `GET /v1/account/billing`(과금 없음).
+- 비용: 모델별 곡당 요금([요금표](https://platform.mureka.ai/pricing)). 요청마다 `n: 1`로 보내 곡 하나만 청구되게 한다(기본값 2). 기본 티어는 동시 요청 1개이며, 설정의 동시 생성 수가 계정 한도(`concurrent_request_limit`)를 넘으면 작업 시작 시 자동으로 낮춘다.
+- 흐름: 보컬곡은 `POST /v1/lyrics/generate`(프롬프트에 언어·주제 포함) → `POST /v1/song/generate {lyrics, model, prompt, n:1, gender}`, 연주곡은 `POST /v1/instrumental/generate`(o2 미지원 → auto). `/v1/{song|instrumental}/query/{id}`를 폴링해 `succeeded`가 되면 `choices[0].url`(mp3)을 내려받고 `lyrics_sections`의 줄·단어 타이밍(ms → 초)을 자막에 쓴다. 줄 타이밍이 있으면 단어 정렬보다 우선한다.
+- 프리셋 변환: `tags`는 "jazz, slow, female vocal" 식 스타일 프롬프트 앞부분, `negative_tags`는 "Avoid: …", `length_range`·`style_scale`은 무시(길이 제어 없음). 프롬프트 상한 1024자.
+- `tracks/NN_generation.json`에 `word_aligned_lyrics`(Treblo와 같은 필드명, 초)와 `timed_lines`를 저장해 조합(compile) 소스가 그대로 다시 쓴다. 유튜브 설명 푸터는 "Music generated with Mureka".
+
 ## 구조
 
 ```
 server/            Express 서버 (API, SSE 진행 상황, 종료·업데이트)
   pipeline.js      9단계 파이프라인
-  providers/       treblo.js (Treblo API), lyria.js (Google Lyria, 연주곡 전용), local.js (input 폴더)
+  providers/       treblo.js (Treblo API), lyria.js (Google Lyria, 연주곡 전용), mureka.js (Mureka API, 보컬·연주곡), local.js (input 폴더)
   media/           ffmpeg.js (정규화·결합·렌더링), subtitles.js (ASS)
   youtube.js       제목·설명·챕터
 mcp/server.js      MCP 서버 (Claude 연동)

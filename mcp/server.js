@@ -35,13 +35,13 @@ server.tool('plan_playlist', '플레이리스트를 만들기 전에 곡 수·�
   vocalGender: z.enum(['male', 'female']).optional(),
 }, async (args) => text(await api('/api/plan', { method: 'POST', body: args })));
 
-server.tool('create_playlist', '플레이리스트 영상 생성 작업을 시작한다. 곡 생성(Treblo API, 병렬) → 결합 → 가사 자막 → 썸네일 → 렌더링 → 유튜브 메타데이터까지 자동. 작업 id를 돌려주며 get_job 으로 진행 상황을 확인한다. provider=treblo 는 곡당 100크레딧, provider=lyria(Google Lyria, 연주곡 전용) 는 곡당 약 $0.08 이 든다.', {
+server.tool('create_playlist', '플레이리스트 영상 생성 작업을 시작한다. 곡 생성(Treblo API, 병렬) → 결합 → 가사 자막 → 썸네일 → 렌더링 → 유튜브 메타데이터까지 자동. 작업 id를 돌려주며 get_job 으로 진행 상황을 확인한다. provider=treblo 는 곡당 100크레딧, provider=lyria(Google Lyria, 연주곡 전용) 는 곡당 약 $0.08, provider=mureka(Mureka API, 보컬·연주곡·가사 타이밍) 는 모델별 곡당 요금이 잔액에서 차감된다.', {
   preset: z.string().describe('프리셋 id'),
   count: z.number().int().min(1).max(40).default(6).describe('곡 수'),
   language: z.enum(['ko', 'en', 'ja']).default('ko').describe('가사 언어'),
   instrumental: z.boolean().optional().describe('연주곡 여부(생략 시 프리셋 기본값)'),
   vocalGender: z.enum(['male', 'female']).optional().describe('보컬 성별. male=남성, female=여성 (생략 시 프리셋 기본값, 연주곡이면 무시)'),
-  provider: z.enum(['treblo', 'lyria', 'local', 'mock']).optional().describe('생략하면 설정에서 활성화한 작곡 AI 를 사용. treblo=Treblo API 자동 생성(보컬·연주곡), lyria=Google Lyria 자동 생성(연주곡 프리셋 전용, 가사 자막 불가; 설정에서 활성 상태여야 함), local=input 폴더의 파일 사용, mock=크레딧 없는 테스트'),
+  provider: z.enum(['treblo', 'lyria', 'mureka', 'local', 'mock']).optional().describe('생략하면 설정에서 활성화한 작곡 AI 를 사용. treblo=Treblo API 자동 생성(보컬·연주곡), lyria=Google Lyria 자동 생성(연주곡 프리셋 전용, 가사 자막 불가; 설정에서 활성 상태여야 함), mureka=Mureka API 자동 생성(보컬·연주곡, 가사 타이밍 자막; 설정에서 활성 상태여야 함), local=input 폴더의 파일 사용, mock=크레딧 없는 테스트'),
   title: z.string().optional().describe('유튜브 영상 제목(생략 시 자동)'),
   thumbnailStyle: z.enum(['night', 'warm', 'mono', 'neon', 'paper', 'forest', 'ocean']).optional(),
   thumbnailText: z.string().optional(),
@@ -62,7 +62,7 @@ server.tool('create_playlist_from_description', '[간편하게 생성] 프리셋
   count: z.number().int().min(1).max(40).default(6).describe('곡 수'),
   language: z.enum(['ko', 'en', 'ja']).default('ko').describe('가사 언어'),
   vocal: z.enum(['vocal', 'male', 'female', 'instrumental']).default('vocal').describe('vocal=보컬(성별 미지정), male=남성 보컬, female=여성 보컬, instrumental=연주곡'),
-  provider: z.enum(['treblo', 'lyria', 'mock']).optional().describe('생략하면 설정에서 활성화한 작곡 AI. lyria 는 vocal=instrumental 이어야 함. mock=크레딧 없는 테스트'),
+  provider: z.enum(['treblo', 'lyria', 'mureka', 'mock']).optional().describe('생략하면 설정에서 활성화한 작곡 AI. lyria 는 vocal=instrumental 이어야 함. mureka 는 보컬·연주곡 모두 가능. mock=크레딧 없는 테스트'),
   title: z.string().optional().describe('유튜브 영상 제목(생략 시 자동)'),
   subtitles: z.boolean().default(true),
   background: z.enum(['slideshow', 'photo', 'gradient', 'clock', 'weather']).default('slideshow'),
@@ -105,7 +105,11 @@ server.tool('get_youtube_text', '완료된 작업의 유튜브 제목·설명·�
   return text(await r.text());
 });
 
-server.tool('credits', 'Treblo 크레딧 잔액을 확인한다.', {}, async () => text(await api('/api/treblo/balance')));
+server.tool('credits', 'Treblo 크레딧 잔액을 확인한다. Mureka 잔액(달러)은 GET /api/mureka/balance 와 같은 내용을 함께 돌려준다(키가 있을 때).', {}, async () => {
+  const out = { treblo: await api('/api/treblo/balance').catch(e => ({ error: e.message })) };
+  out.mureka = await api('/api/mureka/balance').catch(e => ({ error: e.message }));
+  return text(out);
+});
 
 server.tool('upload_youtube', '완료된 작업의 영상(playlist.mp4)을 연결된 유튜브 채널에 업로드한다. 앱 화면에서 Google 계정이 먼저 연결돼 있어야 한다. 기본 비공개. 진행 상황·결과 링크는 get_job 의 youtube 필드로 확인한다. 업로드 1건 = API 할당량 1,600(하루 기본 10,000).', {
   jobId: z.string(),

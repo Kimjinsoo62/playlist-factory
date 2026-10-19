@@ -35,6 +35,7 @@
         <select name="provider" id="provider">
           <option value="treblo" data-label="Treblo API (자동 생성)">Treblo API (자동 생성)</option>
           <option value="lyria" data-label="Google Lyria (자동 생성 · 연주곡 전용 · 곡당 $0.08)">Google Lyria (자동 생성 · 연주곡 전용 · 곡당 $0.08)</option>
+          <option value="mureka" data-label="Mureka API (자동 생성 · 보컬·연주곡 · 가사 타이밍)">Mureka API (자동 생성 · 보컬·연주곡 · 가사 타이밍)</option>
           <option value="local">로컬 폴더 input/ (직접 만든 곡)</option>
           <option value="mock">테스트(합성음, 크레딧 0)</option>
         </select></div>
@@ -244,7 +245,7 @@
 <!-- 설정: 작곡 AI API 키 관리 모달 -->
 <div id="kmodal" class="modal" hidden>
   <div class="box km">
-    <div class="mhead"><b>설정 · API 키 (작곡 AI · 메인 LLM)</b><span class="dim">작곡 AI: Treblo · Lyria / 메인 LLM: Claude · OpenAI · Gemini</span><div class="grow"></div><button id="kmClose" class="btn small">닫기</button></div>
+    <div class="mhead"><b>설정 · API 키 (작곡 AI · 메인 LLM)</b><span class="dim">작곡 AI: Treblo · Lyria · Mureka / 메인 LLM: Claude · OpenAI · Gemini</span><div class="grow"></div><button id="kmClose" class="btn small">닫기</button></div>
     <div id="kmMsg" class="desc dim" style="margin:0 0 6px"></div>
     <div id="kmBody" class="mbody">
       <div class="kcard" data-p="treblo">
@@ -266,6 +267,16 @@
           <div><label>발급</label><a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey ↗</a></div>
         </div>
         <div class="actions"><button type="button" class="btn primary small" data-act="save">저장</button><button type="button" class="btn small" data-act="check">키 확인</button><button type="button" class="btn danger small" data-act="delete">키 삭제</button><span class="sep"></span><button type="button" class="btn small act" data-act="activate">● 활성화</button><button type="button" class="btn small" data-act="standby">○ 대기</button><span class="dim" data-r="msg"></span></div>
+      </div>
+      <div class="kcard" data-p="mureka">
+        <div class="khead"><b>Mureka API</b><span class="dim">보컬·연주곡 모두 · 줄·단어별 가사 타이밍 · 곡당 요금 모델별(잔액 선결제)</span><div class="grow"></div><span class="chip" data-r="active">–</span><span class="chip" data-r="status">–</span></div>
+        <div class="row"><label>API 키</label><input type="password" data-r="key" autocomplete="off" placeholder="platform.mureka.ai/apiKeys 에서 발급"><button type="button" class="btn small" data-act="toggle">보기</button></div>
+        <div class="row3">
+          <div><label>모델</label><select data-r="model"><option value="auto">auto (최신 정규 모델)</option><option value="mureka-9.5">mureka-9.5</option><option value="mureka-9">mureka-9</option><option value="mureka-8">mureka-8</option><option value="mureka-o2">mureka-o2 (추론형, 보컬 전용)</option><option value="mureka-7.6">mureka-7.6</option></select></div>
+          <div><label>동시 생성 수 <span class="dim">(계정 한도 초과 시 자동 조정)</span></label><input type="number" data-r="concurrency" min="1" max="25"></div>
+          <div><label>발급 · 요금</label><a href="https://platform.mureka.ai/apiKeys" target="_blank" rel="noopener">platform.mureka.ai ↗</a> <a href="https://platform.mureka.ai/pricing" target="_blank" rel="noopener" class="dim">요금표 ↗</a></div>
+        </div>
+        <div class="actions"><button type="button" class="btn primary small" data-act="save">저장</button><button type="button" class="btn small" data-act="check">잔액 확인</button><button type="button" class="btn danger small" data-act="delete">키 삭제</button><span class="sep"></span><button type="button" class="btn small act" data-act="activate">● 활성화</button><button type="button" class="btn small" data-act="standby">○ 대기</button><span class="dim" data-r="msg"></span></div>
       </div>
       <div class="ksec">메인 LLM — 셋 중 <b>하나만 메인</b>으로 씁니다. 용도: 한글 요청 → 영어 프롬프트 번역 · 새 장르(프리셋) 생성 · 배경 사진 기획·선별. 모델 id 는 자유 입력이며 <b>모델 목록</b> 버튼으로 확인할 수 있습니다.</div>
       <div class="kcard" data-p="anthropic" data-kind="llm">
@@ -299,7 +310,7 @@
         <div class="actions"><button type="button" class="btn primary small" data-act="save">저장</button><button type="button" class="btn small" data-act="check">키 확인</button><button type="button" class="btn small" data-act="models" title="이 키로 쓸 수 있는 모델 id 를 불러와 입력칸의 제안 목록에 넣습니다">모델 목록</button><button type="button" class="btn danger small" data-act="delete">키 삭제</button><span class="sep"></span><button type="button" class="btn small act" data-act="activate">● 메인으로</button><button type="button" class="btn small" data-act="standby">○ 대기</button><span class="dim" data-r="msg"></span></div>
       </div>
     </div>
-    <div class="dim" style="margin-top:4px"><b>활성/대기</b>: 작곡 AI 는 한 번에 하나만 활성입니다. 활성 소스가 새 작업의 기본 소스가 되고, 대기 소스는 소스 목록에서 선택할 수 없으며 작업 요청도 거부됩니다. 키는 이 PC의 <code>config.json</code>에만 저장됩니다(git 제외). 환경변수(<code>TREBLO_API_KEY</code>, <code>GEMINI_API_KEY</code>, <code>ANTHROPIC_API_KEY</code>, <code>OPENAI_API_KEY</code>)로 지정된 키는 여기서 지울 수 없습니다. 저장된 키는 앞뒤 4자만 표시됩니다.</div>
+    <div class="dim" style="margin-top:4px"><b>활성/대기</b>: 작곡 AI 는 한 번에 하나만 활성입니다. 활성 소스가 새 작업의 기본 소스가 되고, 대기 소스는 소스 목록에서 선택할 수 없으며 작업 요청도 거부됩니다. 키는 이 PC의 <code>config.json</code>에만 저장됩니다(git 제외). 환경변수(<code>TREBLO_API_KEY</code>, <code>GEMINI_API_KEY</code>, <code>MUREKA_API_KEY</code>, <code>ANTHROPIC_API_KEY</code>, <code>OPENAI_API_KEY</code>)로 지정된 키는 여기서 지울 수 없습니다. 저장된 키는 앞뒤 4자만 표시됩니다.</div>
   </div>
 </div>
 <!-- 프리셋 설명·편집 모달 -->
@@ -310,7 +321,7 @@
       <div class="row top"><label>곡 설명<br><span class="dim">한국어로 자유롭게</span></label><div class="grow"><textarea name="description" rows="6" placeholder="예: 비 오는 밤 창가에서 듣는 잔잔한 어쿠스틱 발라드. 통기타와 피아노, 느린 템포(70~80 BPM), 담담한 여성 보컬, 이별 뒤의 그리움을 노래. 후렴은 조금 올라가지만 전체적으로 차분하게."></textarea><div class="dim" style="margin-top:2px">⚠ 반드시 <b>음악 장르·악기·템포·보컬·분위기</b>를 적으세요. 풍경·감정만 쓰면 어떤 음악인지 AI가 알 수 없습니다. 이 글은 메인 LLM이 영어 프롬프트·태그·곡 주제로 바꿔 작곡 AI에 전달합니다.</div></div></div>
       <div class="row"><label>프리셋 이름(선택)</label><input name="name" maxlength="30" placeholder="비우면 설명의 첫 구절을 이름으로 씁니다"></div>
       <div class="row3">
-        <div><label>소스</label><select name="provider"><option value="treblo" data-label="Treblo API">Treblo API</option><option value="lyria" data-label="Google Lyria (연주곡 전용)">Google Lyria (연주곡 전용)</option><option value="mock">테스트(합성음, 크레딧 0)</option></select></div>
+        <div><label>소스</label><select name="provider"><option value="treblo" data-label="Treblo API">Treblo API</option><option value="lyria" data-label="Google Lyria (연주곡 전용)">Google Lyria (연주곡 전용)</option><option value="mureka" data-label="Mureka API">Mureka API</option><option value="mock">테스트(합성음, 크레딧 0)</option></select></div>
         <div><label>곡 수</label><input type="number" name="count" min="1" max="40" value="6"></div>
         <div><label>가사 언어</label><select name="language"><option value="ko">한국어</option><option value="en">English</option><option value="ja">日本語</option></select></div>
       </div>

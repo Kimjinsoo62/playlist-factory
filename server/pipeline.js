@@ -6,8 +6,9 @@ import { log, setStep, setStepProgress, finish, fail, persist } from './jobs.js'
 import { TrebloProvider, extractAlignment } from './providers/treblo.js';
 import { LocalProvider } from './providers/local.js';
 import { LyriaProvider, extractText, stripAudio } from './providers/lyria.js';
+import { MurekaProvider, extractTimings } from './providers/mureka.js';
 import * as ff from './media/ffmpeg.js';
-import { buildAss, lyricLines, alignLinesToWords, distributeLines } from './media/subtitles.js';
+import { buildAss, lyricLines, alignLinesToWords, distributeLines, timedLinesToSubs } from './media/subtitles.js';
 import { buildYoutubeMeta, trackCount } from './youtube.js';
 import { findBackground, collectBackgrounds } from './images.js';
 import { clockLayout, clockFilters, clockEpoch, clockLabel } from './media/clock.js';
@@ -172,7 +173,7 @@ export async function runJob(job, cfg) {
     persist(job);
 
     // 2. 생성/수집
-    setStep(job, 2, providerName === 'treblo' ? '곡 생성(Treblo API, 병렬)' : providerName === 'lyria' ? '곡 생성(Google Lyria, 병렬)' : providerName === 'local' ? '로컬 트랙 수집' : providerName === 'compile' ? '보관 곡 모으기' : '테스트 트랙 합성');
+    setStep(job, 2, providerName === 'treblo' ? '곡 생성(Treblo API, 병렬)' : providerName === 'lyria' ? '곡 생성(Google Lyria, 병렬)' : providerName === 'mureka' ? '곡 생성(Mureka API, 병렬)' : providerName === 'local' ? '로컬 트랙 수집' : providerName === 'compile' ? '보관 곡 모으기' : '테스트 트랙 합성');
     let done = 0;
     const bump = (msg) => { done++; setStepProgress(job, (done / specs.length) * 100, msg); };
     let collected;
@@ -254,12 +255,57 @@ export async function runJob(job, cfg) {
         }
       });
       } finally { clearInterval(cancelTick); }
+    } else if (providerName === 'mureka') {
+      // Mureka: 보컬곡은 가사 생성 API 로 가사를 먼저 만들고(언어·주제 지시는 프롬프트에 포함) 곡을 생성, 줄·단어별 타임스탬프로 자막을 맞춘다
+      const mp = new MurekaProvider(cfg.mureka);
+      mp.onWarn = (m) => log(job, m, 'warn');
+      let limit = cfg.mureka.concurrency || 1;
+      try {
+        const b = await mp.billing();
+        log(job, `Mureka 잔액 $${b.balanceUsd.toFixed(2)} · 동시 요청 한도 ${b.concurrentLimit} · 모델 ${mp.model} (곡당 요금은 모델별, 생성한 곡 수만큼 청구)`);
+        if (b.concurrentLimit && limit > b.concurrentLimit) { log(job, `동시 생성 수 ${limit} → 계정 한도 ${b.concurrentLimit}로 낮춤`, 'warn'); limit = b.concurrentLimit; }
+        if (b.balance <= 0) throw Object.assign(new Error(`Mureka 잔액이 없습니다 ($${b.balanceUsd.toFixed(2)}). platform.mureka.ai 에서 충전하세요.`), { fatal: true });
+      } catch (e) { if (e.fatal || [400, 401, 403].includes(e.status)) throw new Error(e.fatal ? e.message : `Mureka API 연결 실패: ${e.message}`); log(job, `Mureka 잔액 조회 실패(계속 진행): ${e.message}`, 'warn'); }
+      const ac = new AbortController();
+      const cancelTick = setInterval(() => { if (job.cancelRequested) ac.abort(); }, 1000);
+      try {
+      collected = await runPool(specs, limit, async (spec) => {
+        check();
+        const t = job.tracks[spec.index - 1];
+        for (let attempt = 1; attempt <= 2; attempt++) {
+          try {
+            t.status = 'generating'; persist(job);
+            const started = await mp.startGeneration(spec, { gender, signal: ac.signal });
+            t.taskId = started.id;
+            log(job, `#${spec.index} 생성 요청 → ${started.id} (${spec.title}${started.lyrics ? `, 가사 ${started.lyrics.length}자` : ''})`);
+            let lastStatus = '';
+            const { choice, task } = await mp.waitFor(started, {
+              shouldCancel: () => job.cancelRequested, signal: ac.signal,
+              onStatus: (s) => { if (s !== lastStatus) { lastStatus = s; t.remote = s; setStepProgress(job, (done / specs.length) * 100, `#${spec.index} ${s}`); } },
+            });
+            const file = await mp.download(choice, path.join(tracksDir, pad(spec.index)), { signal: ac.signal });
+            const timing = instrumental ? null : extractTimings(choice);
+            // 자막은 Mureka 가 실제로 부른 줄 텍스트·타이밍을 그대로 쓴다. 타이밍이 없으면 보낸 가사를 균등 배분
+            const lyrics = instrumental ? '' : (timing?.lyrics || started.lyrics);
+            if (!instrumental) log(job, timing ? `#${spec.index} 가사 타임스탬프 수신 (${timing.lines.length}줄${timing.words ? `, ${timing.words.length}단어` : ''})` : `#${spec.index} 가사 타임스탬프 없음 → 균등 배분 자막 사용`, timing ? 'info' : 'warn');
+            // 조합(compile) 소스가 다시 읽을 수 있도록 Treblo 와 같은 필드명(word_aligned_lyrics, 초 단위)으로 저장
+            fs.writeFileSync(path.join(tracksDir, `${pad(spec.index)}_generation.json`), JSON.stringify({ provider: 'mureka', model: started.model, prompt: started.prompt, lyrics, word_aligned_lyrics: timing?.words || null, timed_lines: timing?.lines || null, task: { ...task, choices: (task.choices || []).map(c => ({ ...c, lyrics_sections: undefined })) }, choice }, null, 2), 'utf8');
+            t.status = 'done'; t.file = file; persist(job);
+            bump(`#${spec.index} 완료`);
+            return { ...spec, file, lyrics, words: timing?.words || null, timedLines: timing?.lines || null };
+          } catch (e) {
+            if (job.cancelRequested || attempt === 2 || /취소됨/.test(e.message)) { t.status = 'failed'; t.error = e.message; persist(job); throw e; }
+            log(job, `#${spec.index} 실패, 재시도: ${e.message}`, 'warn');
+          }
+        }
+      });
+      } finally { clearInterval(cancelTick); }
     } else if (providerName === 'compile') {
       // 보관 곡 조합: 완료된 작업의 곡 파일을 그대로 재료로 쓴다 (복사하지 않음). 가사·정렬은 원본 작업 폴더에서 읽는다
       const { resolveTracks, loadLyrics } = await import('./library.js');
       const items = resolveTracks(req.tracks);
       job.tracks = items.map((it, i) => ({ index: i + 1, title: it.track.title, status: 'done', file: it.file, source: `${it.job.id} #${it.index}` }));
-      collected = items.map((it, i) => { const ly = instrumental ? { lyrics: '', words: null } : loadLyrics(it.job, it.index, it.file); return { index: i + 1, title: it.track.title, file: it.file, instrumental, lyrics: ly.lyrics, words: ly.words }; });
+      collected = items.map((it, i) => { const ly = instrumental ? { lyrics: '', words: null } : loadLyrics(it.job, it.index, it.file); return { index: i + 1, title: it.track.title, file: it.file, instrumental, lyrics: ly.lyrics, words: ly.words, timedLines: ly.timedLines || null }; });
       for (const c of collected) { log(job, `#${c.index} ${c.title} ← ${job.tracks[c.index - 1].source}${c.words ? ' (가사 정렬)' : c.lyrics ? ' (가사, 균등 배분)' : ''}`); bump(); }
     } else if (providerName === 'local') {
       const lp = new LocalProvider(DIRS.input);
@@ -311,7 +357,7 @@ export async function runJob(job, cfg) {
       let lines = [];
       if (subsOn) {
         const ll = lyricLines(c.lyrics);
-        lines = c.words ? alignLinesToWords(ll, c.words) : distributeLines(ll, c.duration);
+        lines = c.timedLines?.length ? timedLinesToSubs(c.timedLines) : c.words ? alignLinesToWords(ll, c.words) : distributeLines(ll, c.duration);   // 줄 타이밍(Mureka) > 단어 정렬(Treblo) > 균등 배분
       }
       return { index: c.index, title: c.title, offset: c.offset, duration: c.duration, lines };
     });

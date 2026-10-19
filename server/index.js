@@ -12,6 +12,7 @@ import { checkUpdate, applyUpdate } from './update.js';
 import { TrebloProvider } from './providers/treblo.js';
 import { LocalProvider } from './providers/local.js';
 import { LyriaProvider, LYRIA_USD_PER_SONG, LYRIA_MODELS } from './providers/lyria.js';
+import { MurekaProvider, MUREKA_MODELS } from './providers/mureka.js';
 import { LLM_PROVIDERS, llmProvider, llmKey, checkLlmKey, listLlmModels, describeError as describeLlmError } from './llm.js';
 import * as yt from './youtubeUpload.js';
 
@@ -182,6 +183,7 @@ app.use('/assets', express.static(DIRS.assets));
 const KEY_PROVIDERS = {
   treblo: { kind: 'music', label: 'Treblo', env: 'TREBLO_API_KEY', pattern: /^[\x21-\x7E]{8,300}$/, models: ['v3', 'v2'], maxConc: 10, hint: 'treblo.com/developers 에서 발급한 키만 붙여 넣으세요.' },
   lyria: { kind: 'music', label: 'Lyria(Gemini)', env: 'GEMINI_API_KEY', pattern: /^[\x21-\x7E]{20,300}$/, models: LYRIA_MODELS, maxConc: 6, hint: 'aistudio.google.com 에서 발급한 AIza… 형태의 키만 붙여 넣으세요.' },
+  mureka: { kind: 'music', label: 'Mureka', env: 'MUREKA_API_KEY', pattern: /^[\x21-\x7E]{16,300}$/, models: MUREKA_MODELS, maxConc: 25, hint: 'platform.mureka.ai/apiKeys 에서 발급한 키만 붙여 넣으세요.' },
   ...Object.fromEntries(Object.entries(LLM_PROVIDERS).map(([id, m]) => [id, { kind: 'llm', label: m.label, env: m.env, pattern: /^[\x21-\x7E]{20,300}$/, models: null, maxConc: 0, hint: `${m.site} 에서 발급한 ${m.keyHint} 형태의 키만 붙여 넣으세요.` }])),
 };
 const isMusic = (id) => KEY_PROVIDERS[id]?.kind === 'music';
@@ -254,6 +256,7 @@ app.get('/api/keys/:provider/check', async (req, res) => {
   try {
     if (id === 'treblo') { const b = await new TrebloProvider(cfg.treblo).balance(); return res.json({ ok: true, summary: `크레딧 구독 ${(b.num_credits || 0).toLocaleString()} + 종량제 ${(b.num_credits_payg || 0).toLocaleString()} (곡당 100)`, balance: b }); }
     if (id === 'lyria') { const r = await new LyriaProvider(cfg.lyria).check(); return res.json({ ok: true, summary: `연결 정상: ${r.model}${r.displayName ? ' (' + r.displayName + ')' : ''}`, ...r }); }
+    if (id === 'mureka') { const b = await new MurekaProvider(cfg.mureka).billing(); return res.json({ ok: true, summary: `잔액 $${b.balanceUsd.toFixed(2)} · 동시 요청 한도 ${b.concurrentLimit}${cfg.mureka.concurrency > b.concurrentLimit && b.concurrentLimit ? ` (동시 생성 수 ${cfg.mureka.concurrency} → 작업 시 ${b.concurrentLimit}로 제한됨)` : ''}`, ...b }); }
     if (isLlm(id)) { try { const r = await checkLlmKey(cfg, id); return res.json({ ok: true, summary: `연결 정상: ${r.model}${r.displayName ? ' (' + r.displayName + ')' : ''}`, ...r }); } catch (e) { return res.status(400).json({ error: describeLlmError(e, id) }); } }
     res.status(404).json({ error: '알 수 없는 소스' });
   } catch (e) { res.status(400).json({ error: e.message }); }
@@ -266,6 +269,10 @@ app.get('/api/keys/:provider/models', async (req, res) => {
 });
 app.get('/api/treblo/balance', async (req, res) => {
   try { const tp = new TrebloProvider(loadConfig().treblo); res.json(await tp.balance()); }
+  catch (e) { res.status(400).json({ error: e.message }); }
+});
+app.get('/api/mureka/balance', async (req, res) => {
+  try { res.json(await new MurekaProvider(loadConfig().mureka).billing()); }
   catch (e) { res.status(400).json({ error: e.message }); }
 });
 app.get('/api/lyria/check', async (req, res) => {
@@ -323,6 +330,7 @@ app.post('/api/jobs', async (req, res) => {
   }
   if (isMusic(provider) && activeProvider(cfg) !== provider) return res.status(400).json({ error: `${KEY_PROVIDERS[provider].label} 소스는 대기 상태입니다. 상단 [설정]에서 활성화한 뒤 사용하세요. (현재 활성: ${KEY_PROVIDERS[activeProvider(cfg)].label})` });
   if (provider === 'treblo' && !cfg.treblo.apiKey) return res.status(400).json({ error: 'Treblo API 키가 없습니다. 설정에서 입력하거나 소스를 "로컬 폴더"로 바꾸세요.' });
+  if (provider === 'mureka' && !cfg.mureka.apiKey) return res.status(400).json({ error: 'Mureka API 키가 없습니다. 설정에서 입력하세요.' });
   if (provider === 'lyria') {
     if (!cfg.lyria.apiKey) return res.status(400).json({ error: 'Lyria(Gemini) API 키가 없습니다. 설정에서 입력하세요.' });
     const p = loadPresets().find(x => x.id === body.preset);

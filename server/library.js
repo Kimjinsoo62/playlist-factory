@@ -64,7 +64,8 @@ export function loadLyrics(job, index, file) {
     try {
       const g = JSON.parse(fs.readFileSync(gen, 'utf8'));
       if (g.provider === 'lyria') return { lyrics: '', words: null };
-      return { lyrics: g.lyrics || '', words: extractAlignment(g) };
+      // Mureka: 줄 타이밍(timed_lines)을 우선 쓰고, 단어 정렬은 Treblo 와 같은 필드(word_aligned_lyrics)에 저장돼 있어 extractAlignment 로 읽힌다
+      return { lyrics: g.lyrics || '', words: extractAlignment(g), timedLines: Array.isArray(g.timed_lines) && g.timed_lines.length ? g.timed_lines : null };
     } catch { /* 아래 폴백 */ }
   }
   // lyrics.txt 의 "## NN. 제목" 구간 (mock·정렬 없는 경우)

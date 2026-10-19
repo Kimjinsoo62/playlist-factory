@@ -42,6 +42,18 @@ export function alignLinesToWords(lines, words) {
   return out;
 }
 
+/** 줄 단위 타이밍이 이미 있을 때(Mureka lyrics_sections): 겹침 방지·최소 표시 시간만 적용. lines: [{text,start,end}] (초) */
+export function timedLinesToSubs(lines) {
+  const out = lines.filter(l => l && l.text && Number.isFinite(l.start) && Number.isFinite(l.end)).sort((a, b) => a.start - b.start).map(l => ({ text: l.text, start: l.start, end: Math.max(l.end, l.start) }));
+  for (let i = 0; i < out.length; i++) {
+    const next = out[i + 1];
+    let end = Math.max(out[i].end, out[i].start + 0.8);
+    if (next) end = Math.min(end, next.start - 0.05);
+    out[i].end = Math.max(end, out[i].start + 0.3);
+  }
+  return out;
+}
+
 /** 타이밍 정보가 없을 때: 가사 줄을 곡의 10%~95% 구간에 균등 분배 */
 export function distributeLines(lines, duration) {
   if (!lines.length) return [];
