@@ -65,7 +65,7 @@ Claude·OpenAI·Gemini를 `chat()` 한 함수(system + user → JSON 텍스트)�
 
 ### 프리셋 (`presets/*.json`)
 
-허용 필드는 index.js의 `PRESET_FIELDS`. id는 `^[a-z0-9][a-z0-9-]{1,40}$`, `negative_tags`/`tags`는 Treblo 태그 사전에 있어야 하고, `length_range`는 30의 배수 두 개. `topics`는 언어별(ko/en/ja) 배열이며, en/ja에 한글 주제만 있으면 `DEFAULT_TOPICS`로 대체된다. 새 프리셋 저장 시 영어 프롬프트가 비어 있으면 메인 LLM이 자동 생성한다.
+허용 필드는 index.js의 `PRESET_FIELDS`. `backgroundMix`(`photo`|`video`|`mixed`)는 그 프리셋의 슬라이드쇼 구성 기본값으로 `config.videos.mix`보다 우선한다(요청 `bgOptions.mix`가 최우선). Treblo가 `length_range`를 422로 거부하면 treblo.js가 180~240초로 줄여 재시도한다. id는 `^[a-z0-9][a-z0-9-]{1,40}$`, `negative_tags`/`tags`는 Treblo 태그 사전에 있어야 하고, `length_range`는 30의 배수 두 개. `topics`는 언어별(ko/en/ja) 배열이며, en/ja에 한글 주제만 있으면 `DEFAULT_TOPICS`로 대체된다. 새 프리셋 저장 시 영어 프롬프트가 비어 있으면 메인 LLM이 자동 생성한다.
 
 ### 배경 사진 (`server/images.js`)
 

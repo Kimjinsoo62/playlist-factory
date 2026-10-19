@@ -12,3 +12,4 @@ cm61889960  # rain-sounds 2026-10-19
 cm61738117  # rain-sounds 2026-10-19
 cm61895379  # rain-sounds 2026-10-19
 cm61742317  # rain-sounds 2026-10-19
+px:5422901  # campfire 2026-10-19

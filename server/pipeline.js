@@ -414,8 +414,10 @@ export async function runJob(job, cfg) {
       const want = Math.max(2, Math.min(30, Number(req.slideCount) || cfg.images?.slideCount || 8));
       // 사진 수가 많아도 영상 길이보다 길 필요는 없음: 10초 × 장수 ≤ 총 길이 + 여유
       const need = Math.max(2, Math.min(want, Math.ceil(total / (cfg.images?.slideSeconds || 10)) + 1));
-      // 구성: 사진만 / 영상만 / 섞기 ([배경] 설정 모달 → config.videos.mix, 요청의 bgOptions.mix 가 있으면 우선)
-      const mix = ['photo', 'video', 'mixed'].includes(req.bgOptions?.mix) ? req.bgOptions.mix : (cfg.videos?.mix || 'photo');
+      // 구성: 사진만 / 영상만 / 섞기. 우선순위: 요청 bgOptions.mix > 프리셋 backgroundMix(불멍처럼 영상이 본질인 프리셋) > [배경] 설정 모달(config.videos.mix)
+      const MIXES = ['photo', 'video', 'mixed'];
+      const mix = MIXES.includes(req.bgOptions?.mix) ? req.bgOptions.mix : MIXES.includes(preset.backgroundMix) ? preset.backgroundMix : (cfg.videos?.mix || 'photo');
+      if (MIXES.includes(preset.backgroundMix) && !MIXES.includes(req.bgOptions?.mix)) log(job, `프리셋 기본 배경 구성: ${mix === 'video' ? '영상만' : mix === 'mixed' ? '사진·영상 섞기' : '사진만'}`);
       if (mix !== 'photo') {
         const vneed = mix === 'video' ? need : Math.ceil(need / 2);
         clips = await collectVideos({ presetId: preset.id, queries: preset.imageQueries, cfg, log: imgLog, count: vneed, maxFetch: providerName === 'mock' ? 0 : (cfg.videos?.maxFetchPerJob ?? 2), allowFetch: providerName !== 'mock', plan: bgPlan, rank: bgRank });

@@ -1,0 +1,116 @@
+{
+  "id": "campfire",
+  "name": "불멍 (연주곡)",
+  "description": "모닥불 앞에서 멍하니 쉬는 불멍. 장작 타는 소리 중심의 5분 안팎 트랙(불붙임 → 활활 → 잔불로 변화), 배경은 모닥불 영상이 10초마다 바뀌는 슬라이드쇼(영상 소스 키 필요).",
+  "instrumental": true,
+  "backgroundMix": "video",
+  "prompt": "Realistic campfire soundscape, a field recording of burning firewood with no melody, no drums and no singing. The fire itself is the main sound: continuous crackling and popping of dry logs, soft hiss and sizzle of sap, small sparks snapping, a low steady roar of flames, occasional louder pops and a log shifting or collapsing into embers, with a gentle night-time outdoor ambience far in the background (light wind, distant crickets). The sound evolves slowly over the track like a real fire: kindling catching and crackling busily, a full blazing stretch, then settling down into quieter glowing embers with sparse pops, without any sudden loud moments. At most a faint, barely audible warm ambient pad far in the background. Cozy, warm and hypnotic, for relaxing, sleep and meditation. Instrumental only, no vocals.",
+  "tags": [
+    "field recording",
+    "nature",
+    "soundscape",
+    "ambient",
+    "environmental",
+    "warm",
+    "soothing",
+    "sleep"
+  ],
+  "negative_tags": [
+    "drums",
+    "percussion",
+    "vocal",
+    "melodic",
+    "upbeat",
+    "energetic",
+    "loud",
+    "aggressive",
+    "edm",
+    "trap",
+    "heavy metal",
+    "dubstep"
+  ],
+  "length_range": [
+    240,
+    300
+  ],
+  "thumbnailStyle": "warm",
+  "topics": {
+    "ko": [
+      "깊은 밤 모닥불",
+      "장작에 불붙이는 저녁",
+      "활활 타오르는 캠프파이어",
+      "타닥타닥 잔불",
+      "별 아래 모닥불",
+      "강가의 불멍",
+      "벽난로 앞에서",
+      "눈 오는 밤 캠프파이어",
+      "바람 부는 밤의 불꽃",
+      "붉게 남은 숯불",
+      "마지막 장작 한 개",
+      "새벽까지 남은 불씨"
+    ],
+    "en": [
+      "Campfire deep in the night, steady crackling",
+      "Lighting the kindling at dusk, fire catching and growing",
+      "A full blazing campfire, roaring and popping",
+      "Small crackling remains of a fire, soft pops",
+      "Campfire under the stars with light wind",
+      "Campfire by a river, water in the distance",
+      "Logs burning in a fireplace, close and warm",
+      "Campfire on a snowy night, hissing and crackling",
+      "Flames in a windy night, flaring and settling",
+      "Red glowing embers, slow and quiet",
+      "The last log on the fire, collapsing into embers",
+      "Embers lasting until dawn, sparse pops"
+    ],
+    "ja": [
+      "深夜の焚き火",
+      "夕暮れに薪へ火をつける",
+      "燃え盛るキャンプファイヤー",
+      "パチパチと残る火",
+      "星空の下の焚き火",
+      "川辺の焚き火",
+      "暖炉の前で",
+      "雪の夜のキャンプファイヤー",
+      "風の夜の炎",
+      "赤く残る熾火",
+      "最後の薪一本",
+      "夜明けまで残る火種"
+    ]
+  },
+  "titleTemplate": {
+    "ko": "[Playlist] 불멍 🔥 장작 타는 소리 {n}가지 · {dur}",
+    "en": "[Playlist] Campfire Crackling Sounds 🔥 {n} kinds · {dur}",
+    "ja": "[Playlist] 焚き火の音 🔥 {n}種類 · {dur}"
+  },
+  "youtubeIntro": {
+    "ko": "모닥불 영상과 장작 타는 소리로 불멍하세요. 불이 붙고, 활활 타오르고, 잔불로 가라앉는 흐름을 따라 소리도 천천히 변합니다. 작은 볼륨으로 틀어 두면 잠들기에도 좋습니다.",
+    "en": "Relax with campfire footage and the sound of crackling firewood. The sound slowly changes with the fire — catching, blazing, settling into embers. Play it softly for sleep too.",
+    "ja": "焚き火の映像と薪の燃える音でぼんやり過ごしましょう。火がつき、燃え盛り、熾火へと落ち着く流れに合わせて音もゆっくり変わります。小さな音量で眠りのお供にも。"
+  },
+  "hashtags": [
+    "#불멍",
+    "#campfire",
+    "#firesounds",
+    "#asmr",
+    "#playlist"
+  ],
+  "keywords": [
+    "불멍",
+    "campfire sounds",
+    "장작 타는 소리",
+    "crackling fire",
+    "모닥불 소리",
+    "fireplace sounds for sleep"
+  ],
+  "imageQueries": [
+    "campfire flames close up night",
+    "bonfire burning logs",
+    "fireplace burning wood",
+    "glowing embers campfire",
+    "fire pit night camping",
+    "crackling fire logs"
+  ],
+  "koDescription": "실제 장작불 같은 자연 소리 중심의 사운드스케이프. 멜로디·드럼·노래 없이 마른 장작이 타닥타닥 타고 터지는 소리, 수액이 치익 끓는 소리, 작은 불꽃이 튀는 소리, 낮게 이어지는 불길 소리, 가끔 장작이 무너져 숯불로 내려앉는 소리, 저 멀리 밤 야외의 주변음(가벼운 바람, 먼 풀벌레). 실제 불처럼 트랙 안에서 천천히 변한다: 불쏘시개에 불이 붙어 바쁘게 타닥거리다가, 활활 타는 구간을 지나, 조용히 빛나는 숯불로 가라앉아 드문드문 터진다. 갑작스러운 큰 소리는 없음. 기껏해야 거의 안 들리는 따뜻한 앰비언트 패드 정도. 아늑하고 따뜻하며 최면적인, 휴식·수면·명상용. 보컬 없음. 곡마다 주제(불붙임, 활활, 잔불, 눈 오는 밤, 벽난로 등)에 맞는 단계의 불소리를 만든다.",
+  "useKoDescription": false
+}

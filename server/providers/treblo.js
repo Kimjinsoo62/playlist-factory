@@ -86,6 +86,12 @@ export class TrebloProvider {
         if (!data?.task_id) throw new Error(`task_id 없음: ${JSON.stringify(data)}`);
         return data.task_id;
       } catch (e) {
+        // 422 에 length_range 가 언급되면(허용 범위 초과) 4분 이내로 줄여 재시도 — 불멍처럼 5분을 요청하는 프리셋 대비
+        if (/HTTP 422/.test(e.message) && /length_range|length/i.test(e.message) && body.length_range && body.length_range[1] > 240) {
+          this.onWarn?.(`API가 길이 ${body.length_range.join('~')}초를 거부해 180~240초로 줄여 재시도: ${e.message.slice(0, 120)}`);
+          body.length_range = [180, 240];
+          continue;
+        }
         // 422 "Invalid tags: a, b" → 해당 태그만 빼고 재시도, 그래도 안 되면 태그 필드 자체를 제거
         const m = /Invalid tags?:\s*([^"}\]]+)/i.exec(e.message);
         if (!/HTTP 422/.test(e.message) || !(body.tags || body.negative_tags)) throw e;

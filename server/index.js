@@ -43,7 +43,7 @@ app.get('/api/info', (req, res) => {
   res.json({ title: APP_TITLE, port: PORT, pid: process.pid, lan: lanAddresses(PORT), root: DIRS.root, inputDir: DIRS.input, outputDir: DIRS.output, version: JSON.parse(fs.readFileSync(path.join(DIRS.root, 'package.json'), 'utf8')).version });
 });
 app.get('/api/presets', (req, res) => res.json(loadPresets()));
-const PRESET_FIELDS = ['name', 'description', 'koDescription', 'useKoDescription', 'prompt', 'instrumental', 'vocalGender', 'topics', 'negative_tags', 'tags', 'length_range', 'thumbnailStyle', 'imageQueries', 'titleTemplate', 'youtubeIntro', 'hashtags', 'keywords'];
+const PRESET_FIELDS = ['name', 'description', 'koDescription', 'useKoDescription', 'prompt', 'instrumental', 'vocalGender', 'topics', 'negative_tags', 'tags', 'length_range', 'thumbnailStyle', 'imageQueries', 'titleTemplate', 'youtubeIntro', 'hashtags', 'keywords', 'backgroundMix'];   // backgroundMix: 'photo'|'video'|'mixed' — 슬라이드쇼 구성 기본값(설정 모달 값보다 우선, 요청의 bgOptions.mix 가 있으면 그것이 우선)
 function presetPath(id) { if (!/^[a-z0-9][a-z0-9-]{1,40}$/.test(id)) throw new Error('프리셋 id는 영문 소문자·숫자·하이픈만'); return path.join(DIRS.presets, id + '.json'); }
 app.put('/api/presets/:id', async (req, res) => {
   try {
