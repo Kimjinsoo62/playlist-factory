@@ -83,8 +83,8 @@ async function estimate() {
 $('#provider').addEventListener('change', providerChanged);
 async function providerChanged() {
   const prov = $('#provider').value;
-  // Lyria 는 연주곡 전용: 보컬 옵션이 '프리셋 기본'이고 프리셋이 보컬곡이면 연주곡으로 자동 전환
-  if (prov === 'lyria') { const p = presets.find(x => x.id === $('#preset').value); if (p && !p.instrumental && $('#instrumental').value === '') $('#instrumental').value = 'true'; }
+  // Lyria 는 연주곡 전용: 소스를 Lyria 로 고르면 보컬 옵션을 무조건 '연주곡'으로 바꾼다 (가사 타이밍이 없어 보컬곡은 거부됨)
+  if (prov === 'lyria' && $('#instrumental').value !== 'true') { $('#instrumental').value = 'true'; logLine('--', 'info', 'Lyria 소스는 연주곡 전용이라 보컬 옵션을 "연주곡"으로 바꿨습니다.'); }
   $('#mockSeconds').parentElement.style.visibility = prov === 'mock' ? 'visible' : 'hidden';
   const lf = $('#localFiles');
   if (prov === 'local') {
@@ -543,13 +543,14 @@ async function openQuickModal() {
   const ok = (v) => ['treblo', 'lyria', 'mureka', 'mock'].includes(v) && !f.provider.querySelector(`option[value="${v}"]`)?.disabled;
   const mp = $('#provider').value; f.provider.value = ok(mp) ? mp : ok(active) ? active : 'mock';
   f.count.value = $('#count').value; f.language.value = $('#language').value; f.background.value = $('#background').value; f.subtitles.value = $('#subtitles').value;
-  const v = $('#instrumental').value; f.instrumental.value = v === '' ? 'false' : v;
+  const v = $('#instrumental').value; f.instrumental.value = f.provider.value === 'lyria' ? 'true' : (v === '' ? 'false' : v);   // Lyria 는 연주곡 전용
   $('#qmMsg').textContent = appCfg && appCfg.hasLlmKey === false ? '⚠ 메인 LLM 키가 없어 영어 프롬프트를 만들 수 없습니다. 상단 [설정]에서 Claude·OpenAI·Gemini 키를 등록하세요 (테스트 소스는 키 없이 진행).' : '';
   qmEstimate(); $('#qmodal').hidden = false; f.description.focus();
 }
 $('#btnQuick').onclick = openQuickModal;
 $('#qmClose').onclick = () => $('#qmodal').hidden = true;
 ['provider', 'count', 'instrumental'].forEach(k => qmf()[k].addEventListener('change', qmEstimate));
+qmf().provider.addEventListener('change', () => { if (qmf().provider.value === 'lyria') { qmf().instrumental.value = 'true'; qmEstimate(); } });   // 간편 생성도 Lyria 면 연주곡으로
 qmf().onsubmit = async (e) => {
   e.preventDefault(); const f = qmf();
   const desc = f.description.value.trim();
