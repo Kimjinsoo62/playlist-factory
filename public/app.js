@@ -777,8 +777,11 @@ $('#btnUpdate').onclick = async () => {
   const r = await api('/api/update/check').catch(e => ({ ok: false, error: e.message }));
   if (!r.ok) return modal('업데이트 확인 실패', `<p>${r.error}</p>`);
   if (!r.behind) return modal('최신 버전', `<p>현재 버전이 최신입니다. (${r.branch} @ ${r.current}${r.ahead ? `, 로컬 커밋 ${r.ahead}개 앞섬` : ''})</p>`);
-  const list = r.commits.map(c => `<li><code>${c.hash}</code> ${c.subject} <span class="dim">— ${c.author}, ${c.when}</span></li>`).join('');
-  modal(`업데이트 ${r.behind}개 있음`, `<p>${r.remote} (${r.branch})</p><ul>${list}</ul>${r.dirty ? `<p class="dim">⚠ 로컬 수정 파일 ${r.dirty}개가 있어 pull 이 실패할 수 있습니다.</p>` : ''}`, [
+  const h = s => String(s ?? '').replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+  const list = r.commits.map(c => `<li><code>${h(c.hash)}</code> ${h(c.subject)} <span class="dim">— ${h(c.author)}, ${h(c.when)}</span></li>`).join('');
+  if (r.ahead) return modal('자동 업데이트 불가', `<p>이 PC 에만 있는 커밋 ${r.ahead}개가 있어 GitHub 의 새 버전 ${r.behind}개와 갈라졌습니다. 개발자에게 문의하세요.</p><ul>${list}</ul>`);
+  const bk = r.backup?.length ? `<p class="dim">⚠ 이 PC 에서 고친 파일 ${r.backup.length}개가 업데이트와 겹칩니다. <code>backup\\업데이트_날짜시각\\</code> 폴더에 백업한 뒤 새 버전으로 바뀝니다: ${r.backup.map(h).join(', ')}</p>` : '';
+  modal(`업데이트 ${r.behind}개 있음`, `<p>${h(r.remote)} (${h(r.branch)})</p><ul>${list}</ul>${bk}`, [
     { label: '지금 업데이트(git pull)', cls: 'primary', onClick: applyUpdate },
     { label: '나중에', onClick: () => $('#modal').hidden = true },
   ]);
@@ -788,7 +791,7 @@ async function applyUpdate() {
   try {
     const r = await api('/api/update/apply', { method: 'POST' });
     $('#btnUpdate').textContent = '업데이트'; $('#btnUpdate').classList.remove('update-new');
-    modal('업데이트 완료', `<p><b>업데이트 완료, 앱을 재시작하세요.</b> (${r.before} → ${r.after})</p>${r.needInstall ? '<p>⚠ 의존성이 바뀌었습니다. 재시작 전에 <code>install.bat</code> 을 먼저 실행하세요.</p>' : ''}<pre>${(r.log || []).join('\n')}\n${r.changed.join('\n')}</pre>`, [
+    modal('업데이트 완료', `<p><b>업데이트 완료, 앱을 재시작하세요.</b> (${r.before} → ${r.after})</p>${r.needInstall ? '<p>⚠ 의존성이 바뀌었습니다. 재시작 전에 <code>install.bat</code> 을 먼저 실행하세요.</p>' : ''}${r.backupDir ? `<p>이 PC 에서 고쳤던 파일 ${r.backedUp.length}개는 <code>${r.backupDir}</code> 폴더에 백업했습니다. 필요하면 앱에서 다시 고치거나 파일을 제자리로 복사하세요.</p>` : ''}<pre>${(r.log || []).join('\n')}\n${r.changed.join('\n')}</pre>`, [
       { label: '지금 종료(재시작 준비)', cls: 'danger', onClick: shutdown },
       { label: '닫기', onClick: () => $('#modal').hidden = true },
     ]);

@@ -19,6 +19,9 @@ input/*
 assets/backgrounds/*/
 !assets/backgrounds/_rejected.txt
 
+# [업데이트] 때 백업한 로컬 수정 파일
+backup/
+
 # 임시
 *.tmp
 _ui_shot.png
