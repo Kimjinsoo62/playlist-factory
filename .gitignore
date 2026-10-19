@@ -19,6 +19,9 @@ input/*
 assets/backgrounds/*/
 !assets/backgrounds/_rejected.txt
 
+# [간편하게 생성]이 각 PC에서 만든 일회용 프리셋 (⚡)
+presets/quick-*.json
+
 # [업데이트] 때 백업한 로컬 수정 파일
 backup/
 
