@@ -119,47 +119,84 @@ async function pickEncoder(pref) {
   return encoderCache;
 }
 
-function encoderArgs(enc, cfg) {
+function encoderArgs(enc, cfg, motion = false) {
+  // motion: 영상 클립이 들어간 배경은 stillimage 튜닝(정지 화면 최적화)을 빼야 움직임이 뭉개지지 않는다
   return enc === 'h264_qsv'
     ? ['-c:v', 'h264_qsv', '-global_quality', String(cfg.crf || 23), '-look_ahead', '0']
-    : ['-c:v', 'libx264', '-preset', cfg.preset || 'veryfast', '-tune', 'stillimage', '-crf', String(cfg.crf || 20)];
+    : ['-c:v', 'libx264', '-preset', cfg.preset || 'veryfast', ...(motion ? [] : ['-tune', 'stillimage']), '-crf', String(cfg.crf || 20)];
 }
 
 /**
- * 사진 여러 장 → 페이드 전환 슬라이드쇼 루프 영상(무음). 마지막에 첫 사진으로 되돌아와 끊김 없이 반복된다.
- * images: cwd 기준 상대 경로 배열(2장 이상). 반환: 루프 길이(초)
+ * 사진·영상 클립 → 페이드 전환 슬라이드쇼 루프 영상(무음). 마지막에 첫 항목으로 되돌아와 끊김 없이 반복된다.
+ * items: [{file, kind:'image'|'video'}] (cwd 기준 상대 경로). images(사진 경로 배열)는 예전 호출 형식.
+ * 영상 클립은 hold 길이로 자르고(짧으면 마지막 프레임 유지) 사진 슬라이드와 같은 정도로 어둡게 한 뒤, gradient(하단 그라데이션 PNG, RGBA)를 얹는다.
+ * xfade 는 모든 입력의 크기·SAR·fps·timebase·픽셀 형식이 같아야 하므로 체인마다 fps·settb·format 을 맞춘다.
+ * 반환: 루프 길이(초)
  */
-export async function buildSlideshow({ cwd, images, out, cfg, slideSeconds = 10, fadeSeconds = 1, onLog }) {
+export async function buildSlideshow({ cwd, images, items, out, cfg, slideSeconds = 10, fadeSeconds = 1, gradient = null, onLog }) {
+  const list = items || (images || []).map(file => ({ file, kind: 'image' }));
   const enc = await pickEncoder(cfg.encoder);
   const W = cfg.width, H = cfg.height, fps = cfg.fps;
-  const seq = [...images, images[0]];              // 끝에 첫 장을 붙여 루프 지점을 매끄럽게
+  const seq = [...list, list[0]];              // 끝에 첫 항목을 붙여 루프 지점을 매끄럽게
   const hold = slideSeconds + fadeSeconds;
   const args = ['-hide_banner', '-loglevel', 'error', '-y'];
-  for (const img of seq) args.push('-loop', '1', '-t', String(hold), '-framerate', String(fps), '-i', img);
-  const parts = seq.map((_, i) => `[${i}:v]scale=${W}:${H}:force_original_aspect_ratio=increase,crop=${W}:${H},setsar=1,format=yuv420p[s${i}]`);
+  for (const it of seq) {
+    if (it.kind === 'video') args.push('-i', it.file);
+    else args.push('-loop', '1', '-t', String(hold), '-framerate', String(fps), '-i', it.file);
+  }
+  const videoIdx = seq.map((it, i) => it.kind === 'video' ? i : -1).filter(i => i >= 0);
+  let gi = -1;
+  if (gradient && videoIdx.length) { gi = seq.length; args.push('-loop', '1', '-t', String(hold), '-framerate', String(fps), '-i', gradient); }
+  const parts = [];
+  if (gi >= 0) parts.push(`[${gi}:v]fps=${fps},scale=${W}:${H},format=rgba,split=${videoIdx.length}${videoIdx.map(i => `[g${i}]`).join('')}`);
+  seq.forEach((it, i) => {
+    const base = `[${i}:v]fps=${fps},scale=${W}:${H}:force_original_aspect_ratio=increase,crop=${W}:${H},setsar=1`;
+    if (it.kind !== 'video') { parts.push(`${base},settb=AVTB,format=yuv420p[s${i}]`); return; }
+    // 사진 슬라이드의 어둡게(검정 32% 블렌드)와 같은 밝기로 맞춘다
+    const dark = `trim=duration=${hold},setpts=PTS-STARTPTS,tpad=stop_mode=clone:stop_duration=${hold},trim=duration=${hold},setpts=PTS-STARTPTS,colorchannelmixer=rr=.68:gg=.68:bb=.68`;
+    if (gi >= 0) { parts.push(`${base},${dark}[v${i}]`); parts.push(`[v${i}][g${i}]overlay=format=auto,settb=AVTB,format=yuv420p[s${i}]`); }
+    else parts.push(`${base},${dark},settb=AVTB,format=yuv420p[s${i}]`);
+  });
   let prev = 's0';
   for (let i = 1; i < seq.length; i++) {
     const outLabel = i === seq.length - 1 ? 'vout' : `x${i}`;
     parts.push(`[${prev}][s${i}]xfade=transition=fade:duration=${fadeSeconds}:offset=${i * slideSeconds}[${outLabel}]`);
     prev = outLabel;
   }
-  const loopLen = images.length * slideSeconds + fadeSeconds;   // 첫 장이 완전히 돌아온 순간까지
-  args.push('-filter_complex', parts.join(';'), '-map', '[vout]', '-t', String(loopLen), '-r', String(fps), ...encoderArgs(enc, cfg), '-an', out);
-  onLog?.(`슬라이드쇼 ${images.length}장 × ${slideSeconds}초, 페이드 ${fadeSeconds}초, 루프 ${loopLen}초 (${enc})`);
+  const loopLen = list.length * slideSeconds + fadeSeconds;   // 첫 항목이 완전히 돌아온 순간까지
+  args.push('-filter_complex', parts.join(';'), '-map', '[vout]', '-t', String(loopLen), '-r', String(fps), ...encoderArgs(enc, cfg, videoIdx.length > 0), '-an', out);
+  const nv = list.filter(i => i.kind === 'video').length;
+  onLog?.(`슬라이드쇼 ${list.length}개(사진 ${list.length - nv}, 영상 ${nv}) × ${slideSeconds}초, 페이드 ${fadeSeconds}초, 루프 ${loopLen}초, ${fps}fps (${enc})`);
   try { await run('ffmpeg', args, { cwd }); }
   catch (e) {
-    if (enc !== 'libx264') { encoderCache = 'libx264'; onLog?.(`${enc} 실패 → libx264 재시도`); return buildSlideshow({ cwd, images, out, cfg: { ...cfg, encoder: 'libx264' }, slideSeconds, fadeSeconds, onLog }); }
+    if (enc !== 'libx264') { encoderCache = 'libx264'; onLog?.(`${enc} 실패 → libx264 재시도`); return buildSlideshow({ cwd, images, items, out, cfg: { ...cfg, encoder: 'libx264' }, slideSeconds, fadeSeconds, gradient, onLog }); }
     throw e;
   }
   return loopLen;
 }
 
+/** 내려받은 영상 클립을 풀 형식으로 정규화: 1920x1080, 지정 fps, seconds 길이, 무음, H.264. 반환: 실제 길이(초) */
+export async function normalizeClip(src, out, { seconds = 12, cfg }) {
+  const W = cfg.width, H = cfg.height, fps = cfg.fps;
+  await run('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-y', '-i', src, '-t', String(seconds), '-an',
+    '-vf', `fps=${fps},scale=${W}:${H}:force_original_aspect_ratio=increase,crop=${W}:${H},setsar=1,format=yuv420p`,
+    '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '22', '-movflags', '+faststart', out]);
+  const info = await probe(out);
+  return info.duration;
+}
+
+/** 영상 클립의 한 프레임을 PNG 로 (썸네일·대표 배경용) */
+export async function extractFrame(clip, out, { at = 1 } = {}) {
+  await run('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-y', '-ss', String(at), '-i', clip, '-frames:v', '1', out]);
+  return out;
+}
+
 /**
  * 배경(정지 이미지 또는 슬라이드쇼 루프 영상) + ASS 자막 + 오디오 → MP4. 모든 경로는 cwd 기준 상대 경로(Windows 콜론 문제 회피).
  */
-export async function renderVideo({ cwd, background, backgroundVideo, audio, ass, out, duration, cfg, extraFilters = [], onProgress, onLog }) {
+export async function renderVideo({ cwd, background, backgroundVideo, audio, ass, out, duration, cfg, extraFilters = [], motion = false, onProgress, onLog }) {
   const enc = await pickEncoder(cfg.encoder);
-  onLog?.(`비디오 인코더: ${enc}`);
+  onLog?.(`비디오 인코더: ${enc}, ${cfg.fps}fps`);
   const vf = backgroundVideo ? ['format=yuv420p'] : [`scale=${cfg.width}:${cfg.height}:force_original_aspect_ratio=increase`, `crop=${cfg.width}:${cfg.height}`, 'format=yuv420p'];
   vf.push(...extraFilters);   // 시계 같은 오버레이는 자막보다 아래 층에
   if (ass) vf.push(`ass=${ass.replace(/\\/g, '/')}`);
@@ -167,14 +204,14 @@ export async function renderVideo({ cwd, background, backgroundVideo, audio, ass
   if (backgroundVideo) args.push('-stream_loop', '-1', '-i', backgroundVideo);
   else args.push('-loop', '1', '-framerate', String(cfg.fps), '-i', background);
   args.push('-i', audio, '-vf', vf.join(','), '-r', String(cfg.fps));
-  args.push(...encoderArgs(enc, cfg), '-c:a', 'aac', '-b:a', '256k', '-shortest', '-movflags', '+faststart', out);
+  args.push('-map', '0:v:0', '-map', '1:a:0', ...encoderArgs(enc, cfg, motion), '-c:a', 'aac', '-b:a', '256k', '-shortest', '-movflags', '+faststart', out);
   try {
     await run('ffmpeg', args, { cwd, onProgress: s => onProgress?.(Math.min(100, (s / duration) * 100)) });
   } catch (e) {
     if (enc !== 'libx264') {
       onLog?.(`${enc} 실패, libx264로 재시도: ${e.message.split('\n')[0]}`);
       encoderCache = 'libx264';
-      return renderVideo({ cwd, background, backgroundVideo, audio, ass, out, duration, cfg: { ...cfg, encoder: 'libx264' }, extraFilters, onProgress, onLog });
+      return renderVideo({ cwd, background, backgroundVideo, audio, ass, out, duration, cfg: { ...cfg, encoder: 'libx264' }, extraFilters, motion, onProgress, onLog });
     }
     throw e;
   }

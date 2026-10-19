@@ -154,6 +154,15 @@ app.post('/api/config', (req, res) => {
     else if (!/^[\x21-\x7E]{20,300}$/.test(k)) return res.status(400).json({ error: 'Gemini API 키 형식이 아닙니다 (AIza… 형태의 영문·숫자). aistudio.google.com 에서 발급한 키만 붙여 넣으세요.' });
     else patch.lyria.apiKey = k;
   }
+  // 사진·영상 소스 키: 빈 값·마스킹된 값은 저장하지 않음 (모달을 그냥 저장해도 기존 키가 지워지지 않게)
+  for (const [sec, key] of [['images', 'pexelsKey'], ['videos', 'pixabayKey']]) {
+    if (patch[sec] && typeof patch[sec][key] === 'string') {
+      const k = patch[sec][key].trim();
+      if (!k || k.includes('****')) delete patch[sec][key];
+      else if (!/^[\x21-\x7E]{8,300}$/.test(k)) return res.status(400).json({ error: `${key} 형식이 아닙니다 (영문·숫자만, 길이 ${k.length})` });
+      else patch[sec][key] = k;
+    }
+  }
   if (patch.treblo && typeof patch.treblo.apiKey === 'string') {
     const key = patch.treblo.apiKey.trim();
     if (!key || key.includes('****')) delete patch.treblo.apiKey; // 빈 값·마스킹된 값은 저장하지 않음
@@ -177,6 +186,25 @@ app.post('/api/backgrounds/:preset/fetch', async (req, res) => {
   if (!preset) return res.status(404).json({ error: '프리셋 없음' });
   const r = await findBackground({ presetId: preset.id, queries: preset.imageQueries, cfg: loadConfig(), log: () => {}, freshOnly: true });   // 새 사진만(풀 재사용 금지)
   res.json(r ? { ok: true, file: path.basename(r.file), credit: r.credit } : { ok: false, error: '사진을 구하지 못했습니다' });
+});
+// ── 배경 영상 풀 (프리셋별 assets/backgrounds/<preset>/videos/)
+app.get('/api/videos/:preset', async (req, res) => {
+  const { listVideoPool } = await import('./videos.js');
+  res.json(listVideoPool(req.params.preset).map(p => ({ file: path.basename(p.file), url: `/assets/backgrounds/${req.params.preset}/videos/${path.basename(p.file)}`, credit: p.credit })));
+});
+app.delete('/api/videos/:preset/:file', async (req, res) => {
+  const { rejectVideo } = await import('./videos.js');
+  res.json({ ok: true, id: rejectVideo(req.params.preset, req.params.file) });
+});
+app.post('/api/videos/:preset/fetch', async (req, res) => {
+  const { collectVideos, videoKeyReady } = await import('./videos.js');
+  const preset = loadPresets().find(p => p.id === req.params.preset);
+  if (!preset) return res.status(404).json({ error: '프리셋 없음' });
+  const cfg = loadConfig();
+  if (!videoKeyReady(cfg)) return res.json({ ok: false, error: `${cfg.videos?.provider === 'pixabay' ? 'Pixabay' : 'Pexels'} API 키가 없습니다. 아래에 입력하고 저장하세요.` });
+  const lines = [];
+  const r = await collectVideos({ presetId: preset.id, queries: preset.imageQueries, cfg, log: m => lines.push(m), count: 1, maxFetch: 1, freshOnly: true });
+  res.json(r[0] ? { ok: true, file: path.basename(r[0].file), credit: r[0].credit, log: lines } : { ok: false, error: '영상을 구하지 못했습니다 (검색 결과 없음 또는 다운로드 실패)', log: lines });
 });
 app.use('/assets', express.static(DIRS.assets));
 // ── 작곡 AI API 키 관리 (설정 모달)

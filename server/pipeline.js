@@ -11,6 +11,7 @@ import * as ff from './media/ffmpeg.js';
 import { buildAss, lyricLines, alignLinesToWords, distributeLines, timedLinesToSubs } from './media/subtitles.js';
 import { buildYoutubeMeta, trackCount } from './youtube.js';
 import { findBackground, collectBackgrounds } from './images.js';
+import { collectVideos } from './videos.js';
 import { clockLayout, clockFilters, clockEpoch, clockLabel } from './media/clock.js';
 import { getWeather, sampleWeather, WEATHER_CREDIT } from './weather.js';
 import { hasLlmKey, llmModel, llmProvider, LLM_PROVIDERS, translateToEnglish, planBackgroundQueries, rankBackgrounds } from './llm.js';
@@ -371,6 +372,7 @@ export async function runJob(job, cfg) {
     let bgImage = req.backgroundImage || preset.backgroundImage || '';
     let photoCredit = null;
     let slides = [];                 // 슬라이드쇼용 사진 목록 [{file, credit}]
+    let clips = [];                  // 슬라이드쇼용 영상 클립 목록 [{file, credit}] (config.videos.mix 가 video|mixed 일 때)
     // 시계·날씨 오버레이: 배경 선택이 'clock'(시간 표시) | 'weather'(날씨와 시간) 이면 바탕은 bgOptions 로 정한다
     const overlay = ['clock', 'weather'].includes(req.background) ? req.background : null;
     const bgo = { ...(cfg.clock || {}), ...(req.bgOptions || {}) };
@@ -412,10 +414,24 @@ export async function runJob(job, cfg) {
       const want = Math.max(2, Math.min(30, Number(req.slideCount) || cfg.images?.slideCount || 8));
       // 사진 수가 많아도 영상 길이보다 길 필요는 없음: 10초 × 장수 ≤ 총 길이 + 여유
       const need = Math.max(2, Math.min(want, Math.ceil(total / (cfg.images?.slideSeconds || 10)) + 1));
-      slides = await collectBackgrounds({ presetId: preset.id, queries: preset.imageQueries, cfg, log: imgLog, count: need, maxFetch: providerName === 'mock' ? 0 : (cfg.images?.maxFetchPerJob ?? 4), allowFetch: providerName !== 'mock', plan: bgPlan, rank: bgRank });
-      if (slides.length >= 2) log(job, `슬라이드쇼 사진 ${slides.length}장 (${slides.map(s => (s.credit?.title || '').slice(0, 18)).join(' / ')})`);
+      // 구성: 사진만 / 영상만 / 섞기 ([배경] 설정 모달 → config.videos.mix, 요청의 bgOptions.mix 가 있으면 우선)
+      const mix = ['photo', 'video', 'mixed'].includes(req.bgOptions?.mix) ? req.bgOptions.mix : (cfg.videos?.mix || 'photo');
+      if (mix !== 'photo') {
+        const vneed = mix === 'video' ? need : Math.ceil(need / 2);
+        clips = await collectVideos({ presetId: preset.id, queries: preset.imageQueries, cfg, log: imgLog, count: vneed, maxFetch: providerName === 'mock' ? 0 : (cfg.videos?.maxFetchPerJob ?? 2), allowFetch: providerName !== 'mock', plan: bgPlan, rank: bgRank });
+        if (clips.length) log(job, `배경 영상 ${clips.length}개 (${clips.map(c => (c.credit?.title || '').slice(0, 18)).join(' / ')})`);
+        else log(job, `영상을 구하지 못해 사진${mix === 'video' ? ' 슬라이드쇼' : '만'}으로 진행합니다`, 'warn');
+      }
+      const pneed = clips.length ? (mix === 'video' ? 0 : Math.max(1, need - clips.length)) : need;
+      slides = pneed ? await collectBackgrounds({ presetId: preset.id, queries: preset.imageQueries, cfg, log: imgLog, count: pneed, maxFetch: providerName === 'mock' ? 0 : (cfg.images?.maxFetchPerJob ?? 4), allowFetch: providerName !== 'mock', plan: bgPlan, rank: bgRank }) : [];
+      if (slides.length >= 2 || (slides.length && clips.length)) log(job, `슬라이드쇼 사진 ${slides.length}장 (${slides.map(s => (s.credit?.title || '').slice(0, 18)).join(' / ')})`);
       else if (slides.length === 1) { log(job, '사진이 1장뿐이라 한 장 고정 배경으로 진행합니다', 'warn'); bgImage = slides[0].file; photoCredit = slides[0].credit; slides = []; }
-      else log(job, '사진을 구하지 못해 자동 생성 그라데이션 배경을 씁니다', 'warn');
+      else if (!clips.length) log(job, '사진을 구하지 못해 자동 생성 그라데이션 배경을 씁니다', 'warn');
+      if (!slides.length && clips.length) {
+        // 영상만: 첫 클립의 한 프레임을 대표 배경·썸네일 사진으로 쓴다
+        bgImage = path.join(job.dir, 'videoframe.png');
+        await ff.extractFrame(clips[0].file, bgImage, { at: 1 });
+      }
     } else if (bgMode === 'photo') {
       const found = await findBackground({ presetId: preset.id, queries: preset.imageQueries, cfg, log: imgLog, preferPool: providerName === 'mock', plan: bgPlan, rank: bgRank });
       if (found) { bgImage = found.file; photoCredit = found.credit; }
@@ -425,8 +441,9 @@ export async function runJob(job, cfg) {
     }
     setStepProgress(job, 50);
     const photoCredits = slides.map(s => s.credit).filter(Boolean);
+    const videoCredits = clips.map(c => c.credit).filter(Boolean);
     const extraCredits = weather && !weather.sample ? [WEATHER_CREDIT] : [];
-    const meta = buildYoutubeMeta({ preset, tracks: collected, total, request: req, cfg, photoCredit, photoCredits, extraCredits });
+    const meta = buildYoutubeMeta({ preset, tracks: collected, total, request: req, cfg, photoCredit, photoCredits, videoCredits, extraCredits });
     const spec = {
       style: req.thumbnailStyle || preset.thumbnailStyle || 'night',
       title: req.thumbnailText || thumbTitle(meta.title, collected.length),
@@ -436,6 +453,7 @@ export async function runJob(job, cfg) {
       background_image: bgImage,
       slides: slides.map(s => s.file),
       slides_dir: path.join(job.dir, 'slides'),
+      want_gradient: clips.length > 0,   // 영상 클립에 얹을 하단 그라데이션 PNG(slides/grad.png)도 만들어 달라
       out_background: path.join(job.dir, 'background.png'),
       out_thumbnail: path.join(job.dir, 'thumbnail.jpg'),
       seed: Date.now() % 100000,
@@ -451,10 +469,20 @@ export async function runJob(job, cfg) {
     setStep(job, 7, '영상 렌더링(ffmpeg)');
     const outMp4 = path.join(job.dir, 'playlist.mp4');
     let backgroundVideo = null;
-    if (slideFiles.length >= 2) {
+    // 영상 클립이 있으면 10fps 정지 화면용 설정 대신 videos.fps(기본 24)로 렌더링한다 (슬라이드쇼와 최종 렌더링에 같은 설정을 써야 fps 가 맞는다)
+    const renderCfg = clips.length ? { ...cfg.render, fps: Number(cfg.videos?.fps) || 24 } : cfg.render;
+    const items = [];
+    {
+      const photos = slideFiles.map(f => ({ file: rel(job, f), kind: 'image' }));
+      const vids = clips.map(c => ({ file: rel(job, c.file), kind: 'video' }));
+      while (photos.length || vids.length) { if (vids.length) items.push(vids.shift()); if (photos.length) items.push(photos.shift()); }   // 섞기: 영상·사진 번갈아
+    }
+    if (items.length >= 2 || (items.length && clips.length)) {
+      if (clips.length) log(job, `영상 클립 ${clips.length}개 포함 → ${renderCfg.fps}fps 로 렌더링 (사진만일 때 ${cfg.render.fps}fps 보다 시간이 더 걸림)`);
       setStepProgress(job, 2, '슬라이드쇼 배경 만드는 중');
+      const gradPng = path.join(job.dir, 'slides', 'grad.png');
       await ff.buildSlideshow({
-        cwd: job.dir, images: slideFiles.map(f => rel(job, f)), out: 'slideshow.mp4', cfg: cfg.render,
+        cwd: job.dir, items, out: 'slideshow.mp4', cfg: renderCfg, gradient: clips.length && fs.existsSync(gradPng) ? rel(job, gradPng) : null,
         slideSeconds: Number(cfg.images?.slideSeconds) || 10, fadeSeconds: Number(cfg.images?.fadeSeconds) || 1.2, onLog: m => log(job, m),
       });
       backgroundVideo = 'slideshow.mp4';
@@ -463,7 +491,7 @@ export async function runJob(job, cfg) {
     const extraFilters = clock ? clockFilters(clock.layout, clock.epoch, rel(job, path.join(DIRS.assets, 'fonts', 'BlackHanSans-Regular.ttf')), { hour12: clock.hour12 }) : [];
     await ff.renderVideo({
       cwd: job.dir, background: 'background.png', backgroundVideo, audio: 'full.wav', ass: subsOn || cfg.subtitles.showTitleOverlay ? 'subs.ass' : null,
-      out: 'playlist.mp4', duration: total, cfg: cfg.render, extraFilters,
+      out: 'playlist.mp4', duration: total, cfg: renderCfg, extraFilters, motion: clips.length > 0,
       onProgress: p => setStepProgress(job, p, `렌더링 ${p.toFixed(0)}%`),
       onLog: m => log(job, m),
     });
@@ -479,14 +507,14 @@ export async function runJob(job, cfg) {
     await ff.encodeMp3(fullWav, path.join(job.dir, 'playlist.mp3'));
     const lyricsAll = collected.filter(c => c.lyrics).map(c => `## ${pad(c.index)}. ${c.title}\n${c.lyrics.trim()}`).join('\n\n');
     if (lyricsAll) fs.writeFileSync(path.join(job.dir, 'lyrics.txt'), lyricsAll, 'utf8');
-    for (const f of ['full.wav', 'silence.wav', 'concat.txt', 'slideshow.mp4']) { try { fs.unlinkSync(path.join(job.dir, f)); } catch {} }
+    for (const f of ['full.wav', 'silence.wav', 'concat.txt', 'slideshow.mp4', 'videoframe.png']) { try { fs.unlinkSync(path.join(job.dir, f)); } catch {} }
     try { fs.rmSync(path.join(job.dir, 'slides'), { recursive: true, force: true }); } catch {}
     for (const w of wavs) { try { fs.unlinkSync(w); } catch {} }
     setStepProgress(job, 100);
 
     finish(job, {
       video: rel(job, outMp4), audio: 'playlist.mp3', thumbnail: 'thumbnail.jpg', background: 'background.png',
-      subtitles: 'subs.ass', youtube: 'youtube.txt', lyrics: lyricsAll ? 'lyrics.txt' : null, photoCredit, photoCredits, slideCount: slideFiles.length,
+      subtitles: 'subs.ass', youtube: 'youtube.txt', lyrics: lyricsAll ? 'lyrics.txt' : null, photoCredit, photoCredits, slideCount: slideFiles.length, videoCredits, videoCount: clips.length,
       total, title: meta.title, chapters: meta.chapters, trackCount: collected.length,
       tracks: collected.map(c => ({ index: c.index, title: c.title, offset: c.offset, duration: c.duration, file: rel(job, c.file) })),
     });

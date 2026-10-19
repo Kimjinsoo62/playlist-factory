@@ -300,5 +300,5 @@ export function creditLine(credit) {
   if (!credit) return '';
   const who = credit.creator ? ` by ${credit.creator}` : '';
   const lic = credit.license ? ` (${credit.license}${credit.licenseUrl ? ' ' + credit.licenseUrl : ''})` : '';
-  return `Background photo: ${credit.title || 'untitled'}${who}${lic} via ${credit.source || credit.provider}${credit.page ? ' ' + credit.page : ''}`;
+  return `Background ${credit.kind === 'video' ? 'video' : 'photo'}: ${credit.title || 'untitled'}${who}${lic} via ${credit.source || credit.provider}${credit.page ? ' ' + credit.page : ''}`;
 }

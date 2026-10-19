@@ -22,6 +22,7 @@ npm run mcp                                 # MCP stdio 서버. 웹 서버가 �
 npm run test:mock                           # 합성음 3곡으로 9단계 전체 검증 (API 호출·크레딧 없음, ffmpeg·Pillow 필요)
 node scripts/test-mock.js lofi-study 2 10   # <프리셋id> <곡수> <곡당 초>. BG=gradient|photo|slideshow 환경변수로 배경 모드
 node scripts/fetch-backgrounds.js 3 jazz-night   # 프리셋별 배경 사진 풀 미리 채우기 [장수] [프리셋id ...]
+node scripts/fetch-videos.js 3 rain-sounds       # 프리셋별 배경 영상 클립 풀 미리 채우기 (Pexels/Pixabay 키 필요)
 python scripts/contact-sheet.py out.jpg     # 배경 풀 전체를 한 장으로 모아 보기
 ```
 
@@ -69,6 +70,10 @@ Claude·OpenAI·Gemini를 `chat()` 한 함수(system + user → JSON 텍스트)�
 ### 배경 사진 (`server/images.js`)
 
 Wikimedia Commons(기본) / Openverse / Pexels에서 상업 이용 가능 라이선스(CC0·PD·CC BY·Pexels)만 수집. 프리셋별 풀 `assets/backgrounds/<preset>/`(jpg + 출처 json)는 git 제외, `_rejected.txt`만 공유. CC BY 출처는 유튜브 설명에 자동 기재.
+
+### 배경 영상 (`server/videos.js`)
+
+슬라이드쇼(`background: 'slideshow'`)에 무료 영상 클립을 섞는 기능. 구성은 `config.videos.mix`(`photo`|`mixed`|`video`, 기본 `photo` = 기존 동작)이며 요청의 `bgOptions.mix`가 있으면 우선한다. 소스는 Pexels Videos(`images.pexelsKey` 공유) / Pixabay Videos(`videos.pixabayKey`), 둘 다 키 필수·상업 이용 가능. `collectVideos`는 `collectBackgrounds`와 같은 규칙(풀 + 검색, LLM `rank`, `_rejected.txt`에 `pv:`/`px:` 접두 id)으로 고르고, 내려받은 클립은 `ff.normalizeClip`으로 1920×1080·`videos.fps`·`clipSeconds`·무음 mp4로 `assets/backgrounds/<preset>/videos/`에 저장한다. 파이프라인은 사진·영상을 번갈아 `items`로 만들어 `ff.buildSlideshow({items, gradient})`에 넘기는데, 영상 체인에는 사진 슬라이드와 같은 어둡기(`colorchannelmixer .68`)와 `thumbnail.py`가 만든 `slides/grad.png`(하단 그라데이션)를 얹는다. **영상이 하나라도 있으면 `renderCfg.fps = videos.fps`(기본 24)를 슬라이드쇼와 최종 렌더링 양쪽에 같은 객체로 넘긴다**(10fps 로 두면 영상이 끊기고, 둘이 다르면 fps 가 안 맞는다). 영상만일 때는 첫 클립 프레임(`videoframe.png`)을 썸네일·배경 사진으로 쓴다. 라우트 `/api/videos/:preset`(목록·DELETE 제외·POST fetch), 모달 `#vmodal`. API 주소는 `videos.pexelsBase`/`pixabayBase`로 바꿔 로컬 스텁 테스트가 가능하다.
 
 ### 시계·날씨 배경 (`server/media/clock.js`, `server/weather.js`)
 

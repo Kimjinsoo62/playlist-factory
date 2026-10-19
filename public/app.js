@@ -590,7 +590,13 @@ const bgmf = () => $('#bgmForm');
 function bgOptsInit(c) {
   bgOpts = { base: 'photo', photoMode: 'slideshow', color: '#101216', address: '', hour12: false, showSeconds: true, startTime: '', ...(c || {}) };
   delete bgOpts.geocache;
-  $('#btnBgOpts').hidden = !isClockBg($('#background').value);
+  bgBtnUpdate();
+}
+/** [배경] 옆 [설정] 버튼: 슬라이드쇼면 사진/영상 구성 모달, 시계·날씨면 시계 모달 */
+function bgBtnUpdate() {
+  const v = $('#background').value, b = $('#btnBgOpts');
+  b.hidden = !(isClockBg(v) || v === 'slideshow');
+  b.title = v === 'slideshow' ? '슬라이드쇼 구성: 사진만 / 영상만 / 섞기, 영상 소스 API 키' : '시계·날씨 배경의 바탕(사진/단색), 주소, 시간 형식';
 }
 function bgOptions() { const o = { ...bgOpts }; delete o.geocache; return o; }
 function bgmBase() { const solid = bgmf().base.value === 'solid'; $('#bgmPhotoRow').hidden = solid; $('#bgmSolidRow').hidden = !solid; }
@@ -605,8 +611,8 @@ function openBgModal(mode) {
   $('#bgmodal').hidden = false;
   if (mode === 'weather' && !f.address.value) f.address.focus();
 }
-$('#background').addEventListener('change', () => { const v = $('#background').value; $('#btnBgOpts').hidden = !isClockBg(v); if (isClockBg(v)) openBgModal(v); });
-$('#btnBgOpts').onclick = () => openBgModal();
+$('#background').addEventListener('change', () => { const v = $('#background').value; bgBtnUpdate(); if (isClockBg(v)) openBgModal(v); });
+$('#btnBgOpts').onclick = () => isClockBg($('#background').value) ? openBgModal() : openVideoModal();
 $('#bgmClose').onclick = () => $('#bgmodal').hidden = true;
 $('#bgmodal').addEventListener('click', (e) => { if (e.target === $('#bgmodal')) $('#bgmodal').hidden = true; });
 for (const r of bgmf().querySelectorAll('input[name=base]')) r.onchange = bgmBase;
@@ -618,6 +624,41 @@ bgmf().onsubmit = async (e) => {
   const patch = { base: f.base.value, photoMode: f.photoMode.value, color: f.color.value, address: f.address.value.trim(), hour12: f.hour12.value === 'true', showSeconds: f.showSeconds.value === 'true', startTime: st };
   try { const cfg = await api('/api/config', { method: 'POST', body: { clock: patch } }); bgOptsInit(cfg.clock); $('#bgmodal').hidden = true; }
   catch (err) { $('#bgmMsg').textContent = '저장 실패: ' + err.message; }
+};
+
+// ── 슬라이드쇼 배경 설정: 사진만 / 영상만 / 섞기, 영상 소스(Pexels·Pixabay)와 키. 값은 config.videos·images.pexelsKey 에 저장
+const vmf = () => $('#vmForm');
+async function openVideoModal() {
+  try { appCfg = await api('/api/config'); } catch {}
+  const f = vmf(); const v = appCfg?.videos || {};
+  f.mix.value = ['photo', 'video', 'mixed'].includes(v.mix) ? v.mix : 'photo';
+  f.provider.value = v.provider || 'pexels'; f.clipSeconds.value = v.clipSeconds || 12; f.fps.value = String(v.fps || 24);
+  f.pexelsKey.value = ''; f.pexelsKey.placeholder = appCfg?.images?.pexelsKey ? '저장됨 (****) — 바꾸려면 새 키 입력' : 'pexels.com/api 에서 무료 발급';
+  f.pixabayKey.value = ''; f.pixabayKey.placeholder = v.pixabayKey ? '저장됨 (****) — 바꾸려면 새 키 입력' : 'pixabay.com/api/docs 에서 무료 발급(로그인 후 표시)';
+  $('#vmMsg').textContent = ''; $('#vmodal').hidden = false;
+  refreshVideoPool();
+}
+async function refreshVideoPool() {
+  const el = $('#vmPool');
+  try { const l = await api(`/api/videos/${$('#preset').value}`); el.textContent = l.length ? `${l.length}개 보유: ${l.slice(0, 4).map(x => (x.credit?.title || x.file).slice(0, 22)).join(' / ')}${l.length > 4 ? ' …' : ''}` : '아직 없음 (첫 작업 때 자동으로 받거나 오른쪽 버튼으로 미리 받기)'; }
+  catch (e) { el.textContent = e.message; }
+}
+$('#vmClose').onclick = () => $('#vmodal').hidden = true;
+$('#vmodal').addEventListener('click', (e) => { if (e.target === $('#vmodal')) $('#vmodal').hidden = true; });
+$('#vmFetch').onclick = async () => {
+  const b = $('#vmFetch'); b.disabled = true; $('#vmMsg').textContent = '영상 검색·다운로드 중 (수십 초)…';
+  try { const r = await api(`/api/videos/${$('#preset').value}/fetch`, { method: 'POST' }); $('#vmMsg').textContent = r.ok ? `받음: ${r.credit?.title || r.file}` : '✖ ' + r.error; refreshVideoPool(); }
+  catch (e) { $('#vmMsg').textContent = '✖ ' + e.message; }
+  finally { b.disabled = false; }
+};
+vmf().onsubmit = async (e) => {
+  e.preventDefault(); const f = vmf();
+  const videos = { mix: f.mix.value, provider: f.provider.value, clipSeconds: Math.max(4, Math.min(60, Number(f.clipSeconds.value) || 12)), fps: Number(f.fps.value) || 24 };
+  const body = { videos };
+  if (f.pixabayKey.value.trim()) videos.pixabayKey = f.pixabayKey.value.trim();
+  if (f.pexelsKey.value.trim()) body.images = { pexelsKey: f.pexelsKey.value.trim() };
+  try { await api('/api/config', { method: 'POST', body }); await openVideoModal(); $('#vmMsg').textContent = '저장됨 ' + new Date().toLocaleTimeString() + (videos.mix === 'photo' ? ' (사진만)' : videos.mix === 'video' ? ' (영상만)' : ' (사진·영상 섞기)'); }
+  catch (err) { $('#vmMsg').textContent = '저장 실패: ' + err.message; }
 };
 
 // ── 플레이리스트 조합: 완료된 작업의 곡을 모아 목표 길이의 영상을 만드는 작업(provider=compile)

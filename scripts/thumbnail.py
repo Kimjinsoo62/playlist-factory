@@ -415,6 +415,15 @@ def main():
     slides_out = []
     thumb_src = None  # 썸네일에 쓸 원본 사진(있으면)
     base_has_weather = False
+    if spec.get('want_gradient') and spec.get('slides_dir'):
+        # 영상 클립에 얹을 하단 그라데이션(darken_photo 와 같은 곡선)을 투명 PNG 로 — ffmpeg 가 overlay 로 쓴다
+        os.makedirs(spec['slides_dir'], exist_ok=True)
+        col = Image.new('L', (1, H), 0)
+        for yy in range(H):
+            col.putpixel((0, yy), int(max(0, (yy - H * 0.72) / (H * 0.28)) * 140))
+        g = Image.new('RGBA', (W, H), (0, 0, 0, 255))
+        g.putalpha(col.resize((W, H)))
+        g.save(os.path.join(spec['slides_dir'], 'grad.png'))
     if solid:
         base = Image.new('RGB', (W, H), solid)
     elif spec.get('slides'):
