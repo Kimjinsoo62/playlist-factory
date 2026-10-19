@@ -1,0 +1,115 @@
+{
+  "id": "sleep-ambient",
+  "name": "수면유도음악 (연주곡)",
+  "description": "잠들기 전 듣는 수면 유도 앰비언트. 3분 안팎의 느리고 일정한 사운드, 보컬·드럼 없음. 배경은 눈에 편한 부드럽고 몽환적인 사진.",
+  "instrumental": true,
+  "prompt": "Extremely slow and steady sleep-inducing ambient music for falling asleep, around 50-60 BPM or beatless with no drums and no percussion. Soft sustained synth pads and warm analog drones that evolve very gradually, a few sparse and gentle piano or music-box notes with long reverb tails, subtle low-pass filtered textures, faint rain or distant ocean ambience far in the background. Smooth, constant and hypnotic, with no sudden changes, no loud moments, no sharp transients and no build-ups; the volume stays even from start to end and fades out gently at the end. Deeply calm, dreamy, weightless and nocturnal, like drifting into sleep. Instrumental only, no vocals.",
+  "tags": [
+    "ambient",
+    "sleep",
+    "drone",
+    "calm",
+    "soothing",
+    "ethereal",
+    "minimal",
+    "slow"
+  ],
+  "negative_tags": [
+    "drums",
+    "percussion",
+    "vocal",
+    "upbeat",
+    "energetic",
+    "loud",
+    "aggressive",
+    "edm",
+    "trap",
+    "heavy metal",
+    "dubstep",
+    "fast"
+  ],
+  "length_range": [
+    150,
+    210
+  ],
+  "thumbnailStyle": "night",
+  "topics": {
+    "ko": [
+      "깊은 밤의 호흡",
+      "달빛 아래 잠들다",
+      "안개 속 느린 꿈",
+      "별이 내리는 천장",
+      "고요한 바다의 숨",
+      "구름 위의 요람",
+      "새벽 두 시의 정적",
+      "빗소리 자장가",
+      "눈 감으면 보이는 들판",
+      "부드러운 어둠",
+      "느리게 흐르는 강",
+      "아침까지 포근하게"
+    ],
+    "en": [
+      "Breathing in the Deep Night",
+      "Falling Asleep Under the Moon",
+      "A Slow Dream in the Mist",
+      "Stars on the Ceiling",
+      "The Quiet Breath of the Sea",
+      "A Cradle Above the Clouds",
+      "Stillness at 2 AM",
+      "Rain Lullaby",
+      "Fields Behind Closed Eyes",
+      "Soft Darkness",
+      "A River Flowing Slowly",
+      "Warm Until Morning"
+    ],
+    "ja": [
+      "深い夜の呼吸",
+      "月の下で眠る",
+      "霧の中のゆっくりした夢",
+      "天井に降る星",
+      "静かな海の息",
+      "雲の上のゆりかご",
+      "午前二時の静けさ",
+      "雨音の子守唄",
+      "目を閉じると見える野原",
+      "やわらかな闇",
+      "ゆっくり流れる川",
+      "朝までやさしく"
+    ]
+  },
+  "titleTemplate": {
+    "ko": "[Playlist] 잠이 솔솔 오는 수면유도음악 🌙 {n}곡 · {dur}",
+    "en": "[Playlist] Deep Sleep Ambient Music 🌙 {n} tracks · {dur}",
+    "ja": "[Playlist] 眠りを誘う睡眠音楽 🌙 {n}曲 · {dur}"
+  },
+  "youtubeIntro": {
+    "ko": "느리고 일정한 앰비언트 사운드로 편안하게 잠드세요. 드럼과 보컬 없이 부드러운 패드와 잔잔한 피아노만 흐릅니다. 작은 볼륨으로 틀어 두세요.",
+    "en": "Slow, steady ambient sound to help you fall asleep. No drums, no vocals — just soft pads and gentle piano. Play it at a low volume.",
+    "ja": "ゆっくりと一定のアンビエントサウンドで心地よく眠りへ。ドラムもボーカルもなく、やわらかなパッドと静かなピアノだけ。小さな音量でどうぞ。"
+  },
+  "hashtags": [
+    "#sleepmusic",
+    "#수면음악",
+    "#ambient",
+    "#relax",
+    "#playlist"
+  ],
+  "keywords": [
+    "sleep music",
+    "수면유도음악",
+    "잠 잘 오는 음악",
+    "deep sleep ambient",
+    "relaxing sleep sounds",
+    "불면증 음악"
+  ],
+  "imageQueries": [
+    "soft bokeh lights night",
+    "misty lake dawn pastel",
+    "moon clouds night sky soft",
+    "aurora night sky calm",
+    "foggy forest morning pastel",
+    "calm sea horizon dusk pastel"
+  ],
+  "koDescription": "잠들기 위한 아주 느리고 일정한 수면 유도 앰비언트. 50~60 BPM이거나 아예 박자가 없고, 드럼·타악기 없음. 아주 천천히 변하는 부드러운 신스 패드와 따뜻한 아날로그 드론, 긴 잔향이 붙은 드문드문한 피아노·오르골 음, 은은한 로우패스 질감, 저 멀리 희미한 빗소리나 파도 소리. 갑작스러운 변화·큰 소리·날카로운 어택·빌드업 없이 처음부터 끝까지 볼륨이 고르고 마지막은 천천히 페이드아웃. 깊이 차분하고 몽환적이며 무중력처럼 가라앉는 밤의 느낌. 보컬 없음.",
+  "useKoDescription": false
+}
