@@ -1,0 +1,110 @@
+{
+  "id": "chanson",
+  "name": "샹송",
+  "description": "프랑스 샹송. 아코디언과 피아노, 왈츠 리듬, 파리 카페의 낭만과 애수. 가사 언어는 선택한 언어(한국어·영어·일본어)로 부른다.",
+  "instrumental": false,
+  "prompt": "Classic French chanson in the style of the 1950s-1960s Parisian cabaret and musette tradition. Slow to mid-tempo 70-110 BPM, often in a lilting 3/4 waltz feel, led by a warm musette accordion and an intimate acoustic piano, with nylon-string guitar, upright bass played with a soft walking pulse, light brushed drums, and tender orchestral strings that swell in the chorus. Expressive, theatrical lead vocal full of emotion and storytelling, close to the microphone, with a slight vibrato and dramatic dynamic rises and falls, like a Left Bank café singer. Romantic, nostalgic and bittersweet Paris atmosphere: rain on cobblestones, café terraces, the Seine at dusk. Vintage analog warmth, elegant and melancholic, sincere and poetic rather than polished pop.",
+  "tags": [
+    "chanson",
+    "french",
+    "accordion",
+    "musette",
+    "cabaret",
+    "waltz",
+    "romantic",
+    "nostalgic"
+  ],
+  "negative_tags": [
+    "edm",
+    "trap",
+    "hip hop",
+    "heavy metal",
+    "lo-fi",
+    "synthwave",
+    "autotune"
+  ],
+  "length_range": [
+    150,
+    240
+  ],
+  "thumbnailStyle": "paper",
+  "topics": {
+    "ko": [
+      "파리의 비 내리는 오후",
+      "센 강가의 산책",
+      "카페 테라스의 편지",
+      "낡은 아코디언",
+      "몽마르트르 언덕의 노을",
+      "마지막 왈츠",
+      "가로등 아래 이별",
+      "작은 다락방의 봄",
+      "돌아오는 열차",
+      "장미와 담배 연기",
+      "안개 낀 다리 위에서",
+      "오래된 샹송 한 곡"
+    ],
+    "en": [
+      "Rainy Afternoon in Paris",
+      "A Walk Along the Seine",
+      "Letter from a Café Terrace",
+      "The Old Accordion",
+      "Sunset on Montmartre",
+      "The Last Waltz",
+      "Farewell Under the Streetlamp",
+      "Spring in a Little Attic",
+      "The Train Coming Home",
+      "Roses and Cigarette Smoke",
+      "On a Bridge in the Fog",
+      "An Old Chanson"
+    ],
+    "ja": [
+      "パリの雨の午後",
+      "セーヌ川の散歩",
+      "カフェテラスからの手紙",
+      "古いアコーディオン",
+      "モンマルトルの夕暮れ",
+      "最後のワルツ",
+      "街灯の下の別れ",
+      "小さな屋根裏の春",
+      "帰りの列車",
+      "薔薇と煙草の煙",
+      "霧の橋の上で",
+      "古いシャンソン一曲"
+    ]
+  },
+  "titleTemplate": {
+    "ko": "[Playlist] 파리 카페의 샹송 🥐 {n}곡 · {dur}",
+    "en": "[Playlist] French Chanson at a Paris Café 🥐 {n} songs · {dur}",
+    "ja": "[Playlist] パリのカフェで聴くシャンソン 🥐 {n}曲 · {dur}"
+  },
+  "youtubeIntro": {
+    "ko": "아코디언과 피아노, 왈츠 리듬 위로 흐르는 샹송. 비 내리는 파리 카페의 낭만과 애수를 담았습니다.",
+    "en": "Accordion, piano and waltz rhythms. French chanson full of the romance and melancholy of a rainy Paris café.",
+    "ja": "アコーディオンとピアノ、ワルツのリズムに乗せたシャンソン。雨のパリのカフェの情緒を。"
+  },
+  "hashtags": [
+    "#chanson",
+    "#샹송",
+    "#frenchmusic",
+    "#paris",
+    "#playlist"
+  ],
+  "keywords": [
+    "chanson playlist",
+    "샹송",
+    "french café music",
+    "paris cafe music",
+    "accordion music",
+    "프랑스 음악"
+  ],
+  "imageQueries": [
+    "paris cafe terrace",
+    "rainy paris street",
+    "seine river evening",
+    "montmartre street",
+    "vintage accordion",
+    "eiffel tower dusk"
+  ],
+  "koDescription": "1950~60년대 파리 카바레·뮈제트 전통의 클래식 프랑스 샹송. 느리거나 중간 템포(70~110 BPM), 흔히 3/4 왈츠 리듬. 따뜻한 뮈제트 아코디언과 소박한 어쿠스틱 피아노가 이끌고, 나일론 기타, 부드럽게 걷는 콘트라베이스, 브러시 드럼, 후렴에서 부풀어 오르는 오케스트라 스트링. 마이크 가까이에서 이야기하듯 노래하는 연극적이고 감정이 풍부한 리드 보컬, 가벼운 비브라토와 극적인 강약. 돌길 위의 비, 카페 테라스, 해 질 녘 센 강 같은 낭만적이고 향수 어린 파리의 정서. 빈티지 아날로그 질감, 세련되고 우수에 찬, 매끈한 팝보다는 진솔하고 시적인 느낌.",
+  "useKoDescription": false
+}
