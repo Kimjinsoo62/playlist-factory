@@ -2,6 +2,8 @@
   --bg: #15171c; --panel: #1d2026; --panel2: #23272f; --line: #2f343d; --fg: #e4e6ea; --dim: #8b919c;
   --accent: #4f8cff; --accent2: #38c7a0; --danger: #d9363e; --warn: #e0a533;
   --input: #12141a; --logbg: #0e1014; --sel: #253049; --hover: #2a2f38; --hoverline: #4a5160; --err: #ff6b6b; --shade: rgba(0,0,0,.6);
+  --music-tint: #1c2838; --music-line: #35507a; --music-fg: #7fb0ff;     /* 설정 모달 · 작곡 AI 구역(파랑) */
+  --llm-tint: #27213a; --llm-line: #5a4a8c; --llm-fg: #b79cff;           /* 설정 모달 · 메인 LLM 구역(보라) */
   --font: 'Malgun Gothic', 'Noto Sans KR', Segoe UI, sans-serif;
   color-scheme: dark;
 }
@@ -10,6 +12,8 @@
   --bg: #e9ebef; --panel: #ffffff; --panel2: #f1f3f6; --line: #d0d4db; --fg: #1d2026; --dim: #646b78;
   --accent: #2f6fe0; --accent2: #1f9c7a; --danger: #d9363e; --warn: #b8841a;
   --input: #ffffff; --logbg: #f7f8fa; --sel: #dbe6fb; --hover: #e3e7ee; --hoverline: #aab2c0; --err: #d9363e; --shade: rgba(0,0,0,.35);
+  --music-tint: #eaf1fd; --music-line: #9db9ea; --music-fg: #2f6fe0;
+  --llm-tint: #f1ecfb; --llm-line: #bfa8ec; --llm-fg: #6a3fc9;
   color-scheme: light;
 }
 * { box-sizing: border-box; }
@@ -121,7 +125,14 @@ summary { cursor: pointer; color: var(--dim); }
 .kcard .actions .sep { width: 1px; height: 16px; background: var(--line); margin: 0 4px; }
 .kcard .btn.act { border-color: var(--accent2); color: var(--accent2); font-weight: bold; }
 .kcard.active { border-color: var(--accent2); }
-.ksec { margin: 8px 0 4px; padding: 4px 6px; border-left: 3px solid var(--accent); color: var(--dim); }
+/* 구역 구분: 작곡 AI(파랑) / 메인 LLM(보라). 카드 바탕색·왼쪽 띠·구역 제목을 같은 색으로 맞춘다 */
+.kcard { border-left: 4px solid var(--music-line); background: var(--music-tint); }
+.kcard[data-kind=llm] { border-left-color: var(--llm-line); background: var(--llm-tint); }
+.kcard.active { border-left-color: var(--accent2); }
+.ksec { margin: 8px 0 4px; padding: 4px 6px; border-left: 4px solid var(--music-line); background: var(--music-tint); color: var(--dim); border-radius: 0 3px 3px 0; }
+.ksec b.kt { color: var(--music-fg); margin-right: 6px; }
+.ksec.llm { border-left-color: var(--llm-line); background: var(--llm-tint); }
+.ksec.llm b.kt { color: var(--llm-fg); }
 .box.km { max-height: 92vh; }
 .box.km .mbody { max-height: 78vh; }
 .pm { display: flex; flex-direction: column; min-height: 0; flex: 1; overflow-y: auto; padding-right: 4px; }
