@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <title>플레이리스트 팩토리 사용설명서</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <style>
   body { font: 10pt/1.6 'Malgun Gothic', 'Noto Sans KR', sans-serif; color: #222; max-width: 960px; margin: 24px auto; padding: 0 20px; }
   h1 { font-size: 18pt; border-bottom: 2px solid #4f8cff; padding-bottom: 6px; }
@@ -59,6 +60,14 @@
 </ol>
 <div class="note"><b>Mureka는 보컬곡도 가사 자막이 됩니다.</b> 보컬곡은 Mureka의 가사 생성 API로 가사를 먼저 만들고(언어·주제·보컬 성별 지시는 프롬프트에 포함) 곡을 생성합니다. 응답에 줄·단어별 타임스탬프가 들어 있어 Treblo처럼 박자에 맞는 자막을 만듭니다. 프리셋의 태그는 "r&b, slow, passionate" 식의 스타일 프롬프트로, 제외 태그는 "Avoid: …" 문장으로 바꿔 보냅니다(프롬프트 상한 1024자). 생성된 곡의 URL은 30일 동안만 유효하지만 앱은 완료 즉시 파일을 내려받으므로 영향이 없습니다. 유튜브 설명 푸터는 자동으로 "Music generated with Mureka"로 바뀝니다. 상업 이용 조건은 <a href="https://platform.mureka.ai" target="_blank">Mureka 약관</a>을 확인하세요.</div>
 
+<h2>2-1c. Suno AI API 키 (선택, 보컬·연주곡 모두)</h2>
+<ol>
+  <li><a href="https://sunoapi.org/api-key" target="_blank">sunoapi.org/api-key</a>에서 API 키를 발급합니다. 크레딧 충전 방식이며 보컬곡과 연주곡 모두 생성할 수 있습니다.</li>
+  <li>상단 <span class="btn gray">설정</span> 버튼 → Suno AI API 카드에 붙여 넣고 <b>저장</b> → <b>크레딧 확인</b>을 누르면 남은 크레딧이 표시됩니다. 환경변수 <code>SUNO_API_KEY</code>로도 전달할 수 있습니다.</li>
+  <li>모델은 <code>V4.5</code>(기본) · <code>V5</code> · <code>V4.5 Plus</code> · <code>V4</code> · <code>V3.5</code> 중에서 고를 수 있습니다.</li>
+  <li><b>● 활성화</b>를 누르면 소스 목록에서 Suno AI API를 고를 수 있습니다(작곡 AI는 한 번에 하나만 활성). 완료 후 단어별 가사 타임스탬프(<code>get-timestamped-lyrics</code>)를 받아 박자에 맞는 자막을 만듭니다.</li>
+</ol>
+
 <h2>2-2. 메인 LLM 키 — Claude · OpenAI · Gemini 중 하나 (선택, 권장)</h2>
 <ol>
   <li>상단 <span class="btn gray">설정</span> 모달의 <b>메인 LLM</b> 구역에 세 카드가 있습니다. 쓸 제공자의 키를 발급받아 저장하고 <b>키 확인</b>을 누릅니다(확인은 토큰을 쓰지 않음). Claude는 <a href="https://platform.claude.com" target="_blank">platform.claude.com</a>, OpenAI는 <a href="https://platform.openai.com/api-keys" target="_blank">platform.openai.com</a>, Gemini는 <a href="https://aistudio.google.com/apikey" target="_blank">aistudio.google.com</a>에서 발급합니다. Gemini 카드를 비워 두면 Lyria에 넣은 Google 키를 같이 씁니다. 환경변수 <code>ANTHROPIC_API_KEY</code>, <code>OPENAI_API_KEY</code>, <code>GEMINI_API_KEY</code>로도 전달할 수 있습니다.</li>
@@ -89,6 +98,7 @@
   <tr><td>Treblo API (자동 생성)</td><td>프리셋 프롬프트로 곡을 병렬 생성하고 가사 정렬 데이터까지 받아 자막을 박자에 맞춥니다.</td><td>곡당 100크레딧</td></tr>
   <tr><td>Google Lyria (자동 생성 · 연주곡 전용)</td><td>Gemini API의 Lyria 3.5로 연주곡을 생성합니다. 프리셋의 길이 범위와 제외 태그는 영어 문장으로 바꿔 프롬프트에 넣습니다. 생성에 곡당 수 분이 걸리며 진행 상태(queued → in_progress → completed)가 트랙 목록에 표시됩니다. 보컬곡·가사 자막은 지원하지 않습니다.</td><td>곡당 $0.08 (Google 결제)</td></tr>
   <tr><td>Mureka API (자동 생성 · 보컬·연주곡)</td><td>Mureka 공식 API로 보컬곡·연주곡을 생성합니다. 보컬곡은 Mureka가 가사를 쓰고, 줄·단어별 타임스탬프로 자막을 박자에 맞춥니다. 진행 상태(preparing → queued → running → succeeded)가 트랙 목록에 표시됩니다.</td><td>모델별 곡당 요금, 잔액에서 차감</td></tr>
+  <tr><td>Suno AI API (자동 생성 · 보컬·연주곡)</td><td>Suno AI API(sunoapi.org)로 보컬곡·연주곡을 생성합니다. 완료 후 단어별 가사 타임스탬프(alignedWords)를 받아 자막을 박자에 맞춥니다. 진행 상태(PENDING → TEXT_SUCCESS → FIRST_SUCCESS → SUCCESS)가 트랙 목록에 표시됩니다.</td><td>Suno 크레딧 차감</td></tr>
   <tr><td>로컬 폴더 input/</td><td><code>input/</code>의 mp3·m4a·wav·flac·ogg를 파일명 순으로 사용합니다. <code>01 - 제목.mp3</code>처럼 쓰면 번호를 떼고 제목으로 씁니다. 같은 이름의 <code>.txt</code>(또는 .lrc) 파일이 있으면 가사 자막을 만듭니다(균등 배분 타이밍).</td><td>0</td></tr>
   <tr><td>테스트(합성음)</td><td>사인파 합성 트랙으로 전체 파이프라인을 점검합니다. 설치 직후 동작 확인용.</td><td>0</td></tr>
 </table>

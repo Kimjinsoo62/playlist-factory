@@ -44,7 +44,7 @@ async function init() {
   fillForm($('#cfgForm'), cfg);
   bgOptsInit(cfg.clock);
   applyActive(cfg.provider || 'treblo');
-  if (!cfg.hasApiKey && !cfg.hasLyriaKey && !cfg.hasMurekaKey) openKeyModal('작곡 AI API 키가 없습니다. Treblo·Lyria·Mureka 중 하나의 키를 등록하세요. 로컬 폴더·테스트 소스는 키 없이 쓸 수 있습니다.');
+  if (!cfg.hasApiKey && !cfg.hasLyriaKey && !cfg.hasMurekaKey && !cfg.hasSunoKey) openKeyModal('작곡 AI API 키가 없습니다. Treblo·Lyria·Mureka·Suno 중 하나의 키를 등록하세요. 로컬 폴더·테스트 소스는 키 없이 쓸 수 있습니다.');
   refreshBalance();
   providerChanged();
   refreshYt();
@@ -76,6 +76,8 @@ async function estimate() {
       ? (e.instrumental ? `예상: ${e.specs.length}곡 · 약 $${e.lyriaUsd.toFixed(2)} (곡당 $0.08, Google 결제 계정에 청구) · 영상 약 ${e.estMinutes}분 · 연주곡` : `⚠ Lyria 소스는 연주곡 전용입니다. 연주곡 프리셋을 고르거나 보컬 옵션을 "연주곡"으로 바꾸세요. (가사 타이밍 데이터가 없어 가사 자막을 만들 수 없음)`)
       : prov === 'mureka'
       ? `예상: ${e.specs.length}곡 · Mureka 잔액에서 모델별 곡당 요금 차감 (${murekaBal ? `잔액 $${murekaBal.balanceUsd.toFixed(2)}` : '잔액은 상단 칩 참고'}) · 영상 약 ${e.estMinutes}분 · ${e.instrumental ? '연주곡' : (e.gender === 'male' ? '남성 보컬' : e.gender === 'female' ? '여성 보컬' : '보컬') + ' (' + e.lang + ', 가사는 Mureka 가 작성)'}`
+      : prov === 'suno'
+      ? `예상: ${e.specs.length}곡 · Suno 크레딧 차감 (${sunoBal != null ? `잔액 ${sunoBal.toLocaleString()}` : '잔액은 상단 칩 참고'}) · 영상 약 ${e.estMinutes}분 · ${e.instrumental ? '연주곡' : (e.gender === 'male' ? '남성 보컬' : e.gender === 'female' ? '여성 보컬' : '보컬') + ' (' + e.lang + ', 가사는 Suno 가 작성)'}`
       : prov === 'local' ? `input 폴더의 파일 중 앞에서 ${e.specs.length}개를 사용합니다.` : `테스트: ${e.specs.length}곡 × ${body.mockSeconds || 20}초 합성음, 크레딧 0`);
   } catch {}
 }
@@ -127,7 +129,7 @@ $('#form').onsubmit = async (e) => {
   e.preventDefault();
   const body = formData();
   // 비용이 드는 소스는 화면 안 모달로 확인한다. 브라우저 기본 confirm() 은 메인 창을 앞으로 끌어와 먼저 연 로그 창이 뒤로 숨는다.
-  if (body.provider === 'treblo' || body.provider === 'lyria' || body.provider === 'mureka') {
+  if (body.provider === 'treblo' || body.provider === 'lyria' || body.provider === 'mureka' || body.provider === 'suno') {
     const est = await api('/api/plan', { method: 'POST', body }).catch(() => null);
     if (body.provider === 'lyria' && est && !est.instrumental) { alert('Lyria 소스는 연주곡 전용입니다. 연주곡 프리셋을 고르거나 보컬 옵션을 "연주곡"으로 바꾸세요.'); return; }
     if (est) {
@@ -135,6 +137,8 @@ $('#form').onsubmit = async (e) => {
         ? `Treblo API로 <b>${est.specs.length}곡</b>을 생성합니다. 크레딧 <b>${est.credits}</b>이 사용됩니다.`
         : body.provider === 'mureka'
         ? `Mureka API로 <b>${est.specs.length}곡</b>${est.instrumental ? '(연주곡)' : ''}을 생성합니다. 모델별 곡당 요금이 Mureka 잔액에서 차감됩니다${murekaBal ? ` (현재 잔액 <b>$${murekaBal.balanceUsd.toFixed(2)}</b>)` : ''}. 요금표: platform.mureka.ai/pricing`
+        : body.provider === 'suno'
+        ? `Suno AI API로 <b>${est.specs.length}곡</b>${est.instrumental ? '(연주곡)' : ''}을 생성합니다. Suno 크레딧이 차감됩니다${sunoBal != null ? ` (현재 크레딧 <b>${sunoBal.toLocaleString()}</b>)` : ''}.`
         : `Google Lyria로 <b>${est.specs.length}곡</b>(연주곡)을 생성합니다. 약 <b>$${est.lyriaUsd.toFixed(2)}</b> (곡당 $0.08)이 Google 결제 계정에 청구됩니다.`;
       modal('생성 확인', `<p>${text}</p><p class="dim">[계속]을 누르면 작업이 시작되고 진행 로그가 작업 칸 아래에 표시됩니다.</p>`, [
         { label: '계속', cls: 'primary', onClick: () => { $('#modal').hidden = true; startJob(body); } },
@@ -184,8 +188,8 @@ $('#cfgForm').onsubmit = async (e) => {
   $('#cfgMsg').textContent = '저장됨 ' + new Date().toLocaleTimeString();
   if (cfg.hasApiKey) refreshBalance();
 };
-/** 상단 잔액 칩: 활성 작곡 AI 의 잔액(Treblo 크레딧 / Mureka 달러). 키가 없는 소스는 표시하지 않음 */
-let murekaBal = null;
+/** 상단 잔액 칩: 활성 작곡 AI 의 잔액(Treblo 크레딧 / Mureka 달러 / Suno 크레딧). 키가 없는 소스는 표시하지 않음 */
+let murekaBal = null, sunoBal = null;
 async function refreshBalance() {
   const el = $('#credits');
   const active = appCfg?.provider || 'treblo';
@@ -194,6 +198,13 @@ async function refreshBalance() {
     try { murekaBal = await api('/api/mureka/balance'); el.textContent = `Mureka 잔액 $${murekaBal.balanceUsd.toFixed(2)}`; el.title = `동시 요청 한도 ${murekaBal.concurrentLimit}`; el.className = 'chip ok'; }
     catch (e) { murekaBal = null; el.textContent = 'Mureka 잔액 확인 실패'; el.className = 'chip err'; el.title = e.message; }
     if ($('#provider').value === 'mureka') estimate();   // 예상 비용 문구에 잔액 반영
+    return;
+  }
+  if (active === 'suno') {
+    if (!appCfg?.hasSunoKey) { el.textContent = 'Suno 키 없음'; el.className = 'chip'; return; }
+    try { const b = await api('/api/suno/balance'); sunoBal = b.credits; el.textContent = `Suno 크레딧 ${(b.credits || 0).toLocaleString()}`; el.title = 'Suno AI 크레딧 잔액'; el.className = b.credits > 0 ? 'chip ok' : 'chip err'; }
+    catch (e) { sunoBal = null; el.textContent = 'Suno 크레딧 확인 실패'; el.className = 'chip err'; el.title = e.message; }
+    if ($('#provider').value === 'suno') estimate();
     return;
   }
   if (!appCfg?.hasApiKey) { el.textContent = '크레딧 –'; el.className = 'chip'; return; }
@@ -232,7 +243,7 @@ function applyActive(active) {
   }
   if (changed) providerChanged();
 }
-const NAMES = { treblo: 'Treblo', lyria: 'Lyria', mureka: 'Mureka', anthropic: 'Claude', openai: 'OpenAI', gemini: 'Gemini' };
+const NAMES = { treblo: 'Treblo', lyria: 'Lyria', mureka: 'Mureka', suno: 'Suno', anthropic: 'Claude', openai: 'OpenAI', gemini: 'Gemini' };
 async function refreshKeys() {
   let ks; try { ks = await api('/api/keys'); } catch (e) { $('#kmMsg').textContent = e.message; return; }
   const active = Object.keys(ks).find(p => ks[p].kind === 'music' && ks[p].active) || 'treblo';
@@ -279,12 +290,12 @@ $('#kmBody').addEventListener('click', async (e) => {
       keyEl.value = ''; keyEl.type = 'password'; card.querySelector('[data-act=toggle]').textContent = '보기';
       msg.textContent = (k ? '키 저장됨 ' : '설정 저장됨 ') + new Date().toLocaleTimeString();
       $('#kmMsg').textContent = '';
-      if (p === 'treblo' || p === 'mureka') { try { appCfg = await api('/api/config'); } catch {} refreshBalance(); }
+      if (p === 'treblo' || p === 'mureka' || p === 'suno') { try { appCfg = await api('/api/config'); } catch {} refreshBalance(); }
     } else if (act === 'check') {
       msg.textContent = '확인 중…';
       const r = await api(`/api/keys/${p}/check`);
       msg.textContent = '✔ ' + r.summary;
-      if (p === 'treblo' || p === 'mureka') refreshBalance();
+      if (p === 'treblo' || p === 'mureka' || p === 'suno') refreshBalance();
     } else if (act === 'models') {
       msg.textContent = '모델 목록 불러오는 중…';
       const r = await api(`/api/keys/${p}/models`);
@@ -302,7 +313,7 @@ $('#kmBody').addEventListener('click', async (e) => {
       if (!confirm(`${NAMES[p] || p} API 키를 config.json 에서 지울까요?`)) return;
       await api(`/api/keys/${p}`, { method: 'DELETE' });
       msg.textContent = '키 삭제됨';
-      if (p === 'treblo' || p === 'mureka') { try { appCfg = await api('/api/config'); } catch {} refreshBalance(); }
+      if (p === 'treblo' || p === 'mureka' || p === 'suno') { try { appCfg = await api('/api/config'); } catch {} refreshBalance(); }
     }
     await refreshKeys();
   } catch (err) { msg.textContent = '✖ ' + err.message; }
@@ -541,6 +552,7 @@ function qmEstimate() {
   $('#qmEstimate').textContent = (prov === 'treblo' ? `예상: Treblo API ${n}곡 · 크레딧 ${n * 100} · 영상 약 ${mins}분`
     : prov === 'lyria' ? (instr ? `예상: Google Lyria ${n}곡(연주곡) · 약 $${(n * 0.08).toFixed(2)} (곡당 $0.08) · 영상 약 ${mins}분` : '⚠ Lyria 소스는 연주곡 전용입니다. 보컬을 "연주곡"으로 바꾸세요.')
     : prov === 'mureka' ? `예상: Mureka API ${n}곡${instr ? '(연주곡)' : ''} · 모델별 곡당 요금을 잔액에서 차감${murekaBal ? ` (잔액 $${murekaBal.balanceUsd.toFixed(2)})` : ''} · 영상 약 ${mins}분`
+    : prov === 'suno' ? `예상: Suno AI API ${n}곡${instr ? '(연주곡)' : ''} · Suno 크레딧 차감${sunoBal != null ? ` (잔액 ${sunoBal.toLocaleString()})` : ''} · 영상 약 ${mins}분`
     : `테스트: ${n}곡 × ${$('#mockSeconds').value || 20}초 합성음, 크레딧 0`) + '\n프리셋 생성에 메인 LLM 호출 1회(토큰 2~4천, 수십 원 수준)가 더 듭니다. [▶ 생성 시작]을 누르면 별도 확인 없이 바로 시작합니다.';
 }
 async function openQuickModal() {
@@ -549,7 +561,7 @@ async function openQuickModal() {
   // 작곡 AI는 하나만 활성: 대기 중인 소스는 고를 수 없게
   const active = appCfg?.provider || 'treblo';
   for (const o of f.provider.options) if (o.dataset.label) { o.disabled = o.value !== active; o.textContent = o.dataset.label + (o.disabled ? ' — 대기 (설정에서 활성화)' : ''); }
-  const ok = (v) => ['treblo', 'lyria', 'mureka', 'mock'].includes(v) && !f.provider.querySelector(`option[value="${v}"]`)?.disabled;
+  const ok = (v) => ['treblo', 'lyria', 'mureka', 'suno', 'mock'].includes(v) && !f.provider.querySelector(`option[value="${v}"]`)?.disabled;
   const mp = $('#provider').value; f.provider.value = ok(mp) ? mp : ok(active) ? active : 'mock';
   f.count.value = $('#count').value; f.language.value = $('#language').value; f.background.value = $('#background').value; f.subtitles.value = $('#subtitles').value;
   const v = $('#instrumental').value; f.instrumental.value = f.provider.value === 'lyria' ? 'true' : (v === '' ? 'false' : v);   // Lyria 는 연주곡 전용

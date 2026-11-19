@@ -49,6 +49,7 @@ python scripts/contact-sheet.py out.jpg     # 배경 풀 전체를 한 장으로
 | `treblo` | 보컬·연주곡 모두. 단어별 정렬(`extractAlignment`)을 받아 박자 맞는 자막을 만든다. 태그는 `presets/_treblo-tags.txt` 사전으로 검증 |
 | `lyria` | **연주곡 전용**. 가사 타이밍을 주지 않아 서버가 보컬 요청을 거부한다 (index.js와 pipeline.js 양쪽에서 검사) |
 | `mureka` | 보컬·연주곡 모두 (공식 API, `api.mureka.ai`, Bearer). 보컬은 `/v1/lyrics/generate`로 가사를 먼저 만든 뒤 `/v1/song/generate`, 연주곡은 `/v1/instrumental/generate`(o2 미지원→auto). 요청마다 **`n: 1`**(기본 2, 곡 수만큼 과금). `choices[0].lyrics_sections`의 줄·단어 타이밍(**밀리초** → 초 변환, `extractTimings`)으로 자막. 줄 타이밍(`timedLines`)이 있으면 `timedLinesToSubs`가 단어 정렬보다 우선. `NN_generation.json`에는 Treblo와 같은 `word_aligned_lyrics` + `timed_lines`로 저장해 compile이 읽는다. 작업 시작 시 `/v1/account/billing`의 `concurrent_request_limit`로 동시 생성 수를 낮춘다. `baseUrl`을 바꿔 로컬 스텁(http)으로 테스트할 수 있다 |
+| `suno` | 보컬·연주곡 모두 (`api.sunoapi.org`, Bearer). `/api/v1/generate`로 생성 요청(연주곡은 `customMode: true`, 보컬곡은 `customMode: false`) 후 `/api/v1/generate/record-info?taskId=...` 폴링, 완료 후 `/api/v1/generate/get-timestamped-lyrics`로 단어별 타임스탬프(`alignedWords`)를 받아 `word_aligned_lyrics`로 저장. 잔액 조회는 `/api/v1/generate/credit` |
 | `local` | `input/` 폴더의 오디오 파일(mp3·m4a·wav·flac·ogg·aac). 같은 이름의 `.txt` 또는 `.lrc`가 있으면 가사로 사용, 파일명 앞 번호("01 - 제목")는 제목에서 제거 |
 | `mock` | pipeline.js 안에 인라인(`ff.synthTrack`). `dryRun: true`와 같음 |
 | `compile` | 완료된 작업의 곡을 재료로 다시 조합(`server/library.js`). 파일은 복사하지 않고 원본 폴더에서 읽으며, 가사·정렬은 원본의 `NN_generation.json`에서. `crossfadeSeconds`가 있으면 `ff.concat`이 acrossfade로 겹쳐 잇고 오프셋을 `Σdur − i·F`로 계산 |

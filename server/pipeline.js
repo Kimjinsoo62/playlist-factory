@@ -7,6 +7,7 @@ import { TrebloProvider, extractAlignment } from './providers/treblo.js';
 import { LocalProvider } from './providers/local.js';
 import { LyriaProvider, extractText, stripAudio } from './providers/lyria.js';
 import { MurekaProvider, extractTimings } from './providers/mureka.js';
+import { SunoProvider } from './providers/suno.js';
 import * as ff from './media/ffmpeg.js';
 import { buildAss, lyricLines, alignLinesToWords, distributeLines, timedLinesToSubs } from './media/subtitles.js';
 import { buildYoutubeMeta, trackCount } from './youtube.js';
@@ -175,7 +176,7 @@ export async function runJob(job, cfg) {
     persist(job);
 
     // 2. 생성/수집
-    setStep(job, 2, providerName === 'treblo' ? '곡 생성(Treblo API, 병렬)' : providerName === 'lyria' ? '곡 생성(Google Lyria, 병렬)' : providerName === 'mureka' ? '곡 생성(Mureka API, 병렬)' : providerName === 'local' ? '로컬 트랙 수집' : providerName === 'compile' ? '보관 곡 모으기' : '테스트 트랙 합성');
+    setStep(job, 2, providerName === 'treblo' ? '곡 생성(Treblo API, 병렬)' : providerName === 'lyria' ? '곡 생성(Google Lyria, 병렬)' : providerName === 'mureka' ? '곡 생성(Mureka API, 병렬)' : providerName === 'suno' ? '곡 생성(Suno AI API, 병렬)' : providerName === 'local' ? '로컬 트랙 수집' : providerName === 'compile' ? '보관 곡 모으기' : '테스트 트랙 합성');
     let done = 0;
     const bump = (msg) => { done++; setStepProgress(job, (done / specs.length) * 100, msg); };
     let collected;
@@ -295,6 +296,47 @@ export async function runJob(job, cfg) {
             t.status = 'done'; t.file = file; persist(job);
             bump(`#${spec.index} 완료`);
             return { ...spec, file, lyrics, words: timing?.words || null, timedLines: timing?.lines || null };
+          } catch (e) {
+            if (job.cancelRequested || attempt === 2 || /취소됨/.test(e.message)) { t.status = 'failed'; t.error = e.message; persist(job); throw e; }
+            log(job, `#${spec.index} 실패, 재시도: ${e.message}`, 'warn');
+          }
+        }
+      });
+      } finally { clearInterval(cancelTick); }
+    } else if (providerName === 'suno') {
+      // Suno AI: 보컬·연주곡 모두 지원, 완료 후 get-timestamped-lyrics 로 단어별 가사 타이밍을 가져와 자막을 맞춘다
+      const sp = new SunoProvider(cfg.suno);
+      sp.onWarn = (m) => log(job, m, 'warn');
+      try {
+        const b = await sp.credits();
+        log(job, `Suno 크레딧 잔액 ${b.credits.toLocaleString()} · 모델 ${sp.model}`);
+        if (b.credits <= 0) throw Object.assign(new Error(`Suno 크레딧이 없습니다 (${b.credits}). sunoapi.org 에서 충전하세요.`), { fatal: true });
+      } catch (e) { if (e.fatal || [400, 401, 403].includes(e.status)) throw new Error(e.fatal ? e.message : `Suno API 연결 실패: ${e.message}`); log(job, `Suno 크레딧 조회 실패(계속 진행): ${e.message}`, 'warn'); }
+      const ac = new AbortController();
+      const cancelTick = setInterval(() => { if (job.cancelRequested) ac.abort(); }, 1000);
+      try {
+      collected = await runPool(specs, cfg.suno.concurrency || 2, async (spec) => {
+        check();
+        const t = job.tracks[spec.index - 1];
+        for (let attempt = 1; attempt <= 2; attempt++) {
+          try {
+            t.status = 'generating'; persist(job);
+            const started = await sp.startGeneration(spec, { gender, signal: ac.signal });
+            t.taskId = started.id;
+            log(job, `#${spec.index} 생성 요청 → ${started.id} (${spec.title})`);
+            let lastStatus = '';
+            const { choice, task } = await sp.waitFor(started, {
+              shouldCancel: () => job.cancelRequested, signal: ac.signal,
+              onStatus: (s) => { if (s !== lastStatus) { lastStatus = s; t.remote = s; setStepProgress(job, (done / specs.length) * 100, `#${spec.index} ${s}`); } },
+            });
+            const file = await sp.download(choice, path.join(tracksDir, pad(spec.index)), { signal: ac.signal });
+            const aligned = instrumental ? null : await sp.getTimestampedLyrics(started.id, choice.id, { signal: ac.signal });
+            const lyrics = instrumental ? '' : String(choice.prompt || aligned?.lyrics || '').trim();
+            if (!instrumental) log(job, aligned?.words ? `#${spec.index} 가사 타임스탬프 수신 (${aligned.words.length}단어)` : `#${spec.index} 가사 타임스탬프 없음 → 균등 배분 자막 사용`, aligned?.words ? 'info' : 'warn');
+            fs.writeFileSync(path.join(tracksDir, `${pad(spec.index)}_generation.json`), JSON.stringify({ provider: 'suno', model: started.model, prompt: started.prompt, lyrics, word_aligned_lyrics: aligned?.words || null, task, choice }, null, 2), 'utf8');
+            t.status = 'done'; t.file = file; persist(job);
+            bump(`#${spec.index} 완료`);
+            return { ...spec, file, lyrics, words: aligned?.words || null };
           } catch (e) {
             if (job.cancelRequested || attempt === 2 || /취소됨/.test(e.message)) { t.status = 'failed'; t.error = e.message; persist(job); throw e; }
             log(job, `#${spec.index} 실패, 재시도: ${e.message}`, 'warn');

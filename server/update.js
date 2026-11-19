@@ -8,7 +8,7 @@ import { DIRS } from './paths.js';
 const run = promisify(execFile);
 // core.quotepath=off: 한글 파일명이 "\355\225..." 로 이스케이프되지 않게. GIT_TERMINAL_PROMPT=0: 인증 프롬프트로 멈추지 않게
 async function git(args) {
-  const { stdout } = await run('git', ['-c', 'core.quotepath=off', ...args], { cwd: DIRS.root, windowsHide: true, maxBuffer: 10 * 1024 * 1024, timeout: 120000, env: { ...process.env, GIT_TERMINAL_PROMPT: '0' } });
+  const { stdout } = await run('git', ['-c', 'core.quotepath=off', '-c', 'safe.directory=*', ...args], { cwd: DIRS.root, windowsHide: true, maxBuffer: 10 * 1024 * 1024, timeout: 120000, env: { ...process.env, GIT_TERMINAL_PROMPT: '0' } });
   return stdout.trim();
 }
 const lines = s => s.split('\n').map(l => l.trim()).filter(Boolean);
@@ -52,10 +52,13 @@ export async function applyUpdate(log) {
   const before = await git(['rev-parse', 'HEAD']);
   if (Number(await git(['rev-list', '--count', `${upstream}..HEAD`]).catch(() => '0'))) throw new Error(`이 PC 에만 있는 커밋이 있어 자동 업데이트를 할 수 없습니다 (${upstream} 과 갈라짐).`);
 
-  // 업데이트와 겹치는 로컬 수정은 backup/업데이트_<시각>/ 에 원래 경로대로 복사한 뒤 되돌린다 (git 을 몰라도 찾을 수 있게)
+  // 업데이트와 겹치는 로컬 수정은 backup/업데이트_<시각>/ 에 먼저 백업한 뒤,
+  // 추적 파일(modified)은 stash → fast-forward → stash pop 으로 자동 병합을 시도하고,
+  // 줄 단위 충돌(<<<<<)이 난 파일만 원격 버전으로 맞춘다 (앱이 구문 오류로 죽지 않게).
   const { modified, untracked } = await conflicts(upstream);
   let backupDir = '';
   const saved = [];
+  const backedUp = [...untracked];
   if (modified.length || untracked.length) {
     backupDir = path.join(DIRS.root, 'backup', `업데이트_${stamp()}`);
     const deleted = [];
@@ -68,22 +71,47 @@ export async function applyUpdate(log) {
       saved.push(f);
     }
     if (deleted.length) { fs.mkdirSync(backupDir, { recursive: true }); fs.writeFileSync(path.join(backupDir, '_삭제했던_파일.txt'), deleted.join('\r\n') + '\r\n', 'utf8'); }
-    log?.(`로컬 수정 파일 ${modified.length + untracked.length}개 백업 → ${path.relative(DIRS.root, backupDir)}`);
-    if (modified.length) await git(['checkout', 'HEAD', '--', ...modified]);
     for (const f of untracked) fs.rmSync(path.join(DIRS.root, f), { force: true });
+  }
+
+  let stashed = false;
+  if (modified.length) {
+    const sOut = await git(['stash', 'push', '-m', `pf-update-${stamp()}`, '--', ...modified]).catch(() => '');
+    stashed = Boolean(sOut && !/No local changes/i.test(sOut));
   }
 
   log?.(`git merge --ff-only ${upstream}`);
   let out;
   try { out = await git(['merge', '--ff-only', upstream]); }
   catch (e) {
-    // 실패하면 백업한 파일을 제자리로 돌려 놓는다 (업데이트 전 상태 유지)
+    if (stashed) await git(['stash', 'pop']).catch(() => {});
     for (const f of saved) { try { fs.copyFileSync(path.join(backupDir, f), path.join(DIRS.root, f)); } catch {} }
     throw new Error(`업데이트 실패: ${e.message.split('\n').slice(-3).join(' ')}${saved.length ? ' (로컬 수정 파일은 원래대로 돌려 놓았습니다)' : ''}`);
   }
+
+  if (stashed) {
+    try {
+      await git(['stash', 'pop']);
+      log?.(`로컬 수정 파일 ${modified.length}개 자동 병합 완료`);
+    } catch {
+      // 줄 단위 충돌이 발생한 파일은 <<< 마커가 남지 않도록 원격(upstream) 버전으로 맞추고 백업 안내
+      const unmerged = lines(await git(['diff', '--name-only', '--diff-filter=U']).catch(() => ''));
+      const toReset = unmerged.length ? unmerged : modified;
+      await git(['checkout', upstream, '--', ...toReset]).catch(() => {});
+      await git(['reset', 'HEAD']).catch(() => {});
+      await git(['stash', 'drop']).catch(() => {});
+      for (const f of toReset) if (!backedUp.includes(f)) backedUp.push(f);
+      log?.(`충돌 파일 ${toReset.length}개는 원격 버전으로 적용 (원본은 ${path.relative(DIRS.root, backupDir)} 에 백업)`);
+    }
+  }
+  if (!backedUp.length && backupDir) {
+    try { fs.rmSync(backupDir, { recursive: true, force: true }); } catch {}
+    backupDir = '';
+  }
+
   const after = await git(['rev-parse', 'HEAD']);
   const changed = before === after ? [] : lines(await git(['diff', '--name-only', before, after]));
   const needInstall = changed.some(f => /^(package(-lock)?\.json|install\.bat|requirements\.txt)$/.test(f));
   log?.(`변경 파일 ${changed.length}개${needInstall ? ' (의존성 변경 → install.bat 재실행 필요)' : ''}`);
-  return { ok: true, before: before.slice(0, 7), after: after.slice(0, 7), changed, needInstall, backupDir: backupDir && path.relative(DIRS.root, backupDir), backedUp: [...modified, ...untracked], output: out };
+  return { ok: true, before: before.slice(0, 7), after: after.slice(0, 7), changed, needInstall, backupDir: backupDir && path.relative(DIRS.root, backupDir), backedUp, output: out };
 }
